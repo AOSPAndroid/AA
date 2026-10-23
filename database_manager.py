@@ -79,7 +79,9 @@ def register_database_manager(app,wmi,check_token):
  from urllib.parse import unquote
  root=Path(__file__).parent;staged={};gate=asyncio.Lock()
  with sqlite3.connect(wmi.MASTER_DB,factory=ClosingConnection) as c:c.execute('create table if not exists directory_import_history(id text primary key,at text,source text,backup text,report text)')
- def busy():return any(j.get('state') not in ('complete','failed','cancelled','interrupted','unknown') for pool in (wmi.jobs,wmi.queue_jobs) for j in list(pool.values()))
+ def busy():
+  from shared_operations import axis_busy
+  return any(j.get('state') not in ('complete','failed','cancelled','interrupted','unknown') for pool in (wmi.jobs,wmi.queue_jobs) for j in list(pool.values())) or axis_busy()
  def clean():
   for id,s in list(staged.items()):
    if time.time()-s['created']>3600:shutil.rmtree(s['folder'],ignore_errors=True);del staged[id]

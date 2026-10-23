@@ -77,15 +77,28 @@ def _jobs():
         return [(updated, job) for _, updated, job in current.values()]
 
 
+def _state(job):
+    """A queued or running job whose worker is gone has an unknown outcome. Reads only."""
+    state = job.get('state', 'unknown')
+    if (state in it_tools.ACTIVE and time.time() - job.get('created_epoch', 0) > 20
+            and not it_tools.process_alive(job.get('worker_pid'))):
+        return 'unknown'
+    return state
+
+
+def axis_busy():
+    """True while an Axis worker runs; directory imports wait for it like Atlas jobs."""
+    return any(_state(job) in it_tools.ACTIVE for _, job in _jobs())
+
+
 def axis_activity():
     """Axis deployments and reboots as rows for Atlas's activity feed. Reads only."""
     rows = []
     for updated, job in _jobs():
         events = job.get('events', [])
-        state, message = job.get('state', 'unknown'), job.get('error')
-        if (state in it_tools.ACTIVE and time.time() - job.get('created_epoch', 0) > 20
-                and not it_tools.process_alive(job.get('worker_pid'))):
-            state, message = 'unknown', 'Axis worker stopped without a final result. Inspect the PC before retrying.'
+        state, message = _state(job), job.get('error')
+        if state == 'unknown' and job.get('state') in it_tools.ACTIVE:
+            message = 'Axis worker stopped without a final result. Inspect the PC before retrying.'
         if not message:
             message = (events[-1].get('computer', '') + ': ' + events[-1].get('message', '')) if events else 'Queued'
         title = 'Axis · Reboot' if job.get('kind') == 'reboot' else f"Axis · {job.get('action', 'Deploy')} · {job.get('package', '')}"
