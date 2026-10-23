@@ -61,6 +61,49 @@ class MemoryTests(unittest.TestCase):
         self.assertIn("Memory is full", self.agent.call_tool("remember", {"fact": "One more fact"}))
         self.ui.confirm.assert_not_called()
 
+    def test_open_chat_sees_memory_saved_elsewhere_without_changing_its_cached_prompt(self):
+        system = self.agent.messages[0]["content"]
+        self.agent.chat = MagicMock(return_value={"role": "assistant", "content": "Done."})
+        self.agent.run("first")
+        self.assertEqual(self.agent.messages[1]["content"], "first")
+        self.memory.parent.mkdir(parents=True)
+        self.memory.write_text("- Floor 3 printers use queue PRQ3\n", encoding="utf-8")  # another chat or the user
+        self.agent.run("second")
+        request = self.agent.messages[3]["content"]
+        self.assertTrue(request.startswith("second\n\n[Axis memory changed"))
+        self.assertIn("- Floor 3 printers use queue PRQ3", request)
+        self.assertEqual(self.agent.messages[0]["content"], system)
+        self.agent.call_tool("remember", {"fact": "Service desk is ext 4000"})
+        self.agent.run("third")  # Its own approved change was already in the tool result.
+        self.assertEqual(self.agent.messages[-2]["content"], "third")
+        with self.memory.open("a", encoding="utf-8") as other:
+            other.write("- Badge office is on floor 2\n")  # Elsewhere, just before this chat saves.
+        self.agent.call_tool("remember", {"fact": "Use queue PRQ3 for floor 3"})
+        self.agent.run("fourth")
+        self.assertIn("- Badge office is on floor 2", self.agent.messages[-2]["content"])
+
+    def test_credentials_are_refused_but_where_they_live_is_allowed(self):
+        for fact in ("Admin password: Summer2024", "API key = abc", "token=xyz",
+                     "Use 9f8e7d6c5b4a39281706f5e4d3c2b1a0ffeeddcc for the service"):
+            with self.subTest(fact=fact):
+                self.assertIn("must not hold passwords", self.agent.call_tool("remember", {"fact": fact}))
+        self.ui.confirm.assert_not_called()
+        for fact in ("Passwords are reset in the HR portal",
+                     "Uninstall uses product code {3F2504E0-4F89-11D3-9A0C-0305E82C3301}",
+                     "Prefer Microsoft_Visual_C++_2015-2022_Redistributable_x64 for VC runtimes"):
+            with self.subTest(fact=fact):
+                self.assertTrue(self.agent.call_tool("remember", {"fact": fact}).startswith("Remembered"))
+
+    def test_memory_file_can_be_shared_outside_the_state_folder(self):
+        shared = self.root / "shared" / "MEMORY.md"
+        with patch.object(agent, "system_facts", return_value=("Test PC", False)):
+            other = agent.Agent("http://127.0.0.1:8080/v1", "fixture", str(self.root), False, False,
+                                notes=str(self.root / "notes"), state_dir=str(self.root / "state"),
+                                ui=self.ui, web_enabled=False, memory_file=str(shared))
+        other.call_tool("remember", {"fact": "Shared fact"})
+        self.assertIn("- Shared fact", shared.read_text(encoding="utf-8"))
+        self.assertFalse(self.memory.exists())
+
     def test_terminal_memory_command_reads_without_the_model(self):
         agent.handle_command(self.agent, self.ui, "/memory", [])
         self.assertIn("Nothing remembered", self.ui.output.call_args[0][0])

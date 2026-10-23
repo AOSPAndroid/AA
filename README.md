@@ -34,8 +34,10 @@ If the model is missing, the map still opens and chat explains how to start it.
 - **Background jobs:** accepted deployments and reboots keep running if the chat
   is closed. Use `/jobs` or `/jobs ID` in chat to inspect Axis jobs.
 - **Memory:** ask Axis to remember a fact (or forget one). After your approval it
-  saves a line in `data/axis/state/MEMORY.md`, which every new chat reads. Use
-  `/memory` to view it; edit or delete lines in the file freely.
+  saves a line in `data/axis/state/MEMORY.md`, shared by the browser chat and the
+  Axis terminal; open chats receive changes with their next request. Use
+  `/memory` to view it; edit or delete lines in the file freely. Lines that look
+  like passwords, keys or tokens are refused.
 - **Viewer stays read-only:** Axis execution is available only on the local
   Admin interface, not the LAN Viewer.
 
