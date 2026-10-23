@@ -19,7 +19,8 @@ class AADefaultsTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.aa = Path(self.temp.name) / "AA"
+        self.base = Path(self.temp.name).resolve()  # Windows temp folders can be 8.3 short names.
+        self.aa = self.base / "AA"
         (self.aa / "axis").mkdir(parents=True)
         source = Path(agent.__file__).resolve().parents[1]
         for name in ("runtime_paths.py", "package_paths.py"):
@@ -58,10 +59,10 @@ class AADefaultsTests(unittest.TestCase):
         self.assertFalse(axis.it.atlas_history)
 
     def test_a_missing_configured_database_keeps_refusing_changes(self):
-        self.config(database_folder=str(Path(self.temp.name) / "offline-drive"))
+        self.config(database_folder=str(self.base / "offline-drive"))
         a = self.args()
         self.assertIsNone(agent.apply_aa_defaults(a))
-        self.assertEqual(Path(a.atlas_db), Path(self.temp.name) / "offline-drive" / "office_atlas.db")
+        self.assertEqual(Path(a.atlas_db), self.base / "offline-drive" / "office_atlas.db")
         with patch.object(agent, "system_facts", return_value=("Test PC", False)):
             axis = agent.Agent("http://127.0.0.1:8080/v1", "fixture", str(self.aa), False, False,
                                state_dir=a.state_dir, ui=MagicMock(), web_enabled=False, atlas_db=a.atlas_db)

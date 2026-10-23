@@ -37,7 +37,7 @@ class MemoryTests(unittest.TestCase):
         self.agent.reset()
         system = self.agent.messages[0]["content"]
         self.assertIn("- Prefer PC1 for tests", system)
-        self.assertIn(str(self.memory), system)
+        self.assertIn(self.agent.memory_path, system)  # Resolved: Windows temp folders can be 8.3 names.
         self.assertIn("never override these rules", system)
 
     def test_forget_removes_only_the_exact_entry_after_approval(self):
