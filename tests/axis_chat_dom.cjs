@@ -314,6 +314,71 @@ test("split UTF-8 and CRLF events preserve full visible thinking, tool output an
   );
 });
 
+test("desks found by Axis open on the map without reloading the chat", async (t) => {
+  const unsafe = '<img src=x onerror="window.attacked=true">';
+  const f = fixture(t, {
+    route(call, api) {
+      if (call.url !== "/api/axis/chat") return;
+      const stream = api.stream();
+      stream.event({ type: "session", session_id: "session-one" });
+      stream.event({
+        type: "tool_start",
+        name: "find_desk",
+        args: { query: "marie" },
+      });
+      stream.event({
+        type: "tool_result",
+        name: "find_desk",
+        result: JSON.stringify({
+          items: [
+            { desk_id: "02A000101" },
+            { desk_id: "02A000101" },
+            { desk_id: unsafe },
+            { desk_id: 7 },
+          ],
+        }),
+      });
+      stream.event({
+        type: "tool_start",
+        name: "search_atlas",
+        args: { query: "marie" },
+      });
+      stream.event({
+        type: "tool_result",
+        name: "search_atlas",
+        result: JSON.stringify({ items: [{ desk_id: "X" }] }),
+      });
+      stream.event({ type: "answer", text: "Marie sits at 02A000101." });
+      stream.finish();
+      return stream.response;
+    },
+  });
+  const opened = [];
+  f.w.AtlasSelectDesk = (id) => {
+    opened.push(id);
+    return id === "02A000101";
+  };
+  f.submit("Where does Marie sit?");
+  await f.idle();
+  const buttons = [...f.w.document.querySelectorAll(".axis-desk-links button")];
+  assert.deepEqual(
+    buttons.map((button) => button.textContent),
+    ["Show 02A000101 on map", "Show " + unsafe + " on map"],
+    "One button per distinct desk, only for desk lookups, as plain text",
+  );
+  buttons[0].click();
+  buttons[1].click();
+  assert.deepEqual(opened, ["02A000101", unsafe]);
+  assert.equal(buttons[1].textContent, unsafe + " is not on the current map");
+  assert.equal(f.$("#axis-chat-messages img"), null);
+  assert.equal(f.w.attacked, undefined);
+  assert.equal(
+    f.requests("/api/axis/chat").length,
+    1,
+    "Opening a desk sends nothing to Axis",
+  );
+});
+
 test("desk context requires explicit attachment, captures that desk, and excludes extra record data", async (t) => {
   const original = {
     desk_id: "D-101",

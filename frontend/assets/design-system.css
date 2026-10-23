@@ -3389,6 +3389,8 @@ body.axis-chat-open #detail { visibility: hidden; }
 .axis-message-tool pre { margin: 4px 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.5 ui-monospace, Consolas, monospace; color: var(--atlas-text); }
 .axis-tool-arguments { color: var(--atlas-muted) !important; }
 .axis-tool-result { padding-top: 7px; }
+.axis-desk-links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+.axis-desk-links button { padding: 2px 8px; font-size: 11px; }
 .axis-tool-saved, .axis-attached-record { display: block; margin-top: 7px; color: var(--atlas-muted); font: 10px/1.5 ui-monospace, Consolas, monospace; overflow-wrap: anywhere; }
 .axis-message-notice { color: var(--atlas-muted); font-size: 12px; }
 .axis-message-error { border-color: var(--atlas-danger); color: var(--atlas-danger); }

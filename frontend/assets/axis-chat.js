@@ -152,6 +152,32 @@
       return value;
     }
   }
+  // Desks found by Axis open on this map; selecting one gives no permission.
+  function deskLinks(container, result) {
+    let items = [];
+    try {
+      items = JSON.parse(result).items || [];
+    } catch {}
+    const ids = [
+      ...new Set(
+        items
+          .map((item) => item && item.desk_id)
+          .filter((id) => typeof id === "string" && id),
+      ),
+    ].slice(0, 10);
+    if (!ids.length || typeof window.AtlasSelectDesk !== "function") return;
+    const row = element("div", "axis-desk-links");
+    for (const id of ids) {
+      const link = element("button", "", "Show " + id + " on map");
+      link.type = "button";
+      link.addEventListener("click", () => {
+        if (!window.AtlasSelectDesk(id))
+          link.textContent = id + " is not on the current map";
+      });
+      row.append(link);
+    }
+    container.append(row);
+  }
   function updateSelection() {
     const selected = window.AtlasAxisSelection?.();
     $("#axis-chat-use-desk").disabled = busy || !selected;
@@ -369,6 +395,7 @@
         tool.content.append(
           element("pre", "axis-tool-result", print(event.result)),
         );
+        if (event.name === "find_desk") deskLinks(tool.content, event.result);
         if (event.output_id)
           tool.content.append(
             element("small", "axis-tool-saved", "/output " + event.output_id),

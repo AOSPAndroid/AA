@@ -29,6 +29,9 @@ If the model is missing, the map still opens and chat explains how to start it.
   the same configured package repository.
 - **Selected desk:** explicitly attach a desk to the chat when useful. Selection
   gives Axis context; changes still require approval.
+- **Desks from chat:** ask where someone sits or which desk a PC is at. Axis
+  reads the floor-plan seating (stored plan, not who is in today), and each desk
+  it finds has a **Show on map** button that selects it without leaving the chat.
 - **Visible work:** answers, thinking and tool activity stream into the panel.
   Actions display an approval with the actual command or target.
 - **Background jobs:** accepted deployments and reboots keep running if the chat
