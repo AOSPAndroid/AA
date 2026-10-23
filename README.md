@@ -32,7 +32,12 @@ If the model is missing, the map still opens and chat explains how to start it.
 - **Visible work:** answers, thinking and tool activity stream into the panel.
   Actions display an approval with the actual command or target.
 - **Background jobs:** accepted deployments and reboots keep running if the chat
-  is closed. Use `/jobs` or `/jobs ID` in chat to inspect Axis jobs.
+  is closed. Use `/jobs` or `/jobs ID` in chat to inspect Axis jobs. They also
+  appear in Atlas's activity panel.
+- **One operations guard:** Atlas and Axis take the same per-PC lock, so they
+  never change the same PC at once. An unknown outcome in either app blocks the
+  PC in both until it is acknowledged where it happened: Atlas's Operation
+  recovery, or by asking Axis after you inspect the PC.
 - **Viewer stays read-only:** Axis execution is available only on the local
   Admin interface, not the LAN Viewer.
 
@@ -49,8 +54,8 @@ seed remains available for first-run setup. Runtime databases, logs, chat tool
 outputs and model state stay outside the Git source files.
 
 The selected database is also Atlas's writable database; Axis's directory lookup
-uses a read-only connection. Keep your normal Atlas backup process when moving
-or updating a database.
+and its check of Atlas's unresolved operations use read-only connections. Keep
+your normal Atlas backup process when moving or updating a database.
 
 Optional Firecrawl setup remains available in `axis/Configure Firecrawl.bat`.
 The key stays in your Windows profile. Public web tools retain Axis's restrictions

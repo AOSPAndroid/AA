@@ -32,7 +32,8 @@ app=FastAPI(title='Office Atlas',version=__version__,docs_url='/api/docs',redoc_
 from response_compression import compress_responses
 compress_responses(app)
 from job_service import JobService, TERMINAL
-job_service=JobService(lambda:HISTORY_DB)
+from shared_operations import TargetLock, axis_ready
+job_service=JobService(lambda:HISTORY_DB,guard=axis_ready)
 jobs=job_service.jobs;lock=job_service.lock
 @app.on_event('startup')
 def recover_operations():job_service.recover()
@@ -169,7 +170,7 @@ def start_job(fn,j,*args):
   emit(j,str(error),'failed');history_update(j,state='failed',details=str(error));raise
 
 def target_lock(pc):
- with lock:return target_locks.setdefault(pc,threading.Lock())
+ with lock:return target_locks.setdefault(pc,TargetLock(pc))
 
 def outcome(ec):
  # Deployment status confirms launch, never installation success.

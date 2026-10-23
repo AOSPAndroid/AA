@@ -217,6 +217,74 @@ class ITTests(unittest.TestCase):
         with it.target_lock(self.backend.state, "PC-1"):
             pass
 
+    def test_job_write_waits_for_a_concurrent_reader_on_windows(self):
+        path = self.root / "state" / "jobs" / "job.json"
+        replace = os.replace
+        calls = []
+        def busy_once(source, target):
+            calls.append(target)
+            if len(calls) == 1:
+                raise PermissionError("file is open in another process")
+            replace(source, target)
+        with patch.object(it.os, "replace", side_effect=busy_once), patch.object(it.time, "sleep"):
+            it.write_json(path, {"state": "running"})
+        self.assertEqual(it.read_json(path), {"state": "running"})
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(list(path.parent.glob("*.tmp")), [])
+
+    def test_short_and_qualified_names_share_one_target(self):
+        self.assertEqual(it.target_key("pc-1.corp.example."), "PC-1")
+        self.assertEqual(it.target_key("10.0.0.5"), "10.0.0.5")
+        with it.target_lock(self.backend.state, "PC-1.CORP.EXAMPLE"):
+            with self.assertRaises(RuntimeError):
+                with it.target_lock(self.backend.state, "pc-1"):
+                    self.fail("Second lock acquired")
+        self.job_file(dict(self.plan(), state="running", computers=["PC-1.CORP.EXAMPLE"]))
+        with self.assertRaisesRegex(RuntimeError, "a{32}"):
+            self.backend.ensure_available("PC-1")
+
+    def atlas_guard(self, *targets):
+        import sqlite3
+        database = self.root / "atlas.db"
+        con = sqlite3.connect(database)
+        con.execute("create table if not exists operation_guard(target text primary key)")
+        con.executemany("insert into operation_guard values(?)", ((t,) for t in targets))
+        con.commit(); con.close()
+        return database
+
+    def test_atlas_unresolved_target_blocks_axis_until_acknowledged_in_atlas(self):
+        database = self.atlas_guard("PC-1.CORP.EXAMPLE")
+        guarded = it.ITTools(self.root / "state", str(self.repo), self.confirm, atlas_db=database)
+        with self.assertRaisesRegex(RuntimeError, "unresolved Atlas operation"):
+            guarded.ensure_available("PC-1")
+        with self.assertRaisesRegex(RuntimeError, "unresolved Atlas operation"):
+            guarded.deploy_package(["PC-1"], self.package.name, "app_i.ps1", "Install")
+        self.confirm.assert_not_called()
+        guarded.ensure_available("PC-2")
+        import sqlite3
+        con = sqlite3.connect(database); con.execute("delete from operation_guard"); con.commit(); con.close()
+        guarded.ensure_available("PC-1")
+
+    def test_unreadable_atlas_guard_never_reads_as_clear(self):
+        guarded = it.ITTools(self.root / "state", str(self.repo), self.confirm, atlas_db=self.root / "missing.db")
+        with self.assertRaisesRegex(RuntimeError, "Cannot read Atlas's operation guard"):
+            guarded.ensure_available("PC-1")
+
+    def test_detached_worker_rechecks_the_atlas_guard(self):
+        database = self.atlas_guard()
+        guarded = it.ITTools(self.root / "state", str(self.repo), self.confirm, atlas_db=database)
+        with patch.object(it.subprocess, "Popen"):
+            job_id = guarded.deploy_package(["PC-1"], self.package.name, "app_i.ps1", "Install")["job_id"]
+        path = self.backend.state / "jobs" / (job_id + ".json")
+        self.assertEqual(it.read_json(path)["atlas_db"], str(database))
+        self.atlas_guard("PC-1")  # Atlas loses track of PC-1 after approval.
+        with patch.object(it.ITTools, "ps") as ps:
+            it.run_worker(path)
+        result = it.read_json(path)["results"][0]
+        self.assertEqual(result["state"], "failed")
+        self.assertIn("unresolved Atlas operation", result["message"])
+        ps.assert_not_called()
+
     def deploy_simulated(self, exit_code=0, mode="full", robocopy=1, mutate=False, launch_error=False):
         plan = self.plan(mode)
         if mutate:

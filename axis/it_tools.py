@@ -1,7 +1,8 @@
 """Standalone Windows administration for the local agent. Python 3.8+, no packages.
 
 The model selects named operations; this module owns validation, approval, Windows
-calls and durable deployment jobs. It does not import or connect to Atlas.
+calls and durable deployment jobs. It does not import Atlas; with an Atlas database
+it only reads Atlas's unresolved-target guard so both apps refuse the same PC.
 """
 import argparse
 import base64
@@ -12,6 +13,7 @@ import json
 import os
 from pathlib import Path, PureWindowsPath
 import re
+import sqlite3
 import subprocess
 import sys
 import time
@@ -83,6 +85,12 @@ def computer(value):
     return value.upper()
 
 
+def target_key(value):
+    """One lock and guard name per PC, whether it is given short or fully qualified."""
+    name = str(value or "").strip().upper().rstrip(".")
+    return name if re.fullmatch(r"\d{1,3}(\.\d{1,3}){3}", name) else name.split(".", 1)[0]
+
+
 def integer(value, label, low, high):
     if type(value) is not int or not low <= value <= high:
         raise ValueError("%s must be between %d and %d" % (label, low, high))
@@ -104,7 +112,16 @@ def write_json(path, data):
             json.dump(data, out, ensure_ascii=False, indent=2)
             out.flush()
             os.fsync(out.fileno())
-        os.replace(str(temporary), str(path))
+        for attempt in range(20):
+            try:
+                os.replace(str(temporary), str(path))
+                break
+            except PermissionError:
+                # Windows refuses to replace a file another process is reading,
+                # such as Atlas's activity panel or a chat checking this job.
+                if attempt == 19:
+                    raise
+                time.sleep(0.05)
     finally:
         if temporary.exists():
             temporary.unlink()
@@ -176,7 +193,7 @@ def process_alive(pid):
 @contextmanager
 def target_lock(state_dir, pc):
     """OS-owned locks release on worker exit, including crashes; no stale lock files."""
-    path = Path(state_dir) / "locks" / (computer(pc) + ".lock")
+    path = Path(state_dir) / "locks" / (target_key(computer(pc)) + ".lock")
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a+b") as handle:
         handle.seek(0, 2)
@@ -192,7 +209,7 @@ def target_lock(state_dir, pc):
                 import fcntl
                 fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError:
-            raise RuntimeError("Another local-agent operation is active on " + pc)
+            raise RuntimeError("Another operation is active on " + pc)
         try:
             yield
         finally:
@@ -203,9 +220,25 @@ def target_lock(state_dir, pc):
                 fcntl.flock(handle, fcntl.LOCK_UN)
 
 
+def atlas_unresolved(database, pc):
+    """True when Atlas left this PC with an unknown outcome that nobody has acknowledged."""
+    try:
+        con = sqlite3.connect(Path(database).resolve().as_uri() + "?mode=ro", uri=True, timeout=5)
+        try:
+            if not con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='operation_guard'").fetchone():
+                return False
+            return any(target_key(row[0]) == target_key(pc) for row in con.execute("SELECT target FROM operation_guard"))
+        finally:
+            con.close()
+    except (sqlite3.Error, OSError, ValueError) as error:
+        # Unknown remote state is never treated as clear.
+        raise RuntimeError("Cannot read Atlas's operation guard (%s); no change was started" % error) from None
+
+
 class ITTools:
-    def __init__(self, state_dir, package_repo=None, confirm=None, timeout=3600):
+    def __init__(self, state_dir, package_repo=None, confirm=None, timeout=3600, atlas_db=None):
         self.state = Path(state_dir).expanduser().resolve()
+        self.atlas_db = str(atlas_db) if atlas_db else None
         package_repo = package_repo or os.environ.get("AGENT_PACKAGE_REPO") or os.environ.get("WMI_PACKAGE_REPO") or DEFAULT_PACKAGE_REPO
         self.repository = Path(os.path.expandvars(package_repo)).expanduser().resolve()
         self.confirm = confirm or (lambda action: False)
@@ -329,17 +362,29 @@ class ITTools:
             return []
         return sorted((read_json(p) for p in folder.glob("*.json")), key=lambda j: j["created"], reverse=True)
 
-    def ensure_available(self, pc, exclude=None):
+    def blocking_job(self, pc, exclude=None):
+        """The job that is active on this PC or left it with an unacknowledged unknown outcome."""
+        key = target_key(pc)
         for job in self.jobs():
-            if job["id"] == exclude or pc not in job["computers"]:
+            if job["id"] == exclude or key not in {target_key(name) for name in job["computers"]}:
                 continue
             if job["state"] in ACTIVE or (job["state"] == "unknown" and not job.get("acknowledged")):
-                raise RuntimeError("%s has an active or unresolved job %s. Inspect it with it_job_status first." % (pc, job["id"]))
+                return job
+        return None
+
+    def ensure_available(self, pc, exclude=None):
+        job = self.blocking_job(pc, exclude)
+        if job:
+            raise RuntimeError("%s has an active or unresolved job %s. Inspect it with it_job_status first." % (pc, job["id"]))
+        if self.atlas_db and atlas_unresolved(self.atlas_db, pc):
+            raise RuntimeError("%s has an unresolved Atlas operation. Inspect the PC, then acknowledge it in Atlas's Operation recovery." % pc)
 
     def spawn(self, plan):
         job_id = uuid.uuid4().hex
         job = dict(plan, id=job_id, state="queued", created=now(), created_epoch=time.time(),
                    results=[], events=[], worker_pid=None)
+        if self.atlas_db:
+            job["atlas_db"] = self.atlas_db  # The detached worker rechecks the same guard.
         path = self.state / "jobs" / (job_id + ".json")
         write_json(path, job)
         try:
@@ -587,7 +632,7 @@ def run_worker(path):
     job = read_json(path)
     if job["state"] != "queued" or path.name != identifier(job["id"]) + ".json":
         raise ValueError("Job is not queued")
-    backend = ITTools(path.parent.parent, job.get("repository"), timeout=job["timeout"])
+    backend = ITTools(path.parent.parent, job.get("repository"), timeout=job["timeout"], atlas_db=job.get("atlas_db"))
     job.update(state="running", worker_pid=os.getpid())
     write_json(path, job)
 

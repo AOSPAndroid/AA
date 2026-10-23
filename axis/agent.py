@@ -185,7 +185,8 @@ class Agent:
         # Conservative character estimate; reserve the tool schemas and reply.
         self.history_budget = max(0, int((ctx - self.max_reply) * 3) - len(json.dumps(self.tools)))
         self.state_dir = os.path.realpath(state_dir or os.path.join(os.path.dirname(os.path.abspath(__file__)), "state"))
-        self.it = ITTools(self.state_dir, package_repo, self.confirm, deployment_timeout)
+        self.it = ITTools(self.state_dir, package_repo, self.confirm, deployment_timeout,
+                          atlas_db=self.atlas.path if self.atlas.available else None)
         # The server is local; never route it through a system proxy.
         self.http = urllib.request.build_opener(urllib.request.ProxyHandler({}))
         self.stats = {}

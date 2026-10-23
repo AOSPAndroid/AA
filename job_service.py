@@ -12,9 +12,10 @@ TERMINAL = {'launched', 'complete', 'failed', 'cancelled', 'interrupted', 'unkno
 
 
 class JobService:
-    def __init__(self, path, retained=200):
+    def __init__(self, path, retained=200, guard=None):
         self.path = path
         self.retained = retained
+        self.guard = guard
         self.lock = threading.RLock()
         self.jobs = {}
         self.queues = {}
@@ -97,6 +98,8 @@ class JobService:
     def target_ready(self, pc):
         if pc in self.unresolved:
             raise HTTPException(409, 'A previous operation has an unknown outcome. Review the target and acknowledge it in operation recovery.')
+        if self.guard:
+            self.guard(pc)
 
     def acknowledge(self, pc):
         with self.lock, self.connect() as c:
