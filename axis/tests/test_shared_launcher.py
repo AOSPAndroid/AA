@@ -28,6 +28,8 @@ class SharedLauncherTests(unittest.TestCase):
             "AXIS_TEST_INHERITED": "keep this value",
         }))
         self.output = self.stack.enter_context(redirect_stdout(io.StringIO()))
+        # These tests run inside the AA checkout; standalone Axis is the default case here.
+        self.stack.enter_context(patch.object(start, "AA_ROOT", str(self.root / "standalone")))
         self.identity = "EXAMPLE\\dsk-user"
         self.atlas = self.make_atlas(self.root / "atlas-install")
         self.database = self.atlas / "data" / "office_atlas.db"
@@ -208,14 +210,23 @@ class SharedLauncherTests(unittest.TestCase):
                 self.assertNotIn("--atlas-dir", command)
                 self.assertEqual(atlas.call_count, int(shared))
 
-    def test_terminal_inside_aa_shares_the_browser_chat_memory(self):
+    def test_terminal_inside_aa_uses_the_browser_chat_state_database_and_packages(self):
         aa = self.root / "AA"
-        (aa / "axis").mkdir(parents=True)
-        expected = os.path.join(str(aa), "data", "axis", "state", "MEMORY.md")
-        cases = (([], True, expected), (["--memory-file", "mine.md"], True, "mine.md"), ([], False, None))
-        for options, inside, memory in cases:
+        (aa / "axis" / "state" / "jobs").mkdir(parents=True)
+        source = Path(start.__file__).resolve().parents[1]
+        for name in ("runtime_paths.py", "package_paths.py"):
+            shutil.copyfile(source / name, aa / name)
+        (aa / "config.json").write_text(json.dumps({"database_folder": str(self.root / "DB"),
+                                                    "package_repository": "pkgs"}), encoding="utf-8")
+        (aa / "axis" / "state" / "jobs" / "old.json").write_text(json.dumps({"id": "old", "state": "unknown"}))
+        expected = {"--state-dir": str(aa / "data" / "axis" / "state"),
+                    "--atlas-db": str(self.root / "DB" / "office_atlas.db"), "--package-repo": str(aa / "pkgs")}
+        cases = (([], True, expected), (["--state-dir", "mine"], True, dict(expected, **{"--state-dir": "mine"})),
+                 ([], False, {}))
+        for options, inside, wanted in cases:
             with self.subTest(options=options, inside=inside), \
-                 patch.object(start, "HERE", str(aa / "axis")), \
+                 patch.dict(os.environ, {"ATLAS_DB_PATH": "", "WMI_PACKAGE_REPO": "", "AGENT_PACKAGE_REPO": ""}), \
+                 patch.object(start, "HERE", str(aa / "axis")), patch.object(start, "AA_ROOT", str(aa)), \
                  patch.object(start, "prepare_model", return_value=("35b", "model.gguf")), \
                  patch.object(start, "server_ready", return_value=True), \
                  patch.object(start, "server_model", return_value="fixture-model"), \
@@ -223,13 +234,25 @@ class SharedLauncherTests(unittest.TestCase):
                  patch.object(start, "wait_for_agent", return_value=0) as agent:
                 launcher = aa / "aa_launcher.py"
                 launcher.write_text("") if inside else launcher.unlink(missing_ok=True)
+                self.output.truncate(0)
                 self.assertEqual(start.main(["--workdir", str(self.here), "--plain"] + options), 0)
                 command = agent.call_args.args[0]
-                if memory is None:
-                    self.assertNotIn("--memory-file", command)
-                else:
-                    self.assertEqual(command.count("--memory-file"), 1)
-                    self.assertEqual(command[command.index("--memory-file") + 1], memory)
+                for option in ("--state-dir", "--atlas-db", "--package-repo"):
+                    self.assertEqual(command.count(option), int(option in wanted), option)
+                    if option in wanted:
+                        self.assertEqual(command[command.index(option) + 1], wanted[option])
+                self.assertEqual("Earlier terminal jobs" in self.output.getvalue(), inside and not options)
+
+    def test_aa_terminal_refuses_to_start_a_second_atlas(self):
+        aa = self.root / "AA"
+        (aa / "axis").mkdir(parents=True)
+        (aa / "aa_launcher.py").write_text("")
+        with patch.object(start, "AA_ROOT", str(aa)), patch.object(launch_atlas, "start_atlas") as atlas, \
+             redirect_stderr(io.StringIO()) as errors:
+            with self.assertRaises(SystemExit):
+                start.main(["--with-atlas"])
+        atlas.assert_not_called()
+        self.assertIn("AA already includes Atlas", errors.getvalue())
 
     def test_conflicting_database_override_is_rejected_before_starting_anything(self):
         with patch.object(launch_atlas, "start_atlas") as atlas, patch.object(start, "prepare_model") as prepare, \
@@ -257,26 +280,6 @@ class SharedLauncherTests(unittest.TestCase):
              patch.object(launch_atlas, "_get_json", return_value=status):
             self.assertEqual(launch_atlas.start_atlas(self.here, folder), str(database))
         self.assertEqual((folder / "launched.txt").read_text(encoding="utf-8"), "started")
-
-    @unittest.skipUnless(os.name == "nt", "Executes Windows BAT chaining")
-    def test_real_shared_bat_forwards_quoted_arguments_and_exit_code(self):
-        folder = self.root / "Axis & (team) %AXIS_TEST_TOKEN% !ready!"
-        folder.mkdir()
-        shutil.copyfile(Path(start.HERE) / "Start Axis + Atlas.bat", folder / "Start Axis + Atlas.bat")
-        (folder / "Start Agent.bat").write_bytes(
-            b'@echo off\r\n"%AXIS_TEST_PYTHON%" "%~dp0capture.py" %*\r\nexit /b 7\r\n')
-        (folder / "capture.py").write_text(
-            "import json, sys\nfrom pathlib import Path\n"
-            "Path(__file__).with_name('arguments.json').write_text(json.dumps(sys.argv[1:]), encoding='utf-8')\n",
-            encoding="utf-8")
-        env = dict(os.environ, AXIS_TEST_PYTHON=sys.executable, AXIS_TEST_TOKEN="must-not-expand",
-                   AXIS_TEST_LAUNCHER=str(folder / "Start Axis + Atlas.bat"))
-        command = '"%s" /d /v:off /s /c ""%%AXIS_TEST_LAUNCHER%%" --atlas-dir "C:\\Atlas & (shared)" --plain"' % os.environ["ComSpec"]
-        result = subprocess.run(command, env=env, capture_output=True, text=True, timeout=20)
-        self.assertEqual(result.returncode, 7, result.stdout + result.stderr)
-        self.assertEqual(json.loads((folder / "arguments.json").read_text(encoding="utf-8")),
-                         ["--with-atlas", "--atlas-dir", r"C:\Atlas & (shared)", "--plain"])
-
 
 if __name__ == "__main__":
     unittest.main()

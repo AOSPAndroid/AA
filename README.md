@@ -46,6 +46,9 @@ If the model is missing, the map still opens and chat explains how to start it.
 - **Viewer stays read-only:** Axis execution is available only on the local
   Admin interface, not the LAN Viewer.
 
+The Axis terminal, `axis\Start Agent.bat`, shares the same database, package
+repository, jobs, locks and memory as the browser chat.
+
 AA is a separate merged version. Existing Atlas and Axis installations remain
 usable. The imported Atlas guide is [README-ATLAS.md](README-ATLAS.md), and the
 Axis terminal guide is [axis/README.md](axis/README.md).

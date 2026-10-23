@@ -119,7 +119,9 @@ Connections use SQLite `mode=ro` and `query_only`, fixed parameterized lookups a
 
 ## Shared Windows launcher
 
-`Start Axis + Atlas.bat` runs `start.py --with-atlas` through Axis's existing Python discovery. Run it under DSK to start both apps with that Windows account; no account switching or password storage is added. Atlas must already be installed. Its `Start-Office-Atlas.bat` handles Admin, Viewer, browser opening and configured collectors; any collector-specific account settings remain Atlas's responsibility. An explicit `WMI_PYTHON` is preserved; otherwise Atlas receives Axis's Python when it is 3.12 or newer, or uses its own Python discovery.
+**In AA this launcher is not included:** AA already contains Atlas. `Start AA.bat` opens the map with the browser chat, and `Start Agent.bat` in `AA\axis` opens this terminal with AA's active Atlas database, configured package repository, jobs, locks and memory (`data\axis\state`). Explicit `--state-dir`, `--atlas-db` or `--package-repo` options still override them. If an earlier terminal folder `axis\state` still has active or unresolved jobs, startup lists them so those PCs are inspected. The rest of this section applies to standalone Axis.
+
+In standalone Axis, `Start Axis + Atlas.bat` runs `start.py --with-atlas` through Axis's existing Python discovery. Run it under DSK to start both apps with that Windows account; no account switching or password storage is added. Atlas must already be installed. Its `Start-Office-Atlas.bat` handles Admin, Viewer, browser opening and configured collectors; any collector-specific account settings remain Atlas's responsibility. An explicit `WMI_PYTHON` is preserved; otherwise Atlas receives Axis's Python when it is 3.12 or newer, or uses its own Python discovery.
 
 `launch_atlas.py` chooses the Atlas installation from `--atlas-dir PATH`, `ATLAS_HOME`, the remembered `%LOCALAPPDATA%\Axis\atlas-folder.txt`, or nearby Atlas folders / `F:\Atlas`. If it cannot choose one, it prompts for the folder containing `Start-Office-Atlas.bat`. A successful launch saves the folder in the user profile. Keep `launch_atlas.py` beside `start.py` when updating manually.
 

@@ -10,19 +10,9 @@ Keep agent.py, it_tools.py, it_windows.ps1, terminal_ui.py, web_tools.py and atl
 together.
 Atlas is not needed.
 
-To start Axis and your installed Atlas together, run "Start Axis + Atlas.bat"
-under your DSK account. Both apps inherit that Windows account; no password
-is saved. Atlas must already have its dependencies installed.
-If needed, enter the folder containing Start-Office-Atlas.bat once. The path
-is remembered in %LOCALAPPDATA%\Axis\atlas-folder.txt across ZIP updates.
-To choose another folder:
-  "Start Axis + Atlas.bat" --atlas-dir "F:\Atlas"
-Atlas's usual Admin, Viewer and collector startup runs first. Its existing
-collector account settings still apply. Axis then reads Atlas's active
-database directly in read-only mode. No database is copied or bundled.
-Keep launch_atlas.py beside start.py. The helper needs no extra Python packages.
-Closing Axis leaves Atlas running; use Atlas's Stop-All-Atlas.bat to stop it.
-"Start Agent.bat" continues to open Axis on its own.
+In AA, Atlas is already included: run "Start AA.bat" in the AA folder for the
+map and browser chat. "Start Agent.bat" here opens the Axis terminal with AA's
+active Atlas database, package repository, jobs and memory (data\axis\state).
 
 Optional Atlas database: place office_atlas.db beside Start Agent.bat, or run:
   "Start Agent.bat" --atlas-db "F:\Atlas\DB\office_atlas.db"
