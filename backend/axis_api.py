@@ -20,7 +20,7 @@ from fastapi import HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, ValidationError
 
-from axis.agent import Agent
+from axis.agent import Agent, MEMORY_FILE
 from axis.it_tools import ITTools
 
 MODEL_URL = "http://127.0.0.1:8080/v1"
@@ -375,7 +375,7 @@ class Sessions:
         parts = message.split()
         name, args = parts[0].lower(), parts[1:]
         if name == "/help" and not args:
-            ui.assistant("Ask Axis about a person, PC or package. /status checks the local model; /jobs [ID] reads jobs; /output ID [offset] reads saved output; /reset starts a fresh conversation. Changes need approval.")
+            ui.assistant("Ask Axis about a person, PC or package. /status checks the local model; /jobs [ID] reads jobs; /output ID [offset] reads saved output; /memory shows what Axis remembers; /reset starts a fresh conversation. Changes need approval.")
         elif name == "/status" and not args:
             status = self.status()
             ui.assistant("Model: %s. Atlas database: %s. Changes require approval." %
@@ -385,6 +385,14 @@ class Sessions:
             session.agent = None
             session.configuration = None
             ui.assistant("Conversation cleared. Existing jobs continue.")
+        elif name == "/memory" and not args:
+            path = self.state / MEMORY_FILE
+            try:
+                text = path.read_text(encoding="utf-8", errors="replace").strip()
+            except FileNotFoundError:
+                text = ""
+            ui.assistant(text + "\n\n(" + str(path) + ")" if text else
+                         "Nothing remembered yet. Ask Axis to remember a fact; saving it needs your approval.")
         elif name == "/jobs" and len(args) <= 1:
             identifier = self._saved_id("jobs", args[0]) if args else None
             tool = ITTools(self.state, str(self.backend.REPO))

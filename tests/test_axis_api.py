@@ -170,6 +170,16 @@ class AxisAPI(unittest.TestCase):
         self.assertEqual(self.post("reset", session_id=other).status_code, 200)
         self.assertIsNone(self.sessions.get(other).agent)
 
+    def test_memory_command_reads_the_shared_state_file_without_the_model(self):
+        with patch.object(api, "model_status", side_effect=AssertionError("No inference for slash commands")):
+            self.assertIn("Nothing remembered", events(self.post(message="/memory"))[1]["text"])
+            memory = Path(self.temp.name) / "data" / "axis" / "state" / axis_agent.MEMORY_FILE
+            memory.parent.mkdir(parents=True)
+            memory.write_text("# Axis memory\n\n- Prefer PC1 for tests\n", encoding="utf-8")
+            text = events(self.post(message="/memory"))[1]["text"]
+        self.assertIn("- Prefer PC1 for tests", text)
+        self.assertIn(str(memory), text)
+
     def test_all_mutations_require_token_and_reject_unsupported_settings(self):
         for path in ("chat", "approve", "cancel", "reset"):
             response = self.client.post("/api/axis/" + path, json={})
