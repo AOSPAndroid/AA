@@ -1,0 +1,2 @@
+# Optional dependency for classic Outlook mailbox monitoring on Windows.
+pywin32==312; sys_platform == 'win32'

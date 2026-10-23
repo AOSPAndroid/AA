@@ -1,0 +1,18 @@
+.atlas-access-note {
+  margin: 0 0 16px;
+  padding: 11px 14px;
+  border: 1px solid #c9dfeb;
+  border-radius: 10px;
+  background: #eff7fb;
+  color: #36596e;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.atlas-readonly-console [aria-disabled="true"] {
+  opacity: 0.48 !important;
+  filter: grayscale(1);
+  cursor: not-allowed;
+}
+.atlas-readonly-console #deploymentPanel > .atlas-access-note {
+  margin-top: 10px;
+}

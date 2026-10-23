@@ -1,0 +1,82 @@
+.atlas-catalogue {
+  width: min(820px, 94vw);
+  box-sizing: border-box;
+}
+.atlas-catalogue > header {
+  position: static;
+  height: auto;
+  min-height: 0;
+  padding: 0 0 16px;
+  margin: 0;
+  border: 0;
+  background: transparent;
+}
+.atlas-catalogue h2 {
+  margin: 0;
+  font: 700 22px/1.3 var(--atlas-font);
+}
+.atlas-catalogue h3 {
+  font: 650 17px/1.4 var(--atlas-font);
+}
+.atlas-catalogue .catalog-layout {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(0, 1.2fr);
+  gap: 24px;
+}
+.atlas-catalogue .catalog-label {
+  display: block;
+  font-size: 12px;
+  color: var(--atlas-muted);
+  margin: 12px 0;
+}
+.atlas-catalogue input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 6px;
+  background: white;
+  color: var(--atlas-text);
+}
+.atlas-catalogue .catalog-muted,
+.atlas-catalogue small {
+  font-size: 12px;
+  color: var(--atlas-muted);
+}
+.atlas-catalogue .catalog-error {
+  color: #a53636;
+}
+.atlas-catalogue .catalog-layout small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.atlas-catalogue code {
+  overflow-wrap: anywhere;
+}
+.atlas-catalogue li {
+  margin: 8px 0;
+}
+.atlas-catalogue #catalog-list {
+  max-height: 55vh;
+  overflow: auto;
+}
+.atlas-catalogue #catalog-list button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin-bottom: 7px;
+}
+.atlas-catalogue #catalog-list small {
+  margin-top: 5px;
+}
+.atlas-catalogue button.primary {
+  background: var(--atlas-accent);
+  color: white;
+}
+@media (max-width: 650px) {
+  .atlas-catalogue .catalog-layout {
+    grid-template-columns: 1fr;
+  }
+  .atlas-catalogue #catalog-list {
+    max-height: 180px;
+  }
+}

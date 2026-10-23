@@ -1,0 +1,207 @@
+[
+  {
+    "key": "35b",
+    "name": "Qwen3.6-35B-A3B",
+    "note": "fast; good at terminal tasks (default)",
+    "tag": "qwen3.6-35b-a3b-q4-k-m",
+    "file": "Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
+    "size": 22134528992,
+    "sha256": "ac0e2c1189e055faa36eff361580e79c5bd6f8e76bffb4ce547f167d53e31a61",
+    "parts": [
+      "9410960161ddd35a7c0876d6717d99340512d789904bb5b65c154d9527d89753",
+      "730ee3d393f9a49dbf9150ca326ca7de7e8903cc54e5dbcf6ceb74db02f5fc2c",
+      "722c5c3efe67c22f492c693708676528df81e69edb7b326ca503008792eea3b8",
+      "bd7686c48fe02eb08aa4a9d6302698c55e2564b454f8e0fbbb7fb46652dfe3fe",
+      "ce046b8ac93c1e452d5e45f1f416dce949b4ef2df9222b9b4ef2806a15eb4911",
+      "c61d79d44485877ab1b38c99b77207f3ab584bb39ef96bdbd8019d459530800e",
+      "028293916e1d914f14c8387da67ff4c9bbcb398275abb4399ebae2cffe24340f",
+      "3d9f97d212f69f55b91b0e5e216f934047590ba7ec4f2f72b35d6819a98528c0",
+      "4e80b8e3071bc3d03c63e948672771a893873ff1fadcaa1293f53963bad5228b",
+      "ea37d6b0ad6a3949798b141c438fd05194ca452bf572bf1e3d1886b3f7f2ff26",
+      "bd87cf0f7606845216f0be02aef9b4183c4d290c1ac6c0157b3f1be60495eff9",
+      "993294c84033115840d836f1f8ecb929c133d22111344663781a6505474ae189"
+    ]
+  },
+  {
+    "key": "k2",
+    "name": "K2-Horizon-MoVA-36B-A4B",
+    "note": "reasoning model",
+    "tag": "k2-horizon-mova-36b-a4b-q4-k-m",
+    "file": "K2-Horizon-MoVA-36B-A4B-Q4_K_M.gguf",
+    "size": 22368011616,
+    "sha256": "513dd78590ac29135a7cea5a99865d57d65291b1f857a8904fb9b1878d4f4cbd",
+    "think": true,
+    "ctx": 16384,
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "parts": [
+      "21b6f4f6157c3bb00df47c7808c696a48b5460bc1f8c16f5f29298134f4fdd7c",
+      "5e5879ad30c430c612366c40239361097e432156c43a1787a3047f5c9b1f9c6d",
+      "5229a7a66c901b3f74c76eebc48ea9f18d970f0c478ca1f44d4e9d2722d93862",
+      "ba940ef184af78001b7d7e1743477c9eb939146e87d123100bbc4a0c5891f58b",
+      "575f6490d89c8b30f1784371aaf60cefa6b77e9dd5bac33ee77cc0403f743725",
+      "d0d8bc53f5d736d7e3bc4dfbb883e17fef2214da4582a7495695afacb8f8bdad",
+      "0954cd1ed48ae499e47b5cd9622c552a56db86bbe4f2067415c3d8b72bc0363b",
+      "814b10031e9222b54d9466fb028811af2c09f8e80294ca00cf7dea2c9d151623",
+      "849de61717eb32ee7b2bb25a351a4fcc2f54cbb407232702215be7dd21699403",
+      "22f5731a734aba3aebd88f29081f2edfdd776f518efd8ce9c1f89ec551704c2c",
+      "49cdc7a782ac60b42a73cf368bf3a2f21d861a99f87b316d84bb353b839c8fe6",
+      "911891adf085f7de6a4956e0bbcc2e8e434941c800cff28d0519c1c3840e9717"
+    ]
+  },
+  {
+    "key": "flash",
+    "name": "Qwen3.8-Flash-Next",
+    "note": "66.4 GB in two files; memory mapping and on-demand table reads",
+    "tag": "qwen3.8-flash-next-gsq-rco-q2-0",
+    "server_args": [
+      "--load-mode",
+      "mmap",
+      "--lazy-mode",
+      "on"
+    ],
+    "files": [
+      {
+        "file": "Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf",
+        "size": 37623740192,
+        "sha256": "69820c02ec7d0b45ef2ebb19d6620299db749fe2aded7f39f93c6b88b199b720",
+        "parts": [
+          "2ffac7f51171b690e034b370009140a08a557c973371d2ec90f094e6b075f658",
+          "fe58e0a2defffc621ee51030e7d03385c5472b56d8c6e59bfc00e7e0e4b1683f",
+          "10ec5f7973038b32d431f8fe9c55fb29444273169018fbfcd77c0db6ed5c2874",
+          "ff9a3e0262d525950e1135dfc3652216d355bd17e7997a1032a9cf43bd5fa3ca",
+          "a13305627057420c58ae70562ec0504cfa688c56a6e9fffb053874b6c1f0adf8",
+          "432f471b26c440ba6e7c43b27abfc1c1e981c415422342dd0bc303d9cad06b40",
+          "9e35ef6460b804499c16732fcc6d041c3d0dbe9c603822cd5ba864559131dce8",
+          "d0b8339a725610e9ffc778036d1ede81ac10f05d058d51542fe8341acf6fecb1",
+          "25382a33d7069609d948bca69f0b0d43eded540deeff92a7f5c41dc2ce1eb573",
+          "1765448515aae5efc12aa142cb82d89e004e28dbc99b1b47ffea8bf5c6ee3cab",
+          "785b5d0a6273bed19d29ad47bbb9d371ecebf9d3cbc92df2a12a8eb9f0d0ef09",
+          "0d247570575de1e0943c50dee70fd5aae82789bfcb3ba88176309e45af500ec3",
+          "6f79d395f9621a201e311be0cdf739f527b4bd1d32d7a2e0a7b9831e48866e92",
+          "82bf5b506f64c043e18ce450e8d423ab3dc20c54bf812ff19cfbac88eb11903a",
+          "7d3657099612e12ed134146bd92feb713425be964cc06c1c1a7ec916aacdd683",
+          "b82ae2d0032fa78cd65d2cd59edd47f6632cff23231dad0dfe971fc1429fc286",
+          "dbee61ccc9d82ea6f6b4fc22cb2c3038d76dda1cb893bdae813319230d97faac",
+          "930a4496df3d0741cffc67c70b7aee5dba99fa70b15affd1227cc19bdbbd0f32",
+          "aa2e5105e1ed8b263189cb9d8d4ebc30b4458f2f3f9b9ce063a6da72544d5ee7",
+          "bd587204c06ab73b33f1e6f94fe8f7f5cd49fa3cf64c9d0aea8227502a8ead36"
+        ]
+      },
+      {
+        "file": "Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf",
+        "size": 28800138432,
+        "sha256": "316b46f3a2dbd68c900f43136ab9449f9dcc3725dfd8c794847c204bc161e113",
+        "parts": [
+          "bf7d5cc0fac2f04c4c143cfbe45d7c55b3861bdd014e98059de704df032dc61f",
+          "2bfd8874f5ad33f67012bee1d2eb28cd7e13d52af0a9fbd05c211beef1efda88",
+          "d12ff071a4a9fe3f62965aa5156fae24d9f5e82f27efde4e090eae29dc5962e7",
+          "d92d3316d689f1903220d25c84bc0a126bbed9b98165585a4fad298410e4b55f",
+          "ee28bba5a042e3342f585e4a405f72d9e39caa8ce072f657ec38073b781c7537",
+          "b0adc8efcce82cb069f0ea8e2c7c970b6e91378f68de5141df2a13035e53409c",
+          "880e114e62bdab1d361be89b52fd88035a21b72f3f2563fe506bdd6b21b69749",
+          "2ed7883357c3dd9b92d3013d929a89c42973292922d1d429287bee77f2cbe472",
+          "f873c0b7fc731cc9ec1c2cbb25dc140500abb337dda50e0b2d99fe4e2591780d",
+          "8e96a746c4cfacb794c04a79186b57e562e1ddf62d9d6dd27c356a20ec051cd7",
+          "2a5623d8d7432c8f74956a4e4378d300319b26aed1e6a774ce3894b6b8d97887",
+          "f26cb776503958394505c2aaba6e07ffcaab01f7dc135617871194cd9a562d16",
+          "24dcc5735075440584bd7345c8e3850225b6adb0be10d7fb1aa11cf1e8f1c847",
+          "b8b33433a26cffead98dcb0e4a9f6b3173f2f856c2a7e67c93b7b8aa43ba8cb2",
+          "4b7aa59f3f375fc8f9aa08a3e74331ed2318698daf0345e0c169fdd9ee3cc0f4",
+          "0324d3d741d10765536efbdb54465cf0aefd9e139b7a5467d8d03a2ebf1f5c40"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "27b",
+    "name": "Qwen3.8-27B",
+    "note": "newest; best at terminal tasks, but slow",
+    "tag": "qwen3.8-27b-q4-k-m",
+    "file": "Qwen3.8-27B-UD-Q4_K_M.gguf",
+    "size": 16464440224,
+    "sha256": "322e194ff79741c7baa497c240f677f54b201b0efab44ca8e50f122b39123482",
+    "parts": [
+      "690f3bf4aa60846cd44e449df65032342f7357f6e13b6d5461b52861987fa729",
+      "1bab31b0d94b6ebe9d9d98a2b36ac47a2a877fe2526c4bf1716751555807fa07",
+      "048833cffab159af688f6a2b68efffd3332659442519e68228cc2486b4cf9035",
+      "92f9a8668a5f66a8efc6070fc71e5d43d7d0fde410014d00a06d1513b610e62b",
+      "b7b7be0ba97a64b21e79cb5e4903171b2cb1edf2d1ba32c8af95129c6fb76878",
+      "1f4db1016fd72c67021dc757359af6d8a66746458aa09f1602a6d4910706bec0",
+      "cce1f7f0d47c584ba3d21483b5ca31bb241227df1ae4f379affc86d82cb314ac",
+      "3cae06251f8d9e9ac8081acf13f1bc49555c33d7c4828814c145e3ca12c69059",
+      "28577764298d3d657a396aaa25aad8e114955d722631fd1da03767ba4b1a7589"
+    ]
+  },
+  {
+    "key": "gemma",
+    "name": "Gemma 4 26B-A4B",
+    "note": "Google; fast",
+    "tag": "gemma-4-26b-a4b-qat-q4-0",
+    "file": "gemma-4-26B_q4_0-it.gguf",
+    "size": 14439363584,
+    "sha256": "3eca3b8f6d7baf218a7dd6bba5fb59a56ee25fe2d567b6f5f589b4f697eca51d",
+    "parts": [
+      "19f24caa6bb6f9e9357ff05abd82f9fba2183597ff5944ecb69a4f50b6ba2a49",
+      "b8403698a8909d9e2874ec93f279c9f9cb51f3600112f40c848dae4b0e48ff19",
+      "71104c304b193db51d9e0f367f8ffb69ccee5baa920fc246fd279dcb855789e9",
+      "1c318576ca6263a372ceb6c23f19a2631464ee3c73ed9c2c1e720305c2047ad6",
+      "8eaeb3d72a7289ccd8060bd68a27e7c1421251ed56642e1638c18da2174c629d",
+      "ee3a885e9b15d793283a5e6b6ea794f28c243f1e25cff6b836085b82b742728e",
+      "8ee2c460464ff63a55f16d10795e707748f54b84ae1e0d6976bef55acaf16ed4",
+      "c8ac907975bf12cccf6d7376ca4a4e5a5e31ade6845371badcdbfe05c93a2f2e"
+    ]
+  },
+  {
+    "key": "35b-abliterated",
+    "name": "Qwen3.6-35B-A3B abliterated",
+    "note": "fast; community edit without refusals",
+    "tag": "qwen3.6-35b-a3b-abliterated-q4-k-m",
+    "file": "Huihui-Qwen3.6-35B-A3B-abliterated.Q4_K_M.gguf",
+    "size": 21166758784,
+    "sha256": "fbaa4eb3e2365abffd495c5efa7df88c2b2a5088ba32cd2895973d130991e92b",
+    "parts": [
+      "6baf77c0c2d995c987fef01a75d058921bb4f21d1d820a4d0b61494e63b83ba9",
+      "204e4990b380222ab54414ada98ea95744a16890ba7d76c1b8c797e7d4a275df",
+      "b66d4b4718f1cf4bb3511890469902448d71ae097fd6ea7a637cabbc2e1b29ed",
+      "1ce4a565e408cbcda95d76450fe51379f2fa9d8ab1f929eea943fa56c6e6858b",
+      "d76cd351a26a6cee1f1d786a0cdc26b0c85460c983de15a4b3b36d1a6c4379d0",
+      "b7200466b6076ba44fe7e1c8c4d60b85bd1768065c15c95e5de013bd5da1aa94",
+      "8966c03d33c07a9ceb42ad8bc1ef31db33754f7fc932fbf9b3a6fa67506d4d21",
+      "a84da1460db0bb20c4293e25f1067d9c3416481f65487a9f40f76c7dff7ebe22",
+      "2075cae74fb66db7dc5646a8ae10cd6c64389702f8f8bff75bc31badf3728506",
+      "dce4267fce56d1c56f2957b6fa4d58bfbe39b49cef033ee9790d5a9a99965cad",
+      "47c123e93605d475e76bbb9df30911cae63d1549f72a8b3ad999c9fca71b5968",
+      "01cff8b89b22f0d0be0ff29b008ce1aa63dc0a080f9032c6949d07cc817dfc54"
+    ]
+  },
+  {
+    "key": "9b-abliterated",
+    "name": "Qwen3.5-9B abliterated",
+    "note": "smaller; community edit without refusals",
+    "tag": "qwen3.5-9b-abliterated-q4-k-m",
+    "file": "Huihui-Qwen3.5-9B-abliterated.Q4_K_M.gguf",
+    "size": 5627045248,
+    "sha256": "ea1858ef4dc4b648b8dbb44612962a0333e945060dd0545ac0f28d7c4416e4b3",
+    "parts": [
+      "847663c0467b0252797133c1ad14b9ae0232c14f240f72a2fb493574d40a92fa",
+      "6839c538116c1796081b330575a09afdfa370e7485cf28a646ed958f38c35ee4",
+      "112f624c8018ba13b8f05bce39e5cfaafe871a95964ea971f1e3a9b9c63d93f1"
+    ]
+  },
+  {
+    "key": "9b-distill",
+    "name": "Qwen3.8-9B distill",
+    "note": "community distill (the first model)",
+    "tag": "qwen3.8-9b-q4-k-m",
+    "file": "Qwen3.8-9B-Q4_K_M.gguf",
+    "size": 5780090176,
+    "sha256": "df13d66021cef676f82be74053220fd75af6bf2a6a7fb77f5222ab9e50744a7a",
+    "parts": [
+      "15ea33a95bd2113a1216981ab1674aa56959e16e006fdf4f4b320b139d315f35",
+      "51b933b61b4192ad2a71401ab8f47843ee43bc317d0ef292dd16a8c992ec8f0c",
+      "94b5be0fea2b7f36ff152adb4c36714d9cebb52a0e56363a546743e942c22978",
+      "c319a4ee35a766cfa4f841c262a838424a60d908ebdebf2256a5adf8a7ae8bd9"
+    ]
+  }
+]

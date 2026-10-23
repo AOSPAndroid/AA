@@ -1,0 +1,1190 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="/assets/ui-tokens.css" />
+    <script src="/assets/shared-ui.js"></script>
+    <script defer src="/assets/atlas-app.js"></script>
+    <script src="/assets/client.js"></script>
+    <script src="/assets/readonly-console.js"></script>
+    <link rel="stylesheet" href="/assets/readonly-console.css" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <!-- Loaded on first use of Terminal or PsTools (terminal-view.js). -->
+    <meta name="atlas-terminal-assets" content="/assets/xterm-6.0.0.css /assets/xterm-6.0.0.js /assets/xterm-addon-fit-0.11.0.js /assets/xterm-addon-search-0.16.0.js">
+    <!-- Loaded when Knowledge Base articles are opened (knowledge-articles.js); Mermaid only for diagrams. -->
+    <meta name="atlas-kb-assets" content="/assets/marked-18.0.14.js /assets/dompurify-3.4.16.js /assets/mermaid-12.0.0.js">
+    <title>Atlas · IT Console</title>
+    <link rel="stylesheet" href="/assets/atlas-theme.css" />
+    <link rel="stylesheet" href="/assets/machine-health.css" />
+    <link rel="stylesheet" href="/assets/atlas-shell.css" />
+    <link rel="stylesheet" href="/assets/catalogue.css" />
+    <link rel="stylesheet" href="/assets/console-psexec.css" />
+    <script src="/assets/machine-health.js?v=2"></script>
+    <link rel="stylesheet" href="/assets/knowledge-base.css" />
+  <link rel="stylesheet" href="/assets/atlas-interactions.css" />
+  <link rel="stylesheet" href="/assets/design-system.css" />
+  </head>
+  <body class="atlas-console">
+    <header class="atlas-app-header">
+      <a class="atlas-brand" href="/" aria-label="Atlas Admin home"
+        ><img
+          src="/assets/barclays-eagle.svg"
+          alt=""
+          width="30"
+          height="32"
+        /><span>Atlas</span><span class="atlas-admin-badge">Admin</span></a
+      >
+      <div class="atlas-primary-nav" aria-label="Atlas sections"><a href="/" data-atlas-icon="map">Map</a><a href="/installer" data-section="workspace" aria-current="page" data-atlas-icon="workspace">Workspace</a><a href="/installer?command=knowledge" data-section="knowledge" data-atlas-icon="knowledge">Knowledge Base</a></div>
+      <div class="header-actions atlas-header-actions">
+        <a
+          class="atlas-return"
+          href="/manage-database"
+          title="Manage database"
+          aria-label="Manage database"
+          >Database</a
+        >
+        <button id="openCommands">Commands <kbd>Ctrl K</kbd></button>
+        <button id="openShortcuts" title="Keyboard shortcuts">
+          Help <kbd>?</kbd>
+        </button>
+        <button id="openCatalogue" title="Browse package status and ownership">
+          Packages
+        </button>
+        <a class="atlas-return" href="/" title="Open floor map">Map</a>
+      </div>
+    </header>
+    <aside class="console-sidebar">
+      <div>
+        <p class="nav-section">Operations</p>
+        <nav aria-label="IT console navigation">
+          <button data-page="workspace" class="active">
+            <span class="nav-icon">⌂</span
+            ><span class="nav-label">Workspace</span></button
+          ><button data-page="inbox"><span class="nav-icon" data-atlas-icon="inbox"></span><span class="nav-label">Live Inbox</span></button
+          ><button data-page="active-directory"><span class="nav-icon">☷</span><span class="nav-label">Active Directory</span></button
+          ><button data-page="packages"><span class="nav-icon">▤</span><span class="nav-label">Packages</span></button
+          ><button data-page="admin">
+            <span class="nav-icon">▣</span
+            ><span class="nav-label">Remote Admin</span></button
+          ><button data-page="bulk">
+            <span class="nav-icon">⇶</span
+            ><span class="nav-label">Bulk Deploy</span></button
+          ><button data-page="history">
+            <span class="nav-icon">◷</span
+            ><span class="nav-label">History</span>
+          </button>
+          <button data-page="terminal"><span class="nav-icon">&gt;_</span><span class="nav-label">Terminal</span></button>
+          <button data-page="scripts">
+            <span class="nav-icon" aria-hidden="true">&gt;_</span
+            ><span class="nav-label">Scripts</span>
+          </button>
+        </nav>
+      </div>
+      <div class="console-sidebar-content">
+        <details id="selectionContext" class="selection-context" open>
+          <summary>Current selection <span id="selectionCaption"></span></summary>
+          <div class="copilot-tools selection-copilot-tools" data-diagnostics-context="selection" role="group" aria-label="Copilot diagnostic tools">
+            <div class="copilot-buttons">
+              <button type="button" data-copy-diagnostics data-atlas-icon="copy" disabled>Copy diagnostics</button>
+              <button type="button" data-open-copilot data-atlas-icon="external" title="Open Microsoft 365 Copilot in a companion window beside Atlas">Open Copilot</button>
+              <button type="button" data-reopen-copilot data-atlas-icon="external" hidden>Reopen Copilot</button>
+              <a href="https://m365.cloud.microsoft/chat/" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" data-copilot-link data-atlas-icon="external" hidden>Open chat in tab</a>
+            </div>
+            <small data-diagnostics-status role="status">Select a user or device to copy diagnostics.</small>
+            <small data-copilot-status role="status" hidden></small>
+          </div>
+          <div id="selectionSummary"></div>
+        </details>
+        <details class="sidebar-status">
+          <summary>Connection &amp; data</summary>
+          <code id="identity"></code>
+          <div id="health"></div>
+          <div id="dbFreshness" class="db-freshness"></div>
+          <div id="masterDbStatus" class="masterdb-status"></div>
+        </details>
+      </div>
+    </aside>
+    <main>
+      <div class="console-page-heading">
+        <div>
+          <span class="console-breadcrumb">Atlas / Operations</span>
+          <h1 id="pageTitle">Workspace</h1>
+          <p id="pageDescription">People, devices and the tools to support them.</p>
+        </div>
+        <div class="console-page-actions" aria-label="Deployment controls">
+          <button id="deploymentsToggle" class="deployments-toggle" data-atlas-icon="deployment">
+            Deployments <span id="deploymentsCount">0</span>
+          </button>
+          <button id="queueToggle" class="queue-toggle" data-atlas-icon="queue">
+            Queue <span id="queueCount">0</span>
+          </button>
+          <button id="clipboardToggle" class="queue-toggle clipboard-toggle" data-atlas-icon="clipboard" title="Clipboard history: what you copied, with what Atlas knows about it">
+            Clipboard <span id="clipboardCount">0</span>
+          </button>
+          <button
+            id="deploymentToggle"
+            class="deployment-toggle"
+            data-atlas-icon="deployment"
+            aria-controls="deploymentPanel"
+            aria-expanded="false"
+            hidden
+          >
+            <span id="deploymentToggleLabel">Deployment</span>
+          </button>
+        </div>
+      </div>
+      <div id="targetBar" class="targetbar hidden">
+        <b id="barTarget"></b><span id="barState"></span
+        ><button data-copy-target>Copy</button
+        ><button data-preflight>Pre-flight</button
+        ><button data-admin-target>Admin</button>
+        <div id="targetActions" class="toolmenu">
+          <button class="toolmenu-btn">Actions ▾</button>
+          <div class="toolmenu-content">
+            <button data-qol-action="copy-host">Copy hostname</button
+            ><button data-qol-action="copy-summary">Copy support summary</button
+            ><button data-qol-action="admin">Remote Admin</button
+            ><button data-qol-action="queue">Add deployment to queue</button
+            ><button data-qol-action="health">Refresh health</button
+            ><button data-qol-action="cleanup" class="danger-item">
+              Clean package folder
+            </button>
+          </div>
+        </div>
+        <div id="targetTools" class="toolmenu">
+          <button class="toolmenu-btn">Open ▾</button>
+          <div class="toolmenu-content">
+            <button data-tool="msra">Offer Remote Assistance</button
+            ><button data-tool="quickassist">Quick Assist</button
+            ><button data-tool="remotehelp">Intune Remote Help</button
+            ><button data-tool="rdp">Remote Desktop</button
+            ><button data-tool="compmgmt">Computer Management</button
+            ><button data-tool="eventvwr">Event Viewer</button
+            ><button data-tool="cshare">Open C$</button
+            ><button data-tool="temp">Open C:\Temp</button
+            ><button data-tool="packages">Open Packages</button>
+          </div>
+        </div>
+        <button id="copySupport">Copy support summary</button
+        ><button id="cleanupPackages" class="danger">Clean Packages</button>
+      </div>
+      <section id="inbox" class="page" aria-label="Live Inbox"><div id="liveInbox" class="atlas-shadcn"><p>Loading Live Inbox…</p></div></section>
+      <section id="workspace" class="page active">
+        <div class="lookup-column">
+          <div class="lookup-heading">
+            <h2>Directory &amp; devices</h2>
+          </div>
+          <div class="searchbox">
+            <input
+              id="search"
+              type="text"
+              name="wmi-directory-search"
+              autocomplete="off"
+              spellcheck="false"
+              aria-label="Find a user or machine"
+              placeholder="User, email or machine"
+            /><kbd>Enter</kbd>
+            <button id="useHostname" type="button" hidden>Use hostname as target</button>
+          </div>
+          <p id="lookupStatus" class="workspace-lookup-status" role="status" aria-live="polite" hidden></p>
+          <div id="recentTargets" class="recent-targets"></div>
+          <p id="unlistedTargetStatus" class="muted" role="status" hidden></p>
+          <div id="users"></div>
+          <div id="kyc"></div>
+          <div id="machines"></div>
+          <div class="lookup-empty">
+            <span class="workspace-start-icon" data-atlas-icon="workspace" aria-hidden="true"></span>
+            <h3>Find a user or machine</h3>
+            <p>
+              Look up a colleague to see their linked machines, or search for a
+              hostname directly.
+            </p>
+            <div id="workspaceActivity" class="workspace-activity" aria-label="Workspace activity"></div>
+            <div class="workspace-launchers" aria-label="Workspace shortcuts">
+              <button type="button" data-workspace-open="active-directory"><span data-atlas-icon="active-directory" aria-hidden="true"></span><strong>Browse directory</strong><small>Accounts, groups &amp; access</small><span class="launch-arrow" aria-hidden="true">↗</span></button>
+              <button type="button" data-workspace-open="admin"><span data-atlas-icon="admin" aria-hidden="true"></span><strong>Inspect a device</strong><small>Health &amp; performance</small><span class="launch-arrow" aria-hidden="true">↗</span></button>
+              <button type="button" data-workspace-open="packages"><span data-atlas-icon="packages" aria-hidden="true"></span><strong>Find a package</strong><small>Catalogue &amp; deployments</small><span class="launch-arrow" aria-hidden="true">↗</span></button>
+              <button type="button" data-workspace-open="knowledge"><span data-atlas-icon="knowledge" aria-hidden="true"></span><strong>Open knowledge base</strong><small>Diagrams &amp; support notes</small><span class="launch-arrow" aria-hidden="true">↗</span></button>
+            </div>
+          </div>
+          <div id="healthLine" class="healthline hidden"></div>
+        </div>
+        <section
+          id="deploymentPanel"
+          class="deployment-panel"
+          aria-label="Application deployment"
+          hidden
+        >
+          <div class="head">
+            <div>
+              <small>Deploy to</small>
+              <h2 id="deployTarget">Select a machine</h2>
+            </div>
+            <button
+              id="closeDeploymentPanel"
+              aria-label="Minimize deployment panel"
+            >
+              −
+            </button>
+          </div>
+          <div class="deployment-package-heading">
+            <span>Package</span
+            ><button
+              id="favBtn"
+              aria-label="Favourite selected package"
+              title="Favourite selected package"
+            >
+              ☆
+            </button>
+          </div>
+          <details id="packagePicker" class="package-picker">
+            <summary id="packagePickerButton">
+              <span id="packageSelection">Choose a package</span
+              ><span aria-hidden="true">⌄</span>
+            </summary>
+            <div class="package-picker-body">
+              <input
+                id="pkgSearch"
+                type="search"
+                placeholder="Find a package…"
+                aria-label="Search packages"
+                autocomplete="off"
+              />
+              <div
+                class="recent"
+                id="recent"
+                aria-label="Favourite and recent packages"
+              ></div>
+              <select id="pkg" size="5" aria-label="Package results"></select>
+              <p id="packageSearchStatus" class="muted" role="status"></p>
+              <small class="muted">Select a package to use it immediately.</small>
+            </div>
+          </details>
+          <div
+            class="deployment-action-switch"
+            role="group"
+            aria-label="Deployment action"
+          >
+            <button
+              type="button"
+              data-deploy-action="Install"
+              aria-pressed="true"
+            >
+              Install
+            </button>
+            <button
+              type="button"
+              data-deploy-action="Repair"
+              aria-pressed="false"
+            >
+              Repair
+            </button>
+            <button
+              type="button"
+              data-deploy-action="Uninstall"
+              aria-pressed="false"
+            >
+              Uninstall
+            </button>
+          </div>
+          <select id="action" aria-label="Action" hidden>
+            <option>Install</option>
+            <option>Uninstall</option>
+            <option>Repair</option>
+          </select>
+          <label class="deployment-script"
+            >Script<select id="script"></select
+          ></label>
+          <details class="deployment-advanced">
+            <summary>Advanced</summary>
+            <div class="deployment-options">
+              <label
+                ><input type="checkbox" role="switch" id="fresh" /> Fresh
+                copy</label
+              >
+              <label
+                >Threads<input
+                  class="num"
+                  id="threads"
+                  type="number"
+                  min="1"
+                  max="32"
+                  value="8"
+              /></label>
+            </div>
+            <div class="deployment-alternatives">
+              <button id="copyOnly">Copy only</button
+              ><button id="execOnly">Execute existing</button>
+            </div>
+            <div id="console-package-details" class="package-presence"></div>
+            <div id="packagePresence" class="package-presence"></div>
+            <div id="preflight"></div>
+          </details>
+          <button class="primary" id="deploy">Copy &amp; execute</button>
+          <div class="deployment-extra" role="group" aria-label="More deployment actions"><button type="button" id="deployQueue">Add to queue</button><button type="button" id="deployOpenQueue">Open queue</button></div>
+          <div
+            id="console-deploy-summary"
+            class="deployment-summary"
+            role="status"
+          ></div>
+          <section
+            id="deploymentProgress"
+            class="deployment-progress"
+            aria-label="Deployment progress"
+            hidden
+          >
+            <div class="deployment-progress-heading">
+              <b id="deploymentState"></b><span id="deploymentJobTarget"></span>
+            </div>
+            <p id="deploymentMessage" role="status"></p>
+            <div id="deploymentActions" class="deployment-actions" role="group" aria-label="Actions for this deployment"><button type="button" id="deploymentRetry" class="primary" hidden>Retry</button><button type="button" id="deploymentRequeue">Add to queue</button><button type="button" id="deploymentCopyLog">Copy log</button></div>
+            <details id="deploymentLog">
+              <summary>View log</summary>
+              <pre id="log"></pre>
+            </details>
+          </section>
+        </section>
+      </section>
+      <section id="packages" class="page" aria-label="Packages"><div id="packageBrowser"><p>Loading the Packages view…</p></div></section>
+        <section id="active-directory" class="page workspace-directory" aria-label="Active Directory">
+          <div class="panel workspace-directory-panel">
+            <div class="workspace-directory-heading"><h2>Active Directory</h2><span id="adSelection">Select a user or machine</span></div>
+            <form id="adForm" class="px-settings"><label>Object type<select id="adKind"><option value="computer">Computer</option><option value="user">User</option></select></label><label>Account or machine<input id="adIdentity" maxlength="128" required placeholder="Logon, UPN, email, employee ID or machine"></label><label>Domain / controller (optional)<input id="adServer" maxlength="128" placeholder="Default domain discovery"></label><button id="adSelected" type="button">Use selected machine</button><button id="adLookup" class="primary">Look up AD</button></form>
+            <p id="adStatus" role="status">Select a user or machine to load its groups. Use AD lookup for another account or controller.</p>
+            <div id="adResults"></div>
+          </div>
+        </section>
+      <section id="admin" class="page" aria-label="Remote Admin">
+        <div class="panel performance-panel">
+          <div class="performance-heading">
+            <div>
+              <small>Remote admin</small>
+              <h2>Performance &amp; processes</h2>
+              <p class="muted">
+                Choose a target, then run a scan. Each view keeps its last result.
+              </p>
+            </div>
+            <div class="copilot-tools" data-diagnostics-context="admin" role="group" aria-label="Copilot diagnostic tools">
+              <div class="copilot-buttons">
+                <button type="button" data-copy-diagnostics data-atlas-icon="copy" disabled>Copy diagnostics</button>
+                <button type="button" data-open-copilot data-atlas-icon="external" title="Open Microsoft 365 Copilot in a companion window beside Atlas">Open Copilot</button>
+                <button type="button" data-reopen-copilot data-atlas-icon="external" hidden>Reopen Copilot</button>
+                <a href="https://m365.cloud.microsoft/chat/" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" data-copilot-link data-atlas-icon="external" hidden>Open chat in tab</a>
+              </div>
+              <small data-diagnostics-status role="status">Enter a target to copy diagnostics.</small>
+              <small data-copilot-status role="status" hidden></small>
+            </div>
+          </div>
+          <div class="admin-tools">
+            <label class="admin-target-field" for="adminPc">
+              Target machine
+              <input
+                id="adminPc"
+                placeholder="Enter hostname"
+                autocomplete="off"
+                spellcheck="false"
+                maxlength="64"
+              />
+            </label>
+            <div class="admin-diagnosis-action">
+              <button
+                id="diagnoseSlowness"
+                title="Capture slowness evidence for up to 60 seconds; stop at any time"
+              >
+                Scan for slowness
+              </button>
+              <small>Up to 60 seconds · stoppable</small>
+            </div>
+            <div
+              class="admin-machine-actions"
+              role="group"
+              aria-label="Machine tools"
+            >
+              <button id="adminSoftware">Installed software</button>
+              <button id="adminServices" disabled>List services</button>
+              <button data-ping>Ping</button>
+              <button data-access title="Check access to the administrative C$ share">
+                C$ access
+              </button>
+              <button data-disk>Disk space</button>
+              <button class="danger" data-reboot>Reboot…</button>
+            </div>
+          </div>
+          <section
+            id="slowdownPanel"
+            class="slowdown-panel"
+            aria-label="Slowness diagnosis"
+            hidden
+          >
+            <div class="slowdown-heading">
+              <div>
+                <small>Diagnose slowness</small>
+                <h3 id="slowdownTitle">Collecting evidence</h3>
+                <p id="slowdownStatus" role="status"></p>
+              </div>
+              <div class="row">
+                <button id="stopDiagnosis">Stop capture</button
+                ><button id="copyDiagnosis" disabled>Copy findings</button>
+              </div>
+            </div>
+            <div id="slowdownFindings"></div>
+          </section>
+          <div id="adminUtility" hidden></div>
+          <div class="atlas-performance-controls">
+            <div class="performance-view-toolbar">
+              <div
+                class="performance-views"
+                role="group"
+                aria-label="Performance view"
+              >
+                <button data-performance="overview" data-overview aria-pressed="true">
+                  Overview
+                </button>
+                <button data-performance="cpu" data-cpu aria-pressed="false">
+                  CPU
+                </button>
+                <button data-performance="gpu" data-gpu aria-pressed="false">
+                  GPU
+                </button>
+                <button data-performance="memory" data-memory aria-pressed="false">
+                  Memory
+                </button>
+              </div>
+              <span id="performanceState" class="pill performance-state" role="status"
+                >Choose a target</span
+              >
+            </div>
+            <div class="performance-view-heading">
+              <div>
+                <h3 id="performanceTitle">Performance overview</h3>
+                <p id="performanceDescription" class="muted">
+                  CPU, GPU, RAM and disk pressure in one manual scan.
+                </p>
+              </div>
+              <div class="row">
+                <button id="refreshProcesses" class="primary" disabled>
+                  Scan Overview
+                </button>
+                <button id="copyPerformance" disabled>Copy report</button>
+              </div>
+            </div>
+            <p id="processStatus" role="status">
+              Enter a machine, then click Scan Overview. Changing views never starts a
+              scan.
+            </p>
+          </div>
+          <div id="adminOverview" aria-labelledby="performanceTitle"></div>
+          <section class="admin-processes" aria-labelledby="processListTitle">
+            <div class="performance-filter">
+              <div class="process-list-heading">
+                <h3 id="processListTitle">Processes</h3>
+                <span id="processCount" class="pill">No scan</span>
+              </div>
+              <label class="process-filter-field" for="processFilter">
+                Filter processes
+                <input
+                  id="processFilter"
+                  placeholder="Filter by process, PID or session"
+                  autocomplete="off"
+                  disabled
+                />
+              </label>
+              <div id="cpuProcessControls" class="cpu-process-controls" hidden>
+                <label>Show<select id="cpuProcessScope" disabled>
+                  <option value="all">All returned processes</option>
+                  <option value="active">CPU ≥ 1%</option>
+                  <option value="busy">CPU ≥ 10%</option>
+                </select></label>
+                <label>Sort<select id="cpuProcessSort" disabled>
+                  <option value="cpu">CPU · highest first</option>
+                  <option value="threads">Threads · highest first</option>
+                  <option value="name">Process name</option>
+                  <option value="pid">PID</option>
+                </select></label>
+              </div>
+            </div>
+            <div
+              class="quick-process-actions"
+              role="group"
+              aria-label="Quick process termination"
+            >
+              <button
+                id="killOpenFin"
+                class="danger"
+                data-quick-kill="openfin.exe"
+                type="button"
+                disabled
+              >
+                Kill OpenFin…
+              </button>
+              <label for="killMatchWord"
+                >Process name contains
+                <input
+                  id="killMatchWord"
+                  value="a180"
+                  placeholder="At least 3 characters"
+                  title="Literal part of a process name; wildcards are not supported"
+                  minlength="3"
+                  maxlength="64"
+                  autocomplete="off"
+                  spellcheck="false"
+                />
+              </label>
+              <button id="killMatches" class="danger" type="button" disabled>
+                Kill matching processes…
+              </button>
+              <small
+                >All sessions on this target · names only · case-insensitive</small
+              >
+              <p id="quickKillStatus" role="status" hidden></p>
+            </div>
+            <p id="processHint" class="muted">
+              Right-click a process for actions, or click its thread count to inspect
+              CPU usage.
+            </p>
+            <details class="manual-termination-disclosure">
+              <summary>Terminate by PID or name</summary>
+              <div
+                class="manual-termination"
+                role="group"
+                aria-label="Quick process termination"
+              >
+                <label for="kill">PID or process name</label>
+                <input
+                  id="kill"
+                  placeholder="PID or process.exe"
+                  autocomplete="off"
+                />
+                <button id="killBtn" type="button">Terminate…</button>
+              </div>
+            </details>
+            <div
+              id="adminOut"
+              tabindex="0"
+              role="region"
+              aria-label="Process results"
+            ></div>
+          </section>
+        </div>
+      </section>
+      <section id="knowledge" class="page" aria-label="Knowledge Base"></section>
+      <section id="bulk" class="page">
+        <div class="panel">
+          <small>Bulk deployment</small>
+          <h2>Controlled multi-machine rollout</h2>
+          <div class="bulkgrid">
+            <label
+              >Targets<textarea
+                id="bulkTargets"
+                placeholder="Paste from Excel, comma, space, semicolon or new line"
+              ></textarea>
+            </label>
+            <div class="grid2">
+              <label>Package search<input id="bulkSearch" /></label
+              ><label>Package<select id="bulkPkg"></select></label
+              ><div class="bulk-action-field"><span>Action</span>
+                <div class="deployment-action-switch" role="group" aria-label="Bulk deployment action">
+                  <button type="button" data-bulk-action="Install" aria-pressed="true">Install</button>
+                  <button type="button" data-bulk-action="Repair" aria-pressed="false">Repair</button>
+                  <button type="button" data-bulk-action="Uninstall" aria-pressed="false">Uninstall</button>
+                </div>
+                <select id="bulkAction" aria-label="Bulk action" hidden><option>Install</option><option>Repair</option><option>Uninstall</option></select>
+              </div
+              ><label>Action script<select id="bulkScript"></select></label
+              ><label
+                >Concurrent deployments<input
+                  id="concurrency"
+                  type="number"
+                  min="1"
+                  max="10"
+                  value="5" /></label
+              ><label
+                >Robocopy threads<input
+                  id="bulkThreads"
+                  type="number"
+                  min="1"
+                  max="32"
+                  value="8"
+              /></label>
+            </div>
+          </div>
+          <div class="row atlas-sticky-actions">
+            <span id="targetCount" class="pill">0 targets</span
+            ><label
+              ><input type="checkbox" role="switch" id="bulkFresh" />
+              Fresh</label
+            ><button class="primary" id="bulkStart">Deploy to targets</button
+            ><button id="copyFailed" disabled>Copy failed</button
+            ><button id="exportCsv" disabled>Export CSV</button>
+          </div>
+          <p id="bulkSelectionStatus" class="muted" role="status"></p>
+          <div id="bulkSummary"></div>
+          <div class="tablewrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Machine</th>
+                  <th>Copy</th>
+                  <th>Launch</th>
+                  <th>PID</th>
+                  <th>Completion</th>
+                  <th>Exit</th>
+                  <th>Details</th>
+                </tr>
+              </thead>
+              <tbody id="bulkBody"><tr class="atlas-table-empty"><td colspan="7"><b>No deployment results yet</b><span>Per-device results appear here after a deployment run.</span></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+      <section id="history" class="page">
+        <div class="panel">
+          <div class="head">
+            <div>
+              <small>Deployment history</small>
+              <h2>Recent operations</h2>
+            </div>
+            <div class="history-tools">
+              <input id="historyFilter" type="search" placeholder="Filter by machine, package or state" aria-label="Filter history" autocomplete="off">
+              <button id="refreshHistory">Refresh</button>
+            </div>
+          </div>
+          <p id="historyStatus" class="atlas-table-status" role="status" aria-live="polite"></p>
+          <div class="tablewrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Started</th>
+                  <th>Target</th>
+                  <th>Package</th>
+                  <th>Action</th>
+                  <th>Mode</th>
+                  <th>State</th>
+                  <th>Exit</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="historyBody"><tr class="atlas-table-empty"><td colspan="8"><b>Deployment history</b><span>Open this page or use Refresh to retrieve recent operations.</span></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+<section id="terminal" class="page" aria-label="Terminal &amp; PowerShell ISE">
+ <div class="card atlas-terminal">
+ <div class="term-toolbar term-heading"><h2>Terminal &amp; PowerShell ISE</h2><span id="termStatus" role="status">Ready</span></div>
+ <p class="term-scope">Runs on the Atlas host using the Windows account running Atlas. Each run starts a fresh process; variables and directory changes do not persist. Maximum run time: 15 minutes.</p>
+ <div class="term-toolbar term-configuration"><label>Mode <select id="termMode"><option value="command">Terminal</option><option value="script">PowerShell ISE · script editor</option></select></label><label id="termShellLabel">Shell <select id="termShell"><option value="powershell">PowerShell</option><option value="cmd">Command Prompt</option></select></label><div class="term-file-actions" role="group" aria-label="Script files"><button id="termImport">Open .ps1</button><input id="termFile" type="file" accept=".ps1" hidden><button id="termSave">Save .ps1</button></div></div>
+ <label for="termCode">Command / script</label><textarea id="termCode" rows="5" spellcheck="false" placeholder="Get-Date" aria-label="Command or PowerShell script"></textarea>
+ <div class="term-toolbar term-execution"><div class="term-run-actions" role="group" aria-label="Execution"><button id="termRun" class="primary">Run</button><button id="termSelection">Run selection</button><button id="termStop" disabled>Stop</button><button id="termReconnect">Reconnect</button></div><div class="term-output-actions" role="group" aria-label="Output"><button id="termCopy">Copy output</button><button id="termClear">Clear output</button></div><small class="term-shortcut">Ctrl+Enter · Run</small></div>
+ <p id="termMessage" role="status"></p><pre id="termOutput" tabindex="0" aria-label="Terminal output"></pre>
+ </div>
+</section>
+<section id="scripts" class="page" aria-label="Scripts">
+ <div class="scripts-layout">
+  <aside class="scripts-library panel" aria-label="Script library">
+   <input id="scriptSearch" type="search" placeholder="Find a script" aria-label="Find a script" autocomplete="off">
+   <div id="scriptList" class="scripts-list"></div>
+   <div class="scripts-library-actions"><button type="button" id="scriptNew">New script</button><button type="button" id="scriptImport">Import .ps1</button><input id="scriptFile" type="file" accept=".ps1,.txt" hidden></div>
+   <button type="button" class="scripts-pstools" data-page="psexec" title="The 72 PsTools command templates">PsTools commands</button>
+  </aside>
+  <div class="scripts-detail panel">
+   <header class="scripts-head">
+    <div><input id="scriptName" aria-label="Script name" maxlength="120" readonly><p id="scriptDescription"></p></div>
+    <span id="scriptKind"></span>
+   </header>
+   <div class="scripts-run-grid">
+    <label class="scripts-targets">Target machines <small id="scriptTargetCount">0 machines</small>
+     <textarea id="scriptTargets" rows="4" spellcheck="false" placeholder="Paste from Excel, or separate with commas, spaces or new lines"></textarea>
+    </label>
+    <div id="scriptParams" class="scripts-params"></div>
+   </div>
+   <div class="scripts-target-actions"><button type="button" id="scriptUseSelected">Add selected machine</button><button type="button" id="scriptClearTargets">Clear</button></div>
+   <details id="scriptCodeBox" class="scripts-code">
+    <summary>Script code <small id="scriptCodeNote"></small></summary>
+    <textarea id="scriptCode" rows="14" spellcheck="false" aria-label="PowerShell script"></textarea>
+    <label class="scripts-changes"><input type="checkbox" id="scriptChanges" checked> Changes machines (ask for confirmation before running)</label>
+   </details>
+   <div class="scripts-actions" role="group" aria-label="Script actions">
+    <button type="button" id="scriptRun" class="primary">Run</button><button type="button" id="scriptStop" disabled>Stop</button>
+    <span class="scripts-actions-gap"></span>
+    <button type="button" id="scriptSave">Save</button><button type="button" id="scriptDuplicate">Duplicate</button><button type="button" id="scriptDownload">Download .ps1</button><button type="button" id="scriptDelete" class="danger">Delete</button>
+   </div>
+   <p id="scriptMessage" role="status"></p>
+   <div class="scripts-output-head"><strong>Output</strong><span id="scriptSummary" role="status"></span><span id="scriptStatus" role="status">No script running.</span><button type="button" id="scriptCopy">Copy output</button></div>
+   <pre id="scriptOutput" class="scripts-output" tabindex="0" aria-label="Script output"></pre>
+  </div>
+ </div>
+</section>
+<section id="psexec" class="page" aria-label="PsTools command workbench">
+        <div class="px-intro">
+          <div>
+            <small>Remote command workbench</small>
+            <h2>Choose a command</h2>
+            <p>
+              Select a task, review the command and target, then run it.
+            </p>
+          </div>
+          <a
+            href="https://learn.microsoft.com/en-us/sysinternals/downloads/pstools"
+            target="_blank"
+            rel="noopener noreferrer"
+            >PsTools reference</a
+          >
+        </div>
+        <div class="px-settings panel">
+          <label
+            >Target machine<input
+              id="pxTarget"
+              placeholder="Select or enter a hostname"
+              autocomplete="off"
+              spellcheck="false"
+              maxlength="64"
+          /></label>
+          <label
+            >PsExec path (other tools use the same folder)<input
+              id="pxPath"
+              value="C:\Data\PsExec.exe"
+              autocomplete="off"
+              spellcheck="false"
+          /></label>
+          <label
+            >Copy format<select id="pxShell">
+              <option value="powershell">PowerShell</option>
+              <option value="cmd">Command Prompt</option>
+            </select></label
+          >
+          <button id="pxFollow" type="button" aria-pressed="true">
+            Follow selected target
+          </button>
+          <p class="px-settings-note" id="pxTargetNote"></p>
+        </div>
+        <div class="px-layout">
+          <div class="px-library">
+            <label class="px-search"
+              >Tool<select id="pxTool"></select></label><label class="px-search">Find a command<input
+                id="pxSearch"
+                type="search"
+                placeholder="Try Excel, sessions, DNS, service…"
+            /></label>
+            <div
+              id="pxCategories"
+              class="px-filters"
+              role="group"
+              aria-label="Command categories"
+            ></div>
+            <p id="pxCount" class="muted" role="status"></p>
+            <div id="pxCards" class="px-cards"></div>
+          </div>
+          <aside class="px-review panel" aria-label="Command review">
+            <div class="head">
+              <small id="pxCategory"></small
+              ><button id="pxFavourite" type="button" aria-pressed="false">
+                ☆ Favourite
+              </button>
+            </div>
+            <h2 id="pxTitle"></h2>
+            <p id="pxDescription"></p>
+            <div id="pxFields" class="px-fields"></div>
+            <label class="px-elevation"
+              ><input id="pxElevated" type="checkbox" /> Use elevated token
+              (-h)</label
+            >
+            <p class="muted">
+              Uses your current Windows account. No saved passwords or automatic
+              SYSTEM account.
+            </p>
+            <div id="pxImpact" class="px-impact"></div>
+            <small>Command on target</small>
+            <pre id="pxReadable" tabindex="0"></pre>
+            <details class="px-full">
+              <summary>Full PsTools command</summary>
+              <pre id="pxCommand" tabindex="0"></pre>
+            </details>
+            <p id="pxError" class="px-error" role="status"></p>
+            <p id="pxEulaNote" class="px-footnote">
+              Clicking Run or executing a copied command accepts the
+              <a href="https://learn.microsoft.com/en-us/sysinternals/license-terms" target="_blank" rel="noopener noreferrer">Microsoft Sysinternals EULA</a>
+              for that tool under the executing Windows account.
+            </p>
+            <div class="px-command-actions" role="group" aria-label="Reviewed command">
+            <button id="pxRun" class="primary" type="button" disabled>
+              Run on target
+            </button>
+            <button id="pxCopy" type="button" disabled>
+              Copy PowerShell command
+            </button>
+            </div>
+            <p class="px-footnote" id="pxEncoding"></p>
+            <section class="px-terminal" aria-label="PsTools terminal">
+              <div class="px-terminal-toolbar">
+                <b>Terminal</b
+                ><button id="pxStop" type="button" disabled>Stop session</button
+                ><button id="pxCopyOutput" type="button">Copy output</button>
+              </div>
+              <p id="pxHost" class="muted">Uses the account running Atlas.</p>
+              <p id="pxRunStatus" role="status">No command running.</p>
+              <pre id="pxOutput" tabindex="0" aria-label="Terminal output">
+Ready. Choose a command and click Run.</pre>
+              <form id="pxInputForm" hidden>
+                <label
+                  >Remote Command Prompt<input
+                    id="pxInput"
+                    autocomplete="off"
+                    spellcheck="false"
+                    maxlength="4096"
+                    placeholder="Type a command, or exit to close" /></label
+                ><button id="pxSend" type="submit">Send ↵</button>
+              </form>
+              <p id="pxTerminalMessage" role="status"></p>
+              <div class="px-terminal-toolbar">
+                <label
+                  ><input id="pxAutoScroll" type="checkbox" checked /> Follow
+                  output</label
+                ><button id="pxReconnect" type="button">
+                  Refresh sessions
+                </button>
+              </div>
+              <label
+                >Recent sessions<select id="pxSessions">
+                  <option value="">No sessions yet</option>
+                </select></label
+              >
+              <p class="px-footnote">
+                Sessions stay on their original target. Stop ends the local
+                PsExec connection; a remote command may continue. Type exit to
+                close a Command Prompt normally.
+              </p>
+            </section>
+            <details class="px-help">
+              <summary>First run &amp; connection help</summary>
+              <ul>
+                <li>
+                  Point to your existing PsExec.exe or PsExec64.exe in C:\Data.
+                  Atlas checks the executable exists before starting it.
+                </li>
+                <li>
+                  The Atlas host needs remote administration access. PsExec
+                  starts a service on the target even for a diagnostic command.
+                </li>
+                <li>
+                  Commands include -accepteula so the selected tool can accept
+                  its Microsoft licence on first use. Acceptance occurs when
+                  you run the command, including from a copied command.
+                </li>
+                <li>
+                  Access denied: check your account's remote administration
+                  rights and elevation. Path not found: check the executable
+                  path and target administrative share. Connection failures:
+                  check name resolution, SMB and the service-control connection.
+                </li>
+                <li>
+                  The ten-second option limits connection attempts, not command
+                  runtime. Atlas limits commands to three minutes and
+                  interactive sessions to fifteen minutes. Recent output is held
+                  in memory, not deployment History, and clears when Atlas
+                  restarts.
+                </li>
+              </ul>
+            </details>
+          </aside>
+        </div>
+      </section>
+    </main>
+    <aside id="queueDrawer" class="queue-drawer">
+      <div class="queue-head">
+        <b>Activity queue</b><button id="closeQueue">×</button>
+      </div>
+      <section class="action-widgets-section"><h3>Ongoing actions</h3><p id="actionWidgetsStatus" role="status">Live activity</p><div id="actionWidgets"></div></section>
+      <section class="reboot-monitors"><h3>Reboot checks</h3><p id="rebootMonitorStatus" role="status">Live ping starts after you request a reboot. Completed checks disappear automatically.</p><div id="rebootMonitors"></div></section>
+      <h3>Deployment queue</h3>
+      <div id="queueItems"></div>
+      <div class="queue-actions">
+        <button id="startQueue" class="primary">Start queue</button
+        ><button id="pauseQueue">Pause after current</button
+        ><button id="clearQueue">Clear waiting</button>
+      </div>
+      <section class="deployment-kits" aria-labelledby="kitsHeading">
+        <h3 id="kitsHeading">Deployment kits</h3>
+        <p class="kit-help">Save the queued packages as a kit, then add the whole set for any machine in one click.</p>
+        <div class="kit-save">
+          <input id="kitName" maxlength="60" placeholder="Kit name, e.g. New starter" aria-label="Kit name" /><button id="saveKit">Save queue as kit</button>
+        </div>
+        <div id="kitList"></div>
+      </section>
+    </aside>
+    <aside id="clipboardDrawer" class="queue-drawer clipboard-drawer">
+      <div class="queue-head">
+        <b>Clipboard history</b><button id="closeClipboard" aria-label="Close clipboard history">×</button>
+      </div>
+      <div class="clipboard-tools">
+        <button id="clipboardCapture" class="primary">Capture clipboard</button>
+        <label title="When the browser allows the clipboard, what you copied elsewhere is captured as you come back to Atlas"><input id="clipboardAuto" type="checkbox" checked /> Capture when I come back</label>
+        <input id="clipboardFilter" type="search" placeholder="Filter" aria-label="Filter clipboard history" autocomplete="off" />
+        <button id="clipboardClear">Clear</button>
+      </div>
+      <div id="clipboardCompanion" class="clipboard-companion" role="status" aria-live="polite"></div>
+      <p id="clipboardStatus" role="status">Copy machines, people, desks or tickets anywhere, then press Ctrl+V in Atlas or click Capture clipboard.</p>
+      <div id="clipboardItems" class="clipboard-items"></div>
+    </aside>
+    <aside id="deploymentsDrawer" class="deployments-drawer">
+      <div class="deployments-head">
+        <div>
+          <b>Ongoing deployments</b><span id="deploymentsState">Live</span>
+        </div>
+        <button id="closeDeployments">×</button>
+      </div>
+      <div class="deployments-toolbar">
+        <button id="refreshDeployments">Refresh</button
+        ><button id="showRecentDeployments">Recent</button
+        ><label
+          ><input id="autoDeployments" type="checkbox" checked /> Auto</label
+        >
+      </div>
+      <div id="deploymentsList" class="deployments-list">
+        <p class="empty">No ongoing deployments</p>
+      </div>
+    </aside>
+    <div id="shortcutHelp" class="shortcut-help hidden">
+      <div class="shortcut-help-box">
+        <div class="shortcut-help-head">
+          <b>Keyboard shortcuts</b><button id="closeShortcutHelp">×</button>
+        </div>
+        <div id="shortcutHelpList" class="shortcut-help-list"></div>
+      </div>
+    </div>
+    <div id="machineMenu" class="context-menu hidden"></div>
+    <div id="processMenu" class="context-menu hidden" role="menu"></div>
+    <dialog id="threadDialog" aria-labelledby="threadTitle">
+      <div class="performance-heading">
+        <div>
+          <small>CPU thread inspector</small>
+          <h2 id="threadTitle">Process threads</h2>
+        </div>
+        <button id="closeThreads" aria-label="Close thread inspector">
+          Close
+        </button>
+      </div>
+      <p id="threadStatus" role="status"></p>
+      <p class="muted">
+        One busy thread can saturate one logical processor while total CPU stays
+        low. Waiting threads are normal; a wait reason alone does not identify
+        the cause of latency.
+      </p>
+      <div class="row">
+        <button id="refreshThreads">Refresh thread sample</button>
+      </div>
+      <div id="threadBody" class="tablewrap"></div>
+    </dialog>
+    <dialog
+      id="processKillDialog"
+      aria-labelledby="processKillTitle"
+      aria-describedby="processKillQuestion processKillWarning"
+    >
+      <h2 id="processKillTitle">Kill process?</h2>
+      <p id="processKillQuestion"></p>
+      <p id="processKillWarning">Unsaved work in this process may be lost.</p>
+      <div class="row">
+        <button id="cancelProcessKill" autofocus>Cancel</button>
+        <button id="confirmProcessKill" class="danger">Kill process</button>
+      </div>
+    </dialog>
+    <dialog
+      id="servicesDialog"
+      class="atlas-dialog"
+      aria-labelledby="servicesTitle"
+    >
+      <header class="services-heading">
+        <div>
+          <h2 id="servicesTitle">Services</h2>
+          <span id="servicesTarget">No target</span>
+        </div>
+        <button id="closeServices" aria-label="Close services" autofocus>
+          Close
+        </button>
+      </header>
+      <div class="services-toolbar">
+        <label for="servicesFilter">Search services</label>
+        <input
+          id="servicesFilter"
+          type="search"
+          placeholder="Name, status or startup mode"
+          autocomplete="off"
+        />
+        <button id="refreshServices">Refresh</button>
+        <span id="servicesCount" class="pill">0 services</span>
+      </div>
+      <p id="servicesStatus" role="status">
+        Choose a target and list its services.
+      </p>
+      <p class="services-help">
+        Start stopped services, or stop and restart running services. Actions
+        affect the selected service; startup settings are unchanged.
+      </p>
+      <div
+        class="services-table-wrap"
+        tabindex="0"
+        role="region"
+        aria-label="Services list"
+      >
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Service</th>
+              <th scope="col">Status</th>
+              <th scope="col">Startup</th>
+              <th scope="col">PID</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="servicesBody"></tbody>
+        </table>
+      </div>
+    </dialog>
+    <dialog
+      id="serviceControlDialog"
+      class="atlas-dialog"
+      aria-labelledby="serviceControlTitle"
+      aria-describedby="serviceControlQuestion serviceControlWarning"
+    >
+      <h2 id="serviceControlTitle">Stop service?</h2>
+      <p id="serviceControlQuestion"></p>
+      <p id="serviceControlWarning">
+        Applications using this service may stop working.
+      </p>
+      <div class="row">
+        <button id="cancelServiceControl" autofocus>Cancel</button
+        ><button id="confirmServiceControl" class="danger">Stop service</button>
+      </div>
+    </dialog>
+    <aside id="softwareDrawer" class="software-drawer">
+      <div class="software-head">
+        <div>
+          <b>Installed software</b><span id="softwareTarget">No target</span>
+        </div>
+        <button id="closeSoftware">×</button>
+      </div>
+      <div class="software-toolbar">
+        <input id="softwareFilter" placeholder="Filter applications" /><button
+          id="refreshSoftware"
+        >
+          Refresh</button
+        ><button id="copySoftware">Copy report</button
+        ><button id="exportSoftware">CSV</button>
+      </div>
+      <div class="software-toolbar">
+        <label
+          ><input type="checkbox" id="softwareAppx" /> Include MSIX / Store
+          apps</label
+        ><label
+          ><input type="checkbox" id="softwareCache" /> Read MSI cache
+          names</label
+        >
+      </div>
+      <p class="software-help">
+        Right-click an application or use Actions to uninstall or repair.
+        Classic per-user entries cover loaded profiles only. MSI cache files are
+        preserved.
+      </p>
+      <div id="softwareSummary" class="software-summary"></div>
+      <div class="software-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Application</th>
+              <th>Version</th>
+              <th>Publisher</th>
+              <th>Scope / type</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="softwareBody"></tbody>
+        </table>
+      </div>
+    </aside>
+    <dialog
+      id="softwareActionDialog"
+      style="
+        width: min(760px, 94vw);
+        max-height: 88vh;
+        overflow: auto;
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        padding: 24px;
+      "
+    >
+      <div class="row">
+        <h2 id="softwareActionTitle">Application actions</h2>
+        <button id="softwareActionClose" aria-label="Close application actions">
+          Close
+        </button>
+      </div>
+      <p id="softwareActionIdentity"></p>
+      <div class="row">
+        <button id="softwareUninstall">Uninstall</button
+        ><button id="softwareRepair">Repair</button
+        ><button id="softwareCleanCache">Clean cache</button>
+      </div>
+      <p id="softwareActionReason" role="status"></p>
+      <label id="softwareArgumentsLabel" hidden
+        >Complete vendor-documented silent arguments<input
+          id="softwareArguments"
+          style="width: 100%"
+          autocomplete="off" /></label
+      ><button id="softwarePreview" hidden>Preview command</button>
+      <div id="softwareCommandReview" hidden>
+        <pre
+          id="softwareCommand"
+          style="white-space: pre-wrap; overflow-wrap: anywhere"
+        ></pre>
+        <p>
+          Runs on the displayed PC using your remote execution account. Review
+          the application, version, scope and command. MSI actions suppress
+          automatic restart; EXE restart behaviour depends on the vendor
+          command.
+        </p>
+        <label
+          >Type the target hostname<input
+            id="softwareConfirm"
+            autocomplete="off" /></label
+        ><button id="softwareExecute" class="danger" disabled>
+          Run on target
+        </button>
+      </div>
+      <pre
+        id="softwareActionLog"
+        style="white-space: pre-wrap; overflow-wrap: anywhere"
+        aria-live="polite"
+      ></pre>
+    </dialog>
+    <div id="toast"></div>
+    <script src="/assets/app.js"></script>
+    <script src="/assets/console-directory.js?v=3"></script>
+    <script src="/assets/console-deployment.js?v=3"></script>
+    <script src="/assets/deployment-kits.js"></script>
+    <script src="/assets/console-processes.js"></script>
+    <script src="/assets/slowdown-diagnostics.js"></script>
+    <script src="/assets/psexec-catalogue.js"></script>
+    <script src="/assets/psexec-commands.js"></script>
+    <script src="/assets/console-psexec.js"></script>
+<script src="/assets/active-directory.js"></script>
+<script src="/assets/clipboard-history.js"></script>
+    <script src="/assets/psexec-terminal.js"></script>
+    <script src="/assets/local-terminal.js"></script>
+    <script src="/assets/script-library.js"></script>
+    <script src="/assets/action-widgets.js"></script>
+    <script src="/assets/reboot-monitor.js"></script>
+    <script src="/assets/knowledge-converter.js"></script>
+    <script src="/assets/knowledge-base.js"></script>
+    <script src="/assets/knowledge-articles.js"></script>
+    <script src="/assets/console-shell.js"></script>
+    <script src="/assets/inbox-workbench.js"></script>
+    <script src="/assets/inbox-actions.js?v=2"></script>
+    <script src="/assets/terminal-view.js"></script>
+    <script src="/assets/workspace-home.js"></script>
+    <script src="/assets/remote-software.js"></script>
+    <script src="/assets/remote-services.js"></script>
+    <script src="/assets/copilot-diagnostics.js"></script>
+  <script type="module" src="/assets/atlas-interactions.js" data-atlas-interactions></script>
+  </body>
+</html>

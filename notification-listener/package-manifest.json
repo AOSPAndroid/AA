@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "unsigned": true,
+  "source_line_endings": "LF",
+  "source_sha256": {
+    "notification-listener/Program.cs": "f59ac1df00dcdfea4032f8784753d20b3e3bff721668cc8abb6270957be2137a",
+    "notification-listener/Store.cs": "96809575609e8103b0c2dc31aa73158e5987e1581fd75ea29c0ab7fdaa0b0534",
+    "notification-listener/AppxManifest.xml": "5645127d89b1042ef720cad189ea2f2e7dcd8cce29f37c28230fc6f9ce9389b9",
+    "notification-listener/app.manifest": "5372e1bc3fed933becfff39866073341d95bd194293f2846c76774242d44868e",
+    "inbox_schema.sql": "af15abc07e4f707d7b1c47db2b2ceba02c3cf43aa0170e50d01b71e7b5a761af",
+    "Build-Notification-Listener.ps1": "765fc4a2aeaa832a1f10583a404cc9af59116c30d0c764f69a2a901bf6a12b7b"
+  },
+  "package_sha256": {
+    "package/AppxManifest.xml": "4c3b63984298a64a63f279346d64df886ce152f42001f4fe57179880f772bf0e",
+    "package/Atlas.NotificationListener.exe": "2ba366353a7d7ec59e41ea8796856354193a1fbc79c6fd4358dda2ed40c9649c",
+    "package/Atlas.NotificationListener.exe.config": "8aa0bbe79bec8d2289d0c40f53511a44445f610be94aa6aec9cc1142ae74f3e5",
+    "package/Assets/Square150x150Logo.png": "765a191bd455e782d6420f28b032b46648b43ebc53623baf01282feb57b59043",
+    "package/Assets/Square44x44Logo.png": "654967c739d05be2d0089772dd006494ac704cb626303bc09bfba365ff3d14c8",
+    "package/Assets/StoreLogo.png": "ab7f16af1378dd95c3e3a72a662de7f74df5b72ff6cd809495f7dfed62fa5e4f",
+    "Atlas-Notification-Listener-unsigned.msix": "8269273dfe19992d1aa44eaec07d62b9b427b49e7732bf7dde4e917cce993c2c"
+  }
+}

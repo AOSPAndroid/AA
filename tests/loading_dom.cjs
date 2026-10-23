@@ -1,0 +1,5 @@
+const fs=require('fs'),assert=require('assert'),{JSDOM}=require('jsdom');
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+(async()=>{const d=new JSDOM('<body></body>',{runScripts:'outside-only'}),w=d.window;w.Headers=Headers;w.AbortController=AbortController;let pending=[];w.fetch=(url,o)=>new Promise((resolve,reject)=>pending.push({resolve,reject,o}));w.eval(fs.readFileSync('frontend/assets/client.js','utf8'));
+const a=w.AtlasClient.request('/api/a'),b=w.AtlasClient.request('/api/b');await sleep(210);const badge=w.document.querySelector('.atlas-request-loading');assert(badge&&!badge.hidden);pending[0].resolve({ok:true,json:async()=>({})});await a;assert(!badge.hidden);pending[1].reject(Error('test'));await b.catch(()=>{});assert(badge.hidden);
+const c=w.AtlasClient.request('/api/c',{atlasSilent:true});await sleep(210);assert(badge.hidden);assert(!('atlasSilent' in pending[2].o));pending[2].resolve({ok:true,json:async()=>({})});await c;w.close();console.log('PASS: concurrent loading, rejection cleanup, silent polling and transport options');})().catch(e=>{console.error(e);process.exit(1)});

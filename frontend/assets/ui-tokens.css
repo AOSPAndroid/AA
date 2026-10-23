@@ -1,0 +1,441 @@
+:root {
+  --atlas-accent: #0079a5;
+  --atlas-text: #173346;
+  --atlas-muted: #647887;
+  --atlas-line: #d4e1e8;
+  --atlas-radius: 12px;
+  --atlas-focus: #69b8da;
+  --atlas-surface: #fff;
+  --atlas-font: system-ui, sans-serif;
+  --atlas-motion-fast: 160ms;
+  --atlas-motion-enter: 380ms;
+  --atlas-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+.atlas-person {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 14px;
+  background: var(--atlas-surface);
+  border: 1px solid var(--atlas-line);
+  border-radius: var(--atlas-radius);
+  padding: 16px;
+  color: var(--atlas-text);
+  font-family: var(--atlas-font);
+}
+.atlas-person h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+.atlas-person .avatar {
+  display: grid;
+  place-items: center;
+  background: #e8f5fa;
+  border-radius: 10px;
+  width: 42px;
+  height: 42px;
+  color: var(--atlas-accent);
+}
+.atlas-person .facts {
+  display: flex;
+  gap: 12px 20px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--atlas-muted);
+}
+.atlas-person b {
+  display: block;
+  color: var(--atlas-text);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.atlas-person details {
+  margin-top: 12px;
+}
+.atlas-person summary {
+  cursor: pointer;
+  color: var(--atlas-accent);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.atlas-person .atlas-person-details > summary {
+  padding: 12px 0 8px;
+  border-top: 1px solid var(--atlas-line);
+  font-weight: 600;
+}
+.atlas-person-detail-sections {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+  gap: 12px;
+}
+.atlas-person-detail-sections > section {
+  min-width: 0;
+  padding: 12px;
+  background: #f5f9fc;
+  border: 1px solid var(--atlas-line);
+  border-radius: 10px;
+}
+.atlas-person-detail-sections h3 {
+  font-size: 12px;
+  margin: 0 0 12px;
+}
+.atlas-person-detail-sections dl {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+.atlas-person-detail-sections dt {
+  color: var(--atlas-muted);
+  font-size: 11px;
+  margin: 0;
+}
+.atlas-person-detail-sections dd {
+  font-size: 12px;
+  color: var(--atlas-text);
+  margin: 3px 0 0;
+  overflow-wrap: anywhere;
+}
+.atlas-person-source {
+  color: var(--atlas-muted);
+  font-size: 11px;
+  margin: 12px 0 0;
+}
+.atlas-person-related {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.atlas-person-related button {
+  padding: 7px 10px;
+  min-height: 32px;
+  border: 1px solid var(--atlas-line);
+  border-radius: 9px;
+  background: var(--atlas-surface);
+  color: var(--atlas-accent);
+  font: 500 12px/1.4 var(--atlas-font);
+  cursor: pointer;
+}
+.atlas-machine-details {
+  margin-top: 12px;
+  min-width: 0;
+  font: 12px/1.5 var(--atlas-font);
+  color: var(--atlas-text);
+}
+.atlas-machine-details > summary {
+  cursor: pointer;
+  padding: 6px 0;
+  color: var(--atlas-accent);
+  font-size: 12px;
+}
+.atlas-machine-inventory > p {
+  color: var(--atlas-muted);
+  font-size: 11px;
+  margin: 4px 0 12px;
+}
+.atlas-machine-inventory section + section {
+  border-top: 1px solid var(--atlas-line);
+  padding-top: 12px;
+  margin-top: 12px;
+}
+.atlas-machine-inventory h4 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--atlas-text);
+}
+.atlas-machine-inventory dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 16px;
+  margin: 0;
+}
+.atlas-machine-inventory .atlas-machine-wide {
+  grid-column: 1 / -1;
+}
+.atlas-machine-inventory dt {
+  margin: 0;
+  color: var(--atlas-muted);
+  font-size: 11px;
+}
+.atlas-machine-inventory dd {
+  margin: 3px 0 0;
+  color: var(--atlas-text);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+.ops-machine-entry > .atlas-machine-details {
+  margin: 0 0 14px;
+  padding: 0 10px;
+}
+.atlas-dialog {
+  width: min(760px, 94vw);
+  max-height: 85vh;
+  overflow: auto;
+  padding: 24px;
+  border: 1px solid var(--atlas-line);
+  border-radius: var(--atlas-radius);
+  color: var(--atlas-text);
+  background: var(--atlas-surface);
+  font: 14px/1.5 var(--atlas-font);
+}
+.atlas-dialog::backdrop {
+  background: #17334655;
+}
+.atlas-dialog > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.atlas-dialog pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.atlas-dialog button {
+  font: inherit;
+  border: 1px solid var(--atlas-line);
+  border-radius: 8px;
+  background: white;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.atlas-dialog input {
+  font: inherit;
+  padding: 8px;
+  border: 1px solid var(--atlas-line);
+  border-radius: 8px;
+}
+.atlas-dialog :focus-visible {
+  outline: 3px solid var(--atlas-focus);
+  outline-offset: 2px;
+}
+
+/* Short, event-driven transitions: no idle animation or layout tweening. */
+@keyframes atlas-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes atlas-dialog-enter {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.975);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes atlas-backdrop-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+dialog[open] {
+  animation: atlas-dialog-enter var(--atlas-motion-enter) var(--atlas-ease);
+}
+dialog[open]::backdrop {
+  animation: atlas-backdrop-enter var(--atlas-motion-fast) ease-out;
+}
+.page.active,
+#toast > .toast {
+  animation: atlas-reveal var(--atlas-motion-enter) var(--atlas-ease);
+}
+.ops-machine,
+.result,
+.machine,
+.viewer-machine {
+  transition:
+    background-color var(--atlas-motion-fast),
+    border-color var(--atlas-motion-fast);
+}
+/* One quiet blue pulse marks a new target; the card itself stays steady. */
+.machine,
+.ops-machine {
+  position: relative;
+}
+.machine.selected::after,
+.ops-machine.chosen::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border: 2px solid #00aeef;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  animation: atlas-target-pulse 460ms var(--atlas-ease);
+}
+@keyframes atlas-target-pulse {
+  from {
+    opacity: 0.65;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.045);
+  }
+}
+/* Independent scale preserves positioning transforms used by floating controls. */
+html[data-atlas-motion="full"]:not([data-atlas-display="citrix"])
+  button:enabled:not([aria-disabled="true"]):active {
+  scale: 0.97;
+}
+html[data-atlas-motion="reduce"] {
+  --atlas-motion-fast: 0ms;
+  --atlas-motion-enter: 0ms;
+}
+html[data-atlas-display="citrix"] {
+  --atlas-motion-fast: 0ms;
+  --atlas-motion-enter: 0ms;
+  --atlas-palette-backdrop: none;
+}
+html[data-atlas-surface="workspace"] {
+  --atlas-motion-enter: 240ms;
+}
+html[data-atlas-motion="reduce"] *,
+html[data-atlas-motion="reduce"] *::before,
+html[data-atlas-motion="reduce"] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+.atlas-display-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--atlas-muted);
+  font: 12px var(--atlas-font);
+}
+.atlas-display-mode select {
+  font: inherit;
+  color: var(--atlas-text);
+  background: var(--atlas-surface);
+  border: 1px solid var(--atlas-line);
+  border-radius: 10px;
+  padding: 8px;
+  min-height: 36px;
+  max-width: 170px;
+}
+html[data-atlas-display="citrix"] *,
+html[data-atlas-display="citrix"] *::before,
+html[data-atlas-display="citrix"] *::after,
+html[data-atlas-display="citrix"] dialog::backdrop {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+  backdrop-filter: none !important;
+}
+.atlas-motion-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  white-space: nowrap;
+  font: 12px var(--atlas-font);
+  color: var(--atlas-text);
+  background: var(--atlas-surface);
+  border: 1px solid var(--atlas-line);
+  border-radius: var(--atlas-radius);
+  padding: 9px 8px;
+  min-height: 38px;
+  cursor: pointer;
+}
+.atlas-motion-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+}
+.atlas-motion-track {
+  width: 36px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 20px;
+  position: relative;
+  background: #93a4af;
+  transition: background-color var(--atlas-motion-fast);
+}
+.atlas-motion-track::after {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  top: 2px;
+  left: 2px;
+  border-radius: 50%;
+  background: white;
+  transition: transform var(--atlas-motion-fast);
+}
+.atlas-motion-toggle input:checked + .atlas-motion-track {
+  background: var(--atlas-accent);
+}
+.atlas-motion-toggle input:checked + .atlas-motion-track::after {
+  transform: translateX(14px);
+}
+.atlas-motion-toggle input:focus-visible + .atlas-motion-track {
+  outline: 2px solid var(--atlas-accent);
+  outline-offset: 3px;
+}
+.atlas-motion-state {
+  min-width: 20px;
+  color: var(--atlas-muted);
+}
+.view-switch {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+:root {
+  --atlas-export-border: #d5e2ea;
+}
+.atlas-export-button {
+  margin-top: 12px;
+}
+.atlas-export-dialog .atlas-dialog-body > label {
+  display: block;
+}
+.atlas-export-dialog input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+}
+.atlas-export-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+.atlas-export-fields article {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--atlas-export-border);
+  border-radius: 10px;
+}
+.atlas-export-fields small {
+  display: block;
+  color: #526575;
+  overflow-wrap: anywhere;
+}
+.atlas-export-fields article > div {
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+/* On-demand feedback only: no idle animation, no simulated progress. */
+.atlas-request-loading{position:fixed;right:16px;bottom:64px;z-index:20000;display:flex;align-items:center;gap:8px;background:#fff;color:#006f94;border:1px solid #b8dce9;border-radius:9px;padding:7px 11px;font:12px/1.4 system-ui,sans-serif;box-shadow:0 3px 12px #17334616;pointer-events:none}
+.atlas-request-loading[hidden]{display:none!important}
+.atlas-loading-inline::before{content:"";display:inline-block;width:12px;height:12px;box-sizing:border-box;border:2px solid #b8dce9;border-top-color:#007eae;border-radius:50%;animation:atlas-load-spin .8s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes atlas-load-spin{to{transform:rotate(360deg)}}
+html[data-atlas-motion=reduce] .atlas-loading-inline::before,html[data-atlas-display=citrix] .atlas-loading-inline::before{animation:none}
+@media(prefers-reduced-motion:reduce){.atlas-loading-inline::before{animation:none}}

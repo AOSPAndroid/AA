@@ -1,2 +1,80 @@
-# AA
-Atlas + Axis
+# AA — Atlas + Axis
+
+Atlas's map and tools, with Axis chat in the same application.
+
+**[Download AA for Windows](https://github.com/AOSPAndroid/AA/releases/download/aa-windows/aa-windows.zip)**
+
+## Start
+
+1. Extract `aa-windows.zip`.
+2. Put your existing full GGUF model in the `AA` folder or its `axis` folder.
+   The model files remain separate; you do not need to download them again.
+3. Run **Start AA.bat** under your DSK account.
+4. Use the Atlas map and the **Axis** chat panel in the same browser window.
+
+Python 3.12 and Atlas's existing Python dependencies are required. The launcher
+prefers `C:\devhome\tools\python3.12\current\python.exe`. If this Python does not
+have Atlas's packages, run `Install_Dependencies.bat` once. The Windows download
+includes CPU and Vulkan llama.cpp runtimes, but no model weights or API keys.
+
+Use **Stop AA.bat** to stop this installation and the model it started. A model
+server already running when AA starts stays under its original owner's control.
+If the model is missing, the map still opens and chat explains how to start it.
+
+## One workspace
+
+- **Map first:** the Atlas map stays on the homepage; the chat panel can be closed
+  to return to the desk inspector.
+- **Shared directory:** Axis reads the database Atlas is actually using and uses
+  the same configured package repository.
+- **Selected desk:** explicitly attach a desk to the chat when useful. Selection
+  gives Axis context; changes still require approval.
+- **Visible work:** answers, thinking and tool activity stream into the panel.
+  Actions display an approval with the actual command or target.
+- **Background jobs:** accepted deployments and reboots keep running if the chat
+  is closed. Use `/jobs` or `/jobs ID` in chat to inspect Axis jobs.
+- **Viewer stays read-only:** Axis execution is available only on the local
+  Admin interface, not the LAN Viewer.
+
+AA is a separate merged version. Existing Atlas and Axis installations remain
+usable. The imported Atlas guide is [README-ATLAS.md](README-ATLAS.md), and the
+Axis terminal guide is [axis/README.md](axis/README.md).
+
+## Existing data and configuration
+
+AA uses Atlas's usual database settings: `ATLAS_DB_PATH` takes precedence over
+`database_folder` in `config.json`. To use your current database, point these
+settings at that existing file/folder before starting AA. The imported Atlas
+seed remains available for first-run setup. Runtime databases, logs, chat tool
+outputs and model state stay outside the Git source files.
+
+The selected database is also Atlas's writable database; Axis's directory lookup
+uses a read-only connection. Keep your normal Atlas backup process when moving
+or updating a database.
+
+Optional Firecrawl setup remains available in `axis/Configure Firecrawl.bat`.
+The key stays in your Windows profile. Public web tools retain Axis's restrictions
+on sending private directory data to external sites.
+
+## Updates
+
+Download the new AA ZIP and extract it into a new folder. Stop the old AA first,
+then reuse your model and `config.json`, and point the new copy at your existing
+runtime database. Copy `data/axis/state` and `data/axis/workspace` only after
+stopping AA if you want to retain saved jobs, tool outputs and working files.
+Keep the old folder until the new copy works. See [Updating AA](docs/updating-atlas.md).
+The inherited Atlas updater is disabled for AA so it cannot replace the combined
+app with standalone Atlas.
+
+## Development
+
+```sh
+python -m pip install -r requirements-dev.txt
+npm ci --ignore-scripts
+python tests/run_all.py
+python -m unittest discover -s axis/tests -v
+```
+
+Tests use disposable databases and simulated Windows operations. See
+[SOURCES.md](SOURCES.md) for the imported commits. The release includes
+`BUNDLE-COMMIT.txt` and a SHA-256 checksum to identify and verify its source.

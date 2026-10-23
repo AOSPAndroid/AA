@@ -1,0 +1,31 @@
+const fs=require('fs'),assert=require('assert/strict'),{JSDOM}=require('jsdom');
+(async()=>{
+ const w=new JSDOM(fs.readFileSync('frontend/index.html','utf8'),{runScripts:'outside-only',url:'http://localhost/installer'}).window;
+ let copied;Object.defineProperty(w.navigator,'clipboard',{value:{writeText:async text=>{copied=text;}}});
+ w.S={target:'PC01',user:{user_name:'alice'}};w.page=()=>{};let calls=0,blob;
+ const group=(name,dn=name)=>({name,dn:'CN='+dn,description:'Trading access <important>, '+name,scope:'Global',category:'Security',membership:'Direct'});
+ const a={details:{Account:'alice'},groups:[group('APP_Paris'),group('APP_London'),group('=SUM(1,2)')],warnings:[],membership_note:'Direct and primary'};
+ const b={...a,details:{Account:'bob'},groups:[group('APP_Paris','app_paris'),group('VPN_Paris')]};
+ w.AtlasClient={request:async()=>++calls===1?a:b};w.URL.createObjectURL=x=>(blob=x,'blob:test');w.URL.revokeObjectURL=()=>{};w.HTMLAnchorElement.prototype.click=function(){};
+ w.eval(fs.readFileSync('frontend/assets/active-directory.js','utf8'));
+ await w.document.querySelector('#adForm').onsubmit({preventDefault(){}});
+ const root=w.document.querySelector('#adResults'),search=root.querySelector('[aria-label="Filter AD groups"]'),mode=root.querySelector('[aria-label="Group name match"]');
+ assert(root.querySelector('.ad-group-description').textContent.includes('Trading access <important>'));assert(!root.querySelector('important'));
+ let opened;w.AtlasAD.browseMembers=(dn,server)=>{opened={dn,server};};
+ const first=root.querySelector('.ad-groups tbody tr');const groupName=first.querySelector('.ad-object-link').textContent;
+ await first.querySelector('[aria-label^="Copy "]').onclick();assert.equal(copied,groupName);
+ first.querySelector('.ad-object-link').click();assert(opened.dn.startsWith('CN='));
+ first.dispatchEvent(new w.MouseEvent('contextmenu',{bubbles:true,clientX:10,clientY:10}));
+ const menu=w.document.querySelector('.atlas-ad-context');assert(menu.textContent.includes('See members'));menu.querySelectorAll('button')[1].click();assert(!w.document.querySelector('.atlas-ad-context'));
+ function filter(m,t,n){mode.value=m;search.value=t;search.oninput();assert.equal(root.querySelectorAll('.ad-groups tbody tr').length,n)}
+ filter('ends','PARIS',1);filter('starts','app_',2);filter('exact','APP_London',1);filter('excludes','APP',1);filter('contains','',3);
+ root.querySelector('[aria-label="Compare AD object"]').value='bob';await root.querySelector('form').onsubmit({preventDefault(){}});
+ const view=root.querySelector('[aria-label="Membership comparison"]');view.value='both';view.onchange();assert.equal(root.querySelectorAll('.ad-groups tbody tr').length,1);
+ view.value='first';view.onchange();assert.equal(root.querySelectorAll('.ad-groups tbody tr').length,2);
+ view.value='second';view.onchange();assert(root.querySelector('.ad-groups').textContent.includes('VPN_Paris'));
+ view.value='all';view.onchange();w.AtlasAD.command('ad-export-groups');
+ const reader=new w.FileReader();const csv=await new Promise(resolve=>{reader.onload=()=>resolve(reader.result);reader.readAsText(blob)});assert(csv.includes("'=SUM(1,2)"));assert(csv.includes('Description'));assert(csv.includes('Trading access <important>'));assert(csv.includes('"In both"'));assert(csv.includes('"alice","bob"'));
+ w.document.querySelector('#adSelected').click();assert.equal(w.AtlasAD.groupActions,null);
+ w.AtlasReadOnly={};w.AtlasAD.show('computer','PC02');assert.equal(calls,2);assert(w.document.querySelector('#adLookup').disabled);
+ w.close();console.log('PASS: five filters, DN comparison, CSV escaping/formula protection, stale export cleared and viewer blocked');
+})().catch(e=>{console.error(e);process.exit(1)});

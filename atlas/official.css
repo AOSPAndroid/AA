@@ -1,0 +1,514 @@
+.floor-rail {
+  max-height: 85%;
+  overflow: auto;
+}
+.map-info-button {
+  position: absolute;
+  right: 16px;
+  bottom: 64px;
+  z-index: 5;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  padding: 7px;
+  border: 1px solid #c7dce8;
+  border-radius: 50%;
+  background: #fff;
+  color: #0084ad;
+  box-shadow: 0 2px 9px #17334612;
+  cursor: pointer;
+}
+.map-info-button svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+.map-info-button .info-dot {
+  fill: currentColor;
+  stroke: none;
+}
+.map-info-button:hover {
+  background: #edf9fd;
+  border-color: #0084ad;
+}
+.map-info-button:focus-visible {
+  outline: 2px solid #0084ad;
+  outline-offset: 3px;
+}
+.floor-rail button {
+  min-height: 30px;
+  height: 30px;
+}
+#viewport {
+  background: #f3f6f8;
+}
+.view-switch a {
+  padding: 8px 12px;
+  font-size: 12px;
+}
+#previous-person {
+  width: 100%;
+  margin: 10px 0;
+}
+#map-previous {
+  margin-bottom: 10px;
+}
+.ops-desk-editor p {
+  font-size: 12px;
+  line-height: 1.5;
+}
+.ops-desk-editor a {
+  display: block;
+  margin: 8px 0;
+}
+@media (max-width: 760px) {
+  .floor-rail button {
+    height: 27px;
+    min-height: 27px;
+  }
+  .floor-rail {
+    top: 80px;
+  }
+}
+
+.header-right .atlas-return {
+  font-size: 12px;
+  text-decoration: none;
+  border: 1px solid #dce5ec;
+  border-radius: 7px;
+  padding: 8px 10px;
+  background: #fff;
+}
+label:has(input[name="angle"]),
+#reposition {
+  display: none !important;
+}
+#viewport {
+  background: radial-gradient(
+    ellipse at 48% 35%,
+    #f9fbfc 0%,
+    #e9f0f5 72%,
+    #e3edf3 100%
+  );
+}
+.map-name {
+  overflow: hidden;
+  border-radius: 9px !important;
+  border-color: #d7e3eb !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  box-shadow: 0 3px 12px #284d6710 !important;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif !important;
+}
+.map-name.chosen {
+  border-color: #0089b5 !important;
+  box-shadow: 0 4px 18px #007ca525 !important;
+}
+#hover {
+  font:
+    12px/1.4 system-ui,
+    sans-serif;
+  border-radius: 8px;
+  padding: 9px 12px;
+  box-shadow: 0 6px 20px #284d6725;
+  max-width: 280px;
+  pointer-events: none;
+}
+
+.map-name.chosen,
+.map-name.chosen strong {
+  color: #133f55 !important;
+}
+.map-name.chosen span {
+  color: #53758b !important;
+}
+
+/* Atlas control family: identical action shapes, explicit boolean switches. */
+
+button,
+.header-right a,
+.ops-header-link,
+.atlas-return {
+  border-radius: 12px !important;
+  font-family: inherit;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid #0086b0;
+  outline-offset: 3px;
+}
+header button,
+.header-right a {
+  min-height: 36px;
+  padding: 8px 13px !important;
+  border: 1px solid #d5e2ea;
+  background: #fff;
+  color: #16465e;
+  text-decoration: none;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+header button:hover,
+.header-right a:hover {
+  background: #edf7fb;
+  border-color: #a9cedd;
+}
+.name-toggle {
+  border-radius: 12px;
+  padding: 10px 13px;
+  min-height: 38px;
+  box-sizing: border-box;
+  font-weight: 500;
+}
+.switch-track {
+  width: 36px;
+  height: 22px;
+  background: #93a4af;
+}
+.switch-track:after {
+  width: 18px;
+  height: 18px;
+  top: 2px;
+  left: 2px;
+}
+.name-toggle input:checked + .switch-track:after {
+  transform: translateX(14px);
+}
+.view-switch {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+}
+.view-toggle {
+  margin: 0;
+}
+.floor-rail {
+  border-radius: 16px;
+}
+.floor-rail button {
+  border-radius: 10px !important;
+}
+.map-tools button {
+  border-radius: 12px !important;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* The locator follows the projected desk; only its ring animates. */
+.map-locator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  z-index: 8;
+  pointer-events: none;
+}
+#viewport .map-name {
+  cursor: var(--atlas-map-hover, pointer);
+}
+.locator-ring {
+  position: absolute;
+  left: -38px;
+  top: -38px;
+  width: 76px;
+  height: 76px;
+  border: 2px solid #e99037;
+  border-radius: 50%;
+  background: radial-gradient(circle, transparent 45%, #f7ad4720 100%);
+  box-shadow: 0 0 0 7px #f7ad4710;
+}
+.locator-core {
+  position: absolute;
+  left: -4px;
+  top: -4px;
+  width: 8px;
+  height: 8px;
+  background: #ed963b;
+  border: 2px solid white;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px #e9903730;
+}
+.map-tools button {
+  transition:
+    transform var(--atlas-motion-fast),
+    background-color var(--atlas-motion-fast),
+    box-shadow var(--atlas-motion-fast);
+}
+@media (hover: hover) {
+  .map-tools button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 12px #1733461c;
+  }
+}
+.map-tools button:active {
+  transform: scale(0.94);
+}
+.floor-rail button {
+  transition:
+    background-color var(--atlas-motion-fast),
+    color var(--atlas-motion-fast),
+    box-shadow var(--atlas-motion-fast);
+}
+.floor-rail button.active {
+  box-shadow: 0 3px 10px #007eae25;
+}
+html[data-atlas-motion="reduce"] .map-locator {
+  display: none !important;
+}
+html[data-atlas-motion="reduce"] .map-tools button:hover,
+html[data-atlas-motion="reduce"] .map-tools button:active {
+  transform: none;
+}
+
+.map-tools #reset {
+  width: auto;
+  padding: 8px 12px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* Scoped to the map; forms elsewhere retain their normal system cursors. */
+#viewport {
+  cursor: var(--atlas-map-arrow, default);
+}
+#viewport
+  :is(button, a, summary, label, input[type="checkbox"], input[type="radio"]) {
+  cursor: var(--atlas-map-hover, pointer);
+}
+#viewport :is(button, input):disabled {
+  cursor: not-allowed;
+}
+
+/* Amenity tags remain independent of people/name visibility. */
+.amenity-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 7;
+}
+.amenity-labels[hidden],
+.amenity-tag[hidden] {
+  display: none;
+}
+.room-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.amenity-tag {
+  position: absolute;
+  box-sizing: border-box;
+  padding: 5px 9px;
+  border: 1px solid #0084b4;
+  border-radius: 8px;
+  background: #f0faff;
+  color: #005b7c;
+  box-shadow: 0 2px 6px #14365018;
+  font: 600 12px/16px system-ui;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+
+/* One compact map-settings drawer; floor navigation stays on the rail. */
+.map-settings {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 20;
+  color: #203d50;
+  font: 14px system-ui;
+}
+.map-settings > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: max-content;
+  padding: 8px 11px;
+  border: 1px solid #bed1de;
+  border-radius: 9px;
+  background: white;
+  box-shadow: 0 2px 8px #14365014;
+  cursor: pointer;
+  list-style: none;
+  font-size: 13px;
+}
+.map-settings > summary::-webkit-details-marker {
+  display: none;
+}
+.map-settings[open] > summary {
+  border-color: #0084b4;
+  color: #00668b;
+}
+.map-settings-body {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: 228px;
+  max-height: min(450px, calc(100vh - 220px));
+  max-height: min(450px, calc(100dvh - 220px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  box-sizing: border-box;
+  padding: 9px;
+  border: 1px solid #bed1de;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 5px 20px #14365020;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.map-settings .view-switch,
+.map-settings-view,
+.map-settings-layers {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+.map-settings-layers {
+  padding-block: 6px;
+  border-block: 1px solid #e2ebf1;
+}
+.map-settings .name-toggle,
+.map-settings .atlas-motion-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  padding: 7px;
+  min-height: 32px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font: 14px system-ui;
+  box-shadow: none;
+}
+.map-settings .name-toggle:hover,
+.map-settings .atlas-motion-toggle:hover {
+  background: #edf7fb;
+}
+.map-settings .switch-track,
+.map-settings .atlas-motion-track {
+  width: 28px;
+  height: 16px;
+  flex: 0 0 28px;
+  border-radius: 10px;
+}
+.map-settings .switch-track:after,
+.map-settings .atlas-motion-track:after {
+  width: 12px;
+  height: 12px;
+  top: 2px;
+  left: 2px;
+}
+.map-settings input:checked + .switch-track:after,
+.map-settings input:checked + .atlas-motion-track:after {
+  transform: translateX(12px);
+}
+.map-settings .atlas-motion-state {
+  margin-left: auto;
+  font-size: 12px;
+}
+.map-settings .atlas-display-mode {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 6px;
+  font-size: 14px;
+}
+.map-settings .atlas-display-mode select {
+  min-width: 0;
+  flex: 1;
+  font-size: 13px;
+}
+.map-settings .map-tools {
+  position: static;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 3px;
+  padding: 4px;
+  background: #edf3f7;
+  box-shadow: inset 0 0 0 1px #d7e3ea;
+  border: 0;
+  border-radius: 12px;
+  transform: none;
+}
+.map-settings .map-tools button {
+  width: auto;
+  height: 38px;
+  min-height: 38px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 9px !important;
+  background: transparent;
+  box-shadow: none;
+  color: #24475b;
+  font: 500 19px/1 system-ui;
+}
+.map-settings .map-tools #reset {
+  width: auto;
+  min-width: 0;
+  padding: 0;
+  font-size: 18px;
+}
+@media (hover: hover) {
+  .map-settings .map-tools button:hover {
+    transform: translateY(-1px);
+    border-color: #c8dbe6;
+    background: #fff;
+    box-shadow: 0 3px 9px #17334618;
+    color: #007eae;
+  }
+}
+.map-settings .map-tools button:active {
+  transform: scale(0.92);
+  background: #e1f3fa;
+  box-shadow: none;
+}
+.map-settings summary:focus-visible {
+  outline: 2px solid #0084b4;
+  outline-offset: 3px;
+}
+@media (max-width: 600px) {
+  .map-settings {
+    top: 8px;
+    right: 8px;
+  }
+  .map-settings-body {
+    width: min(228px, calc(100vw - 32px));
+  }
+}
+
+/* Keep the plan caption clear of the settings button on narrow maps. */
+.map-top {
+  right: 160px;
+}
+.map-top .pill {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-sizing: border-box;
+}

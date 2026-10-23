@@ -1,0 +1,13 @@
+const fs=require('fs'),assert=require('assert/strict'),{JSDOM}=require('jsdom');
+const w=new JSDOM('<body><div id="host"></div></body>',{runScripts:'outside-only'}).window;
+w.eval(fs.readFileSync('atlas/site-info.js','utf8').replaceAll('export const ','const ').replaceAll('export function ','function ')+';window.mountAccessCheck=mountAccessCheck;');
+let objects=[{kind:'user',details:{Account:'alice'},groups:[{name:'fglb-daas-prd-rpc-glo'},{name:'fGLBAZADCTXUsers'}],warnings:[]},null];
+const host=w.document.querySelector('#host'),refresh=w.mountAccessCheck(host,()=>objects),select=host.querySelector('select');
+assert(host.textContent.includes('Not checked'));
+select.value='0';select.onchange();assert(host.textContent.includes('All listed'));assert(host.textContent.includes('Comparison user'));
+objects[1]={kind:'user',details:{Account:'bob'},groups:[],warnings:[]};refresh();assert(host.textContent.includes('2 not found'));
+objects[1].warnings=['Group lookup partial'];refresh();assert(host.textContent.includes('Incomplete lookup'));assert(!host.textContent.includes('2 not found'));
+objects[1].kind='computer';refresh();assert(host.textContent.includes('Not applicable'));
+objects[1]=null;refresh();assert(!host.textContent.includes('bob'));assert(host.textContent.includes('Not checked'));
+select.value='3';select.onchange();assert(host.textContent.includes('1 not found'));assert(host.textContent.includes('fGLB-GLO_DaaS_Trader_Prod_VDI'));
+w.close();console.log('PASS: explicit profile, case-insensitive matching, per-user missing groups, partial results, machines and stale comparison');

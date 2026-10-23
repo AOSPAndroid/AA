@@ -1,0 +1,25 @@
+/* Utilities are prefixed; Atlas owns reset, tokens and final component geometry. */
+@layer theme, utilities;
+@import "tailwindcss/theme.css" layer(theme) prefix(atl);
+@import "tailwindcss/utilities.css" layer(utilities) prefix(atl);
+@source "./";
+
+/* shadcn semantic utilities inherit Atlas' shared appearance tokens. */
+@theme inline {
+  --color-background: var(--atlas-surface);
+  --color-foreground: var(--atlas-text);
+  --color-card: var(--atlas-surface);
+  --color-card-foreground: var(--atlas-text);
+  --color-primary: var(--atlas-accent);
+  --color-primary-foreground: #fff;
+  --color-secondary: var(--atlas-surface-subtle);
+  --color-secondary-foreground: var(--atlas-muted);
+  --color-muted: var(--atlas-surface-subtle);
+  --color-muted-foreground: var(--atlas-muted);
+  --color-accent: var(--atlas-selected);
+  --color-accent-foreground: var(--atlas-ink);
+  --color-destructive: var(--atlas-danger);
+  --color-border: var(--atlas-line);
+  --color-input: var(--atlas-line);
+  --color-ring: var(--atlas-focus);
+}

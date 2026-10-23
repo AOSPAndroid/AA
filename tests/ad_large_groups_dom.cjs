@@ -1,0 +1,38 @@
+// 200+ groups: comparisons open on the differences, sections by name prefix fold the rest away.
+const fs=require('fs'),assert=require('assert/strict'),{JSDOM}=require('jsdom');
+(async()=>{
+ const w=new JSDOM(fs.readFileSync('frontend/index.html','utf8'),{runScripts:'outside-only',url:'http://localhost/installer'}).window;
+ w.S={target:'PC01'};w.page=()=>{};
+ const g=name=>({name,dn:'CN='+name+',OU=Groups,DC=corp,DC=test',description:'',scope:'Global',category:'Security',membership:'Direct'});
+ const common=[];
+ for(const [prefix,n] of [['APP',90],['FS',60],['GG',40],['PRN',30]])for(let i=1;i<=n;i++)common.push(g(`${prefix}-Common-${String(i).padStart(3,'0')}`));
+ common.push(g('Domain Users'),g('Odd group'));
+ const people={newjoiner:[...common,g('APP-Only-Mine')],colleague:[...common,g('APP-Bloomberg'),g('FS-Equities-RW'),g('VPN-Remote'),g('VPN-Paris'),g('VPN-Token')]};
+ w.AtlasClient={request:async(url,options)=>{const id=JSON.parse(options.body).identity;return {details:{Account:id},groups:people[id],warnings:[],membership_note:''};}};
+ w.eval(fs.readFileSync('frontend/assets/active-directory.js','utf8'));
+ w.document.querySelector('#adKind').value='user';w.document.querySelector('#adIdentity').value='newjoiner';
+ await w.document.querySelector('#adForm').onsubmit({preventDefault(){}});
+ const root=w.document.querySelector('#adResults'),sections=()=>[...root.querySelectorAll('tr.ad-section')].map(s=>s.querySelector('strong').textContent);
+ const rows=()=>root.querySelectorAll('.ad-groups tbody tr:not(.ad-section)').length;
+ assert.equal(people.newjoiner.length,223);
+ assert(!root.querySelector('.ad-section-option').hidden,'Grouping is offered for large lists');
+ assert.deepEqual(sections(),['APP-…','FS-…','GG-…','PRN-…','Other groups'],'Prefixes become sections; small ones join Other');
+ assert.equal(rows(),223);
+ root.querySelector('.ad-section-all button').click();
+ assert.equal(rows(),0,'Collapse all leaves only the section headers');
+ assert.equal(root.querySelector('tr.ad-section button').getAttribute('aria-expanded'),'false');
+ [...root.querySelectorAll('tr.ad-section button')].find(b=>b.textContent.includes('FS-')).click();
+ assert.equal(rows(),60,'One section opens on its own');
+ root.querySelector('.ad-section-all button:last-child').click();assert.equal(rows(),223);
+ root.querySelector('[aria-label="Compare AD object"]').value='colleague';
+ await root.querySelector('.ad-group-compare').onsubmit({preventDefault(){}});
+ assert.equal(rows(),6,'Comparing 223 groups shows just the 6 differences');
+ assert.match(root.querySelector('.ad-hidden-note').textContent,/222 groups everyone has are hidden/);
+ const heads=[...root.querySelectorAll('tr.ad-section')].map(s=>s.textContent);
+ assert.match(heads[0],/^▾VPN-…3 groups3 missing$/,'The section with the most missing groups comes first');
+ assert(heads.some(t=>/APP-….*1 missing.*1 only newjoiner/.test(t)));
+ root.querySelector('[aria-label="Group by name prefix"]').click();
+ assert.equal(root.querySelectorAll('tr.ad-section').length,0,'Grouping can be turned off');
+ assert.equal(rows(),6);
+ w.close();console.log('PASS: 223 groups: prefix sections with counts, collapse/expand, differences-first comparison and hidden-count note');
+})().catch(e=>{console.error(e);process.exit(1)});

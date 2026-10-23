@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="/assets/ui-tokens.css?v=73" />
+    <script src="/assets/shared-ui.js"></script>
+    <script src="/assets/client.js"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Manage Database · Office Atlas</title>
+    <link rel="stylesheet" href="/assets/atlas-theme.css" />
+    <style>
+      body {
+        display: block;
+      }
+      main {
+        max-width: 1050px;
+        padding: 28px 24px;
+      }
+      label {
+        font-size: 14px;
+      }
+      h1 {
+        font-size: 28px;
+      }
+      .panel {
+        margin: 20px 0;
+      }
+      #message {
+        white-space: pre-wrap;
+      }
+      .review-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+      }
+      .review-grid article {
+        padding: 16px;
+        background: var(--bg);
+        border-radius: 10px;
+      }
+      li {
+        margin: 6px 0;
+      }
+      #history button {
+        margin: 8px 0;
+      }
+      #coverage table,
+      #changes table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+      }
+      #coverage th,
+      #coverage td,
+      #changes th,
+      #changes td {
+        padding: 10px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      #coverage details,
+      #changes details {
+        margin: 12px 0;
+      }
+      #coverage summary,
+      #changes summary {
+        cursor: pointer;
+        font-weight: 600;
+      }
+      input[type="file"] {
+        width: 100%;
+      }
+    </style>
+    <link rel="stylesheet" href="/assets/atlas-interactions.css" />
+    <link rel="stylesheet" href="/assets/design-system.css" />
+  </head>
+  <body class="atlas-database atlas-upload-workflows">
+    <main>
+      <header>
+        <div>
+          <h1>Upload data</h1>
+          <p>Choose a data section → upload → review → save</p>
+        </div>
+        <div class="row">
+          <a class="atlas-return" href="/installer">IT Console</a
+          ><a class="atlas-return" href="/">Floor atlas</a>
+        </div>
+      </header>
+      <div id="message" role="status" aria-live="polite">
+        Loading database status…
+      </div>
+      <section class="panel atlas-live-plan" id="live-plan" aria-labelledby="live-plan-title">
+        <header class="atlas-live-plan-head"><h2 id="live-plan-title">Live floor plan</h2><span id="live-plan-state" role="status">Off</span></header>
+        <p>Atlas reads the assistants' desk plan (Excel boxes such as <b>Christophe Duriez 02R015079</b>, <b>Credit Sales 02R016079</b> or <b>Open 03R016079</b>) from a synced folder, and the map updates within a minute of each save, in Admin and Demo. The Excel is the authority: what it says is applied as written, with a backup, and anything Atlas could not link is listed as a note. With <b>Ask before large changes</b> on, a save that changes many desks waits here for you first. Desks the plan does not mention are left as they are.</p>
+        <div class="atlas-live-plan-controls">
+          <label class="atlas-live-plan-folder">Plan folder<input id="live-plan-folder" autocomplete="off" spellcheck="false" placeholder="C:\Users\you\OneDrive - Company\Shortcuts\PA-IT_shared\02_Current_plan"></label>
+          <label class="atlas-live-plan-toggle"><input type="checkbox" id="live-plan-enabled"> Live link on</label>
+          <label class="atlas-live-plan-toggle" title="Off: every save of the plan reaches the map straight away"><input type="checkbox" id="live-plan-review" checked> Ask before large changes</label>
+          <button type="button" id="live-plan-save" class="primary">Save</button>
+          <button type="button" id="live-plan-check">Check now</button>
+        </div>
+        <p id="live-plan-message" role="status"></p>
+        <div id="live-plan-details" class="atlas-live-plan-details"></div>
+        <section id="live-plan-held" class="atlas-live-plan-held" hidden>
+          <h3>Waiting for your review</h3>
+          <p id="live-plan-held-reason"></p>
+          <ul id="live-plan-changes"></ul>
+          <button type="button" id="live-plan-apply" class="primary">Apply these changes</button>
+        </section>
+        <details class="atlas-live-plan-history"><summary>Recent live updates</summary><ul id="live-plan-history"></ul></details>
+      </section>
+      <div class="atlas-upload-grid">
+        <section class="panel atlas-upload-section" id="directory-import">
+          <h2>Users &amp; devices</h2>
+          <p>
+            Select your two ServiceNow exports together (the <b>users</b> file and the
+            <b>devices</b> file, .xlsx or .csv, in any order; Ctrl-click both or drag them here),
+            or one workbook with <b>users</b> and <b>devices</b> tabs. Keep the exports as they are. Atlas handles duplicate records and
+            identifies phones by their serial number or asset tag. Preview the
+            changes, then back up and apply.
+          </p>
+          <p class="atlas-import-notice">
+            <b>Complete snapshot:</b> users and devices omitted from this
+            workbook are removed from the directory.
+          </p>
+          <div class="atlas-import-controls" data-database-controls="directory">
+            <label
+              >Users and devices exports, or one workbook<input
+                id="file"
+                type="file"
+                multiple
+                accept=".xlsx,.csv" /></label
+            ><button id="validate" class="primary">Validate and preview</button>
+            <p id="directory-message" role="status" aria-live="polite">
+              Choose your users and devices exports (or one workbook), then validate.
+            </p>
+            <progress
+              id="directory-progress"
+              aria-label="Validating directory workbook"
+              hidden
+            ></progress>
+          </div>
+          <section id="preview" class="atlas-import-review" hidden>
+            <h3>Review directory changes</h3>
+            <p id="source"></p>
+            <div id="changes" class="review-grid"></div>
+            <div id="warnings"></div>
+            <details>
+              <summary>Examples and missing desk accounts</summary>
+              <pre id="examples"></pre>
+            </details>
+            <p>
+              A full backup is created before applying. Desk positions, edited
+              labels, confirmed account links, package catalogue and operation
+              history stay in place. Removed accounts disappear from directory
+              search.
+            </p>
+            <div
+              class="atlas-import-controls"
+              data-database-controls="directory-review"
+            >
+              <label
+                ><input type="checkbox" id="full" />This is the complete
+                intended directory snapshot, and I have reviewed the
+                removals.</label
+              ><label
+                >Type APPLY to proceed<input id="confirm" autocomplete="off"
+              /></label>
+              <div class="row">
+                <button id="apply" class="primary" disabled>
+                  Back up and apply</button
+                ><button id="cancel">Discard preview</button>
+              </div>
+              <p id="review-message" role="status" aria-live="polite"></p>
+              <progress
+                id="review-progress"
+                aria-label="Applying directory changes"
+                hidden
+              ></progress>
+            </div>
+          </section>
+          <details class="atlas-import-help">
+            <summary>Workbook format and template</summary>
+            <p>
+              The original export headers are supported: devices use ci, model,
+              assigned_to, asset_tag, serial_number, install_status,
+              cmp_last_used, assigned and location. Laptops and corporate
+              iPhones are included. Existing Users and computers workbooks also
+              work.
+            </p>
+            <p>
+              Mobile devices with generic or empty CI names remain searchable
+              using their hardware identifiers. PCs without a ci/name hostname
+              stay in the export archive. Unassigned devices with a hostname
+              remain searchable and usable.
+            </p>
+            <a class="atlas-return" href="/api/excel-templates/directory"
+              >Download directory template (.xlsx)</a
+            >
+          </details>
+          <details id="directory-coverage" class="atlas-import-help">
+            <summary>Imported columns and field export</summary>
+            <p>
+              Inspect every imported column, its populated records and where it
+              is used.
+            </p>
+            <div id="coverage">Loading column coverage…</div>
+            <a class="atlas-return" href="/api/database/export-archive"
+              >Download all directory fields (.ndjson)</a
+            >
+          </details>
+          <details class="atlas-import-help">
+            <summary>Import history and restore</summary>
+            <p>
+              Restore directory stages a preview from the backup made before
+              that import. It preserves current seating and deployment history.
+            </p>
+            <div id="history"></div>
+          </details>
+        </section>
+        <section id="floorplan-import" class="panel atlas-upload-section">
+          <h2>Bulk floor plan changes</h2>
+          <p>
+            Update desk occupants, teams, accounts and vacancies in bulk.
+            Download the current seating, edit it in Excel, then upload it here.
+          </p>
+          <div id="seating-panel">
+            <div class="atlas-import-controls" data-database-controls="seating">
+              <label
+                >Layout
+                <select id="seating-layout">
+                  <option value="official">Official desks</option>
+                  <option value="previous">Previous seating</option>
+                </select></label
+              >
+              <a
+                class="atlas-return"
+                id="seating-export"
+                href="/api/seating-excel/export?layout=official"
+                >Download current users and desks (.xlsx)</a
+              >
+              <label
+                >Latest users and desks workbook<input
+                  id="seating-file"
+                  type="file"
+                  accept=".xlsx"
+              /></label>
+              <button id="seating-preview" class="primary">
+                Detect changes
+              </button>
+              <p id="seating-message" role="status" aria-live="polite"></p>
+            </div>
+            <details class="atlas-import-help">
+              <summary>Full layout snapshot (optional)</summary>
+              <label
+                ><input id="seating-complete" type="checkbox" />Complete layout
+                snapshot: vacate every desk omitted from this sheet in the
+                selected layout.</label
+              >
+              <p>
+                Leave this unchecked for a partial update. Omitted people stay
+                seated unless a recognised move relocates them. Removing someone
+                from seating does not delete their directory account.
+              </p>
+            </details>
+            <div id="seating-result" hidden>
+              <p id="seating-counts"></p>
+              <div id="seating-errors" role="alert"></div>
+              <details>
+                <summary>Account and data warnings</summary>
+                <ul id="seating-warnings"></ul>
+              </details>
+              <div style="overflow: auto; max-height: 480px">
+                <table
+                  style="
+                    width: 100%;
+                    text-align: left;
+                    border-collapse: collapse;
+                  "
+                >
+                  <thead>
+                    <tr>
+                      <th>Desk</th>
+                      <th>Change</th>
+                      <th>Before</th>
+                      <th>After</th>
+                    </tr>
+                  </thead>
+                  <tbody id="seating-changes"></tbody>
+                </table>
+              </div>
+              <p>
+                A full database backup and per-desk history are saved. Changes
+                apply together. Account links shown in this preview are
+                confirmed when you apply; physical seating verification resets
+                for changed desks.
+              </p>
+              <div
+                class="atlas-import-controls"
+                data-database-controls="seating-review"
+              >
+                <label
+                  >Type APPLY<input
+                    id="seating-confirm"
+                    autocomplete="off" /></label
+                ><button id="seating-apply" class="primary" disabled>
+                  Back up and apply seating changes
+                </button>
+              </div>
+            </div>
+            <details class="atlas-import-help">
+              <summary>Floor plan format and blank templates</summary>
+              <p>
+                Columns: <b>Desk ID, Name, Team, Account, Status</b>. Use a
+                login, email or BRID in Account to identify someone reliably,
+                including after a name change. New names can be seated without
+                an account; this does not create a directory account.
+              </p>
+              <p>
+                For a vacancy, clear Name and Account and set Status to
+                <b>vacant</b>. For an assignment, set Status to <b>assigned</b>.
+                A recognised move clears the person's old desk automatically.
+                Positions and equipment stay in place.
+              </p>
+              <div class="row">
+                <a
+                  class="atlas-return"
+                  href="/api/excel-templates/seating-official"
+                  >Official desks template (.xlsx)</a
+                ><a
+                  class="atlas-return"
+                  href="/api/excel-templates/seating-previous"
+                  >Previous seating template (.xlsx)</a
+                >
+              </div>
+            </details>
+            <details>
+              <summary>Seating import history</summary>
+              <ul id="seating-history"></ul>
+            </details>
+          </div>
+          <details id="desk-moves-panel" class="atlas-import-help">
+            <summary>Move or swap existing occupants</summary>
+            <p>
+              Move several occupants between existing desks, including swaps.
+              This does not import directory data or reposition the physical
+              desks.
+            </p>
+            <a
+              class="atlas-return"
+              href="/api/desk-moves/export?layout=official"
+              >Export official desks (.xlsx)</a
+            >
+            <a
+              class="atlas-return"
+              href="/api/desk-moves/export?layout=previous"
+              >Export previous seating (.xlsx)</a
+            >
+            <p>
+              Edit only the blue Move to desk column, then upload the workbook
+              here.
+            </p>
+            <div class="atlas-import-controls" data-database-controls="moves">
+              <label
+                >Edited desk workbook<input
+                  id="moves-file"
+                  type="file"
+                  accept=".xlsx" /></label
+              ><button id="moves-preview">Preview desk moves</button>
+              <p id="moves-message" role="status" aria-live="polite"></p>
+            </div>
+            <div id="moves-result" hidden>
+              <pre id="moves-summary"></pre>
+              <p>
+                Occupants and confirmed account links move together. Equipment
+                stays at its desk. All moves apply together after a full backup.
+              </p>
+              <div
+                class="atlas-import-controls"
+                data-database-controls="moves-review"
+              >
+                <label
+                  >Type MOVE<input
+                    id="moves-confirm"
+                    autocomplete="off" /></label
+                ><button id="moves-apply" class="primary" disabled>
+                  Back up and apply desk moves
+                </button>
+              </div>
+            </div>
+          </details>
+        </section>
+        <section class="panel atlas-upload-section" id="package-data-import">
+          <h2>Package data</h2>
+          <p>
+            Enrich the SharePoint catalogue with ServiceNow package states,
+            packagers and requesters.
+          </p>
+          <p class="atlas-import-notice">
+            Updates the short names supplied. Existing metadata absent from this
+            extract is kept; SharePoint remains the package source.
+          </p>
+          <p>
+            Upload the raw export. Repeated short names are reconciled using the
+            newest updated record, or the last CSV row when no update date is
+            supplied. Missing or unusual short names are kept as metadata only.
+            Every original row is preserved.
+          </p>
+          <p id="package-data-status" role="status">
+            Loading package import status…
+          </p>
+          <div class="atlas-import-controls" id="package-data-controls">
+            <label
+              >ServiceNow package export (.csv)<input
+                id="package-data-file"
+                type="file"
+                accept=".csv,text/csv"
+            /></label>
+            <button id="package-data-validate" class="primary" type="button">
+              Validate and preview
+            </button>
+            <p id="package-data-message" role="status" aria-live="polite">
+              Choose the ServiceNow package CSV.
+            </p>
+            <progress
+              id="package-data-progress"
+              aria-label="Processing package CSV"
+              hidden
+            ></progress>
+            <section
+              id="package-data-review"
+              class="atlas-import-review"
+              hidden
+            >
+              <h3>Review package data</h3>
+              <p id="package-data-source"></p>
+              <p id="package-data-summary"></p>
+              <p id="package-data-coverage"></p>
+              <p id="package-data-warnings"></p>
+              <details id="package-data-duplicates" hidden>
+                <summary>Automatically resolved records (up to 20)</summary>
+                <pre id="package-data-duplicate-examples"></pre>
+              </details>
+              <details id="package-data-unmatched" hidden>
+                <summary>Raw records without a folder match (up to 20)</summary>
+                <pre id="package-data-unmatched-examples"></pre>
+              </details>
+              <details>
+                <summary>Example short names and states</summary>
+                <pre id="package-data-examples"></pre>
+              </details>
+              <p>
+                State and ownership reflect this extract. Short names match
+                exactly, ignoring case and outer spaces. Packages without data
+                keep an unknown state. A package-only backup is saved before
+                applying.
+              </p>
+              <div class="row">
+                <button
+                  id="package-data-apply"
+                  class="primary"
+                  type="button"
+                  disabled
+                >
+                  Back up and save package data</button
+                ><button id="package-data-cancel" type="button">
+                  Discard preview
+                </button>
+              </div>
+            </section>
+          </div>
+          <details>
+            <summary>Accepted package headers</summary>
+            <p>
+              <code>name</code> (Short Package Name) and
+              <code>u_package_sub_state</code> (Package State) headers are
+              required. Their cells can be blank. Records without short names
+              use <code>sys_id</code>, package ID or their original cells for
+              identification and remain metadata only.
+            </p>
+            <p>
+              Also reads <code>u_display_name</code>,
+              <code>u_barclays_correlation_id</code>, <code>u_requester</code>,
+              <code>assigned_to</code>, <code>u_domain</code>,
+              <code>u_build</code> and <code>sys_created_on</code>.
+              Display-label headers are accepted too. Extra columns are
+              retained. <code>sys_updated_on</code> or <code>Updated</code>,
+              when supplied, determines which repeated record is selected.
+              Creation date and package state do not determine priority. CSV
+              limit: 10 MB / 20,000 rows.
+            </p>
+          </details>
+          <a class="atlas-return" href="/installer?command=packages"
+            >Browse packages</a
+          >
+        </section>
+        <section class="panel atlas-upload-section" id="vdi-data-import">
+          <h2>Citrix VDI data</h2>
+          <p>
+            Upload the raw Citrix machine export to link virtual desktops with
+            their users, machine catalogue and delivery group.
+          </p>
+          <p class="atlas-import-notice">
+            Updates each supplied VDI machine and replaces its complete user
+            list. Omitted VDI records are kept. ServiceNow users and devices
+            stay in place.
+          </p>
+          <p id="vdi-data-status" role="status">Loading VDI import status…</p>
+          <div class="atlas-import-controls" id="vdi-data-controls">
+            <label
+              >Citrix machine export (.csv or .xlsx)<input
+                id="vdi-data-file"
+                type="file"
+                accept=".csv,.xlsx,text/csv"
+            /></label>
+            <button id="vdi-data-validate" class="primary" type="button">
+              Validate and preview
+            </button>
+            <label
+              ><input id="vdi-data-full" type="checkbox" />Replace all VDI
+              records</label
+            >
+            <p id="vdi-data-mode" class="atlas-import-notice">
+              Merge update: VDI machines omitted from this export are retained.
+            </p>
+            <p id="vdi-data-message" role="status" aria-live="polite">
+              Choose your Citrix CSV or Excel export.
+            </p>
+            <progress
+              id="vdi-data-progress"
+              aria-label="Processing Citrix VDI export"
+              hidden
+            ></progress>
+            <section id="vdi-data-review" class="atlas-import-review" hidden>
+              <h3>Review VDI changes</h3>
+              <p id="vdi-data-source"></p>
+              <p id="vdi-data-summary"></p>
+              <p id="vdi-data-user-summary"></p>
+              <p id="vdi-data-warnings"></p>
+              <details id="vdi-data-user-warnings" hidden>
+                <summary>User links to review (import can continue)</summary>
+                <pre id="vdi-data-user-examples"></pre>
+              </details>
+              <details id="vdi-data-record-warnings" hidden>
+                <summary>Machine records to review</summary>
+                <pre id="vdi-data-record-examples"></pre>
+              </details>
+              <details id="vdi-data-removals" hidden>
+                <summary>VDI records removed by this snapshot</summary>
+                <pre id="vdi-data-removed-examples"></pre>
+              </details>
+              <details>
+                <summary>Original columns and example machines</summary>
+                <p id="vdi-data-columns"></p>
+                <pre id="vdi-data-examples"></pre>
+              </details>
+              <p>
+                Every supplied user association and original export column is
+                retained. Unmatched or ambiguous accounts remain visible for
+                review. A VDI-only backup is saved before applying.
+              </p>
+              <div class="row">
+                <button
+                  id="vdi-data-apply"
+                  class="primary"
+                  type="button"
+                  disabled
+                >
+                  Back up and save VDI data</button
+                ><button id="vdi-data-cancel" type="button">
+                  Discard preview
+                </button>
+              </div>
+            </section>
+          </div>
+          <details class="atlas-import-help">
+            <summary>Accepted Citrix headers and user lists</summary>
+            <p>
+              Keep the original headers, including <code>Name</code>,
+              <code>MachineCatalog</code>, <code>DeliveryGroup</code> and
+              <code>User</code>. Extra columns are retained. A User cell can
+              contain several domain accounts; Atlas keeps all associations and
+              matches usernames and domain accounts to the user directory,
+              rather than assuming that display names identify an account. CSV /
+              XLSX limit: 50 MB and 300,000 nonblank rows.
+            </p>
+          </details>
+        </section>
+      </div>
+    </main>
+    <script src="/assets/database.js"></script>
+    <script src="/assets/package-data-import.js"></script>
+    <script src="/assets/vdi-data-import.js"></script>
+    <script src="/assets/desk-moves.js"></script>
+    <script src="/assets/seating-excel.js"></script>
+    <script src="/assets/seating-sync.js"></script>
+    <script
+      type="module"
+      src="/assets/atlas-interactions.js"
+      data-atlas-interactions
+    ></script>
+  </body>
+</html>

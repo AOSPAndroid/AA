@@ -1,0 +1,3006 @@
+{
+  "version": 1,
+  "method": "Visual comparison of previous named scans and official PDFs; positional inference, not confirmation of current occupancy.",
+  "matches": [
+    {
+      "source": "L2-001",
+      "target": "02R010086",
+      "name": "Oren Ruban",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of six, same order beside management office.",
+      "sourceName": "Oren Ruban",
+      "sourceX": 0.13555555555555557,
+      "sourceY": 0.4677777777777778
+    },
+    {
+      "source": "L2-002",
+      "target": "02R011086",
+      "name": "Romain Rachidi",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of six, same order beside management office.",
+      "sourceName": "Romain Rachidi",
+      "sourceX": 0.1661111111111111,
+      "sourceY": 0.4677777777777778
+    },
+    {
+      "source": "L2-003",
+      "target": "02R015086",
+      "name": "Alessandro Pelleriti",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of six, same order beside management office.",
+      "sourceName": "Alessandro Pelleriti",
+      "sourceX": 0.19666666666666666,
+      "sourceY": 0.4677777777777778
+    },
+    {
+      "source": "L2-004",
+      "target": "02R016086",
+      "name": "Scott Nymark",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of six, same order beside management office.",
+      "sourceName": "Scott Nymark",
+      "sourceX": 0.22722222222222221,
+      "sourceY": 0.4677777777777778
+    },
+    {
+      "source": "L2-005",
+      "target": "02R020086",
+      "name": "Laurie Smadja",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of six, same order beside management office.",
+      "sourceName": "Laurie Smadja",
+      "sourceX": 0.2577777777777778,
+      "sourceY": 0.4677777777777778
+    },
+    {
+      "source": "L2-006",
+      "target": "02R021086",
+      "name": "Credit Sales",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of six, same order beside management office.",
+      "sourceName": "Credit Sales",
+      "sourceX": 0.28833333333333333,
+      "sourceY": 0.4677777777777778
+    },
+    {
+      "source": "L2-007",
+      "target": "02R010088",
+      "name": "Patrick Shafik",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of six, same order beside management office.",
+      "sourceName": "Patrick Shafik",
+      "sourceX": 0.13555555555555557,
+      "sourceY": 0.4922222222222222
+    },
+    {
+      "source": "L2-008",
+      "target": "02R011088",
+      "name": "Thibaut DUBOIS",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of six, same order beside management office.",
+      "sourceName": "Thibaut DUBOIS",
+      "sourceX": 0.1661111111111111,
+      "sourceY": 0.4922222222222222
+    },
+    {
+      "source": "L2-009",
+      "target": "02R015088",
+      "name": "Thomas Crouzet",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of six, same order beside management office.",
+      "sourceName": "Thomas Crouzet",
+      "sourceX": 0.19666666666666666,
+      "sourceY": 0.4922222222222222
+    },
+    {
+      "source": "L2-010",
+      "target": "02R016088",
+      "name": "Vanessa Valmont",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of six, same order beside management office.",
+      "sourceName": "Vanessa Valmont",
+      "sourceX": 0.22722222222222221,
+      "sourceY": 0.4922222222222222
+    },
+    {
+      "source": "L2-011",
+      "target": "02R020088",
+      "name": "Ons Belkecir",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of six, same order beside management office.",
+      "sourceName": "Ons Belkecir",
+      "sourceX": 0.2577777777777778,
+      "sourceY": 0.4922222222222222
+    },
+    {
+      "source": "L2-012",
+      "target": "02R021088",
+      "name": "Credit Sales",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of six, same order beside management office.",
+      "sourceName": "Credit Sales",
+      "sourceX": 0.28833333333333333,
+      "sourceY": 0.4922222222222222
+    },
+    {
+      "source": "L2-013",
+      "target": "02R010090",
+      "name": "Katharina JOSEPH",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of six, same order beside management office.",
+      "sourceName": "Katharina JOSEPH",
+      "sourceX": 0.13555555555555557,
+      "sourceY": 0.5166666666666667
+    },
+    {
+      "source": "L2-014",
+      "target": "02R011090",
+      "name": "Jaimin SHAH",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of six, same order beside management office.",
+      "sourceName": "Jaimin SHAH",
+      "sourceX": 0.1661111111111111,
+      "sourceY": 0.5166666666666667
+    },
+    {
+      "source": "L2-015",
+      "target": "02R015090",
+      "name": "Mir Shuaib Ali",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of six, same order beside management office.",
+      "sourceName": "Mir Shuaib Ali",
+      "sourceX": 0.19666666666666666,
+      "sourceY": 0.5166666666666667
+    },
+    {
+      "source": "L2-016",
+      "target": "02R016090",
+      "name": "You Tan",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of six, same order beside management office.",
+      "sourceName": "You Tan",
+      "sourceX": 0.22722222222222221,
+      "sourceY": 0.5166666666666667
+    },
+    {
+      "source": "L2-017",
+      "target": "02R020090",
+      "name": "Thibaut Belberka-Aries",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of six, same order beside management office.",
+      "sourceName": "Thibaut Belberka-Aries",
+      "sourceX": 0.2577777777777778,
+      "sourceY": 0.5166666666666667
+    },
+    {
+      "source": "L2-018",
+      "target": "02R021090",
+      "name": "Xavier Clement",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of six, same order beside management office.",
+      "sourceName": "Xavier Clement",
+      "sourceX": 0.28833333333333333,
+      "sourceY": 0.5166666666666667
+    },
+    {
+      "source": "L2-019",
+      "target": "02R011079",
+      "name": "Jennifer AIDAOUI",
+      "sourceRevision": 2,
+      "evidence": "West middle bank: two rows of three beside lift lobby.",
+      "sourceName": "Jennifer AIDAOUI",
+      "sourceX": 0.175,
+      "sourceY": 0.37777777777777777
+    },
+    {
+      "source": "L2-020",
+      "target": "02R015079",
+      "name": "Christophe Duriez",
+      "sourceRevision": 1,
+      "evidence": "West middle bank: two rows of three beside lift lobby.",
+      "sourceName": "Christophe Duriez",
+      "sourceX": 0.20555555555555555,
+      "sourceY": 0.37777777777777777
+    },
+    {
+      "source": "L2-021",
+      "target": "02R016079",
+      "name": "Credit Sales",
+      "sourceRevision": 1,
+      "evidence": "West middle bank: two rows of three beside lift lobby.",
+      "sourceName": "Credit Sales",
+      "sourceX": 0.2361111111111111,
+      "sourceY": 0.37777777777777777
+    },
+    {
+      "source": "L2-022",
+      "target": "02R011081",
+      "name": "Cedric Authier",
+      "sourceRevision": 1,
+      "evidence": "West middle bank: two rows of three beside lift lobby.",
+      "sourceName": "Cedric Authier",
+      "sourceX": 0.175,
+      "sourceY": 0.4027777777777778
+    },
+    {
+      "source": "L2-023",
+      "target": "02R015081",
+      "name": "Pierre Haberer",
+      "sourceRevision": 1,
+      "evidence": "West middle bank: two rows of three beside lift lobby.",
+      "sourceName": "Pierre Haberer",
+      "sourceX": 0.20555555555555555,
+      "sourceY": 0.4027777777777778
+    },
+    {
+      "source": "L2-024",
+      "target": "02R016081",
+      "name": "Credit Sales",
+      "sourceRevision": 1,
+      "evidence": "West middle bank: two rows of three beside lift lobby.",
+      "sourceName": "Credit Sales",
+      "sourceX": 0.2361111111111111,
+      "sourceY": 0.4027777777777778
+    },
+    {
+      "source": "L2-025",
+      "target": "02R017069",
+      "name": "Credit Sales",
+      "sourceRevision": 1,
+      "evidence": "North-west bank: three rows of two beside GCAS office.",
+      "sourceName": "Credit Sales",
+      "sourceX": 0.21666666666666667,
+      "sourceY": 0.27555555555555555
+    },
+    {
+      "source": "L2-026",
+      "target": "02R019069",
+      "name": "Compliance",
+      "sourceRevision": 1,
+      "evidence": "North-west bank: three rows of two beside GCAS office.",
+      "sourceName": "Compliance",
+      "sourceX": 0.2461111111111111,
+      "sourceY": 0.27555555555555555
+    },
+    {
+      "source": "L2-027",
+      "target": "02R017071",
+      "name": "Credit Sales",
+      "sourceRevision": 1,
+      "evidence": "North-west bank: three rows of two beside GCAS office.",
+      "sourceName": "Credit Sales",
+      "sourceX": 0.21666666666666667,
+      "sourceY": 0.3
+    },
+    {
+      "source": "L2-028",
+      "target": "02R019071",
+      "name": "Evin DOKUR",
+      "sourceRevision": 2,
+      "evidence": "North-west bank: three rows of two beside GCAS office.",
+      "sourceName": "Evin DOKUR",
+      "sourceX": 0.2461111111111111,
+      "sourceY": 0.3
+    },
+    {
+      "source": "L2-029",
+      "target": "02R017073",
+      "name": "Ying DAI",
+      "sourceRevision": 2,
+      "evidence": "North-west bank: three rows of two beside GCAS office.",
+      "sourceName": "Ying DAI",
+      "sourceX": 0.21666666666666667,
+      "sourceY": 0.3244444444444444
+    },
+    {
+      "source": "L2-030",
+      "target": "02R019073",
+      "name": "Sandrine Kone",
+      "sourceRevision": 1,
+      "evidence": "North-west bank: three rows of two beside GCAS office.",
+      "sourceName": "Sandrine Kone",
+      "sourceX": 0.2461111111111111,
+      "sourceY": 0.3244444444444444
+    },
+    {
+      "source": "L3-001",
+      "target": "03R009086",
+      "name": "Tristan Esque",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Tristan Esque",
+      "sourceX": 0.10777777777777778,
+      "sourceY": 0.48055555555555557
+    },
+    {
+      "source": "L3-002",
+      "target": "03R010086",
+      "name": "Noam BENITAH",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Noam BENITAH",
+      "sourceX": 0.13777777777777778,
+      "sourceY": 0.48055555555555557
+    },
+    {
+      "source": "L3-003",
+      "target": "03R014086",
+      "name": "Adrian KAESER",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Adrian KAESER",
+      "sourceX": 0.16777777777777778,
+      "sourceY": 0.48055555555555557
+    },
+    {
+      "source": "L3-004",
+      "target": "03R015086",
+      "name": "Clement BOMPARD",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Clement BOMPARD",
+      "sourceX": 0.19777777777777777,
+      "sourceY": 0.48055555555555557
+    },
+    {
+      "source": "L3-005",
+      "target": "03R019086",
+      "name": "Lea SCHAPIRA",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Lea SCHAPIRA",
+      "sourceX": 0.22777777777777777,
+      "sourceY": 0.48055555555555557
+    },
+    {
+      "source": "L3-006",
+      "target": "03R020086",
+      "name": "Caroline LE ROY",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Caroline LE ROY",
+      "sourceX": 0.2577777777777778,
+      "sourceY": 0.48055555555555557
+    },
+    {
+      "source": "L3-007",
+      "target": "03R024086",
+      "name": "Benjamin Sonigo",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Benjamin Sonigo",
+      "sourceX": 0.2877777777777778,
+      "sourceY": 0.48055555555555557
+    },
+    {
+      "source": "L3-008",
+      "target": "03R025086",
+      "name": "Ron Bruggink",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Ron Bruggink",
+      "sourceX": 0.31777777777777777,
+      "sourceY": 0.48055555555555557
+    },
+    {
+      "source": "L3-009",
+      "target": "03R029086",
+      "name": "Sven Waltmans",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Sven Waltmans",
+      "sourceX": 0.3477777777777778,
+      "sourceY": 0.48055555555555557
+    },
+    {
+      "source": "L3-010",
+      "target": "03R030086",
+      "name": "Amir Nilipour",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Amir Nilipour",
+      "sourceX": 0.37777777777777777,
+      "sourceY": 0.48055555555555557
+    },
+    {
+      "source": "L3-011",
+      "target": "03R009088",
+      "name": "Alexandra Spahr",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Alexandra Spahr",
+      "sourceX": 0.10777777777777778,
+      "sourceY": 0.5055555555555555
+    },
+    {
+      "source": "L3-012",
+      "target": "03R010088",
+      "name": "Shouvik Som",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Shouvik Som",
+      "sourceX": 0.13777777777777778,
+      "sourceY": 0.5055555555555555
+    },
+    {
+      "source": "L3-013",
+      "target": "03R014088",
+      "name": "Lorena Romano",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Lorena Romano",
+      "sourceX": 0.16777777777777778,
+      "sourceY": 0.5055555555555555
+    },
+    {
+      "source": "L3-014",
+      "target": "03R015088",
+      "name": "Pierre Jean STIEBERT",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Pierre Jean STIEBERT",
+      "sourceX": 0.19777777777777777,
+      "sourceY": 0.5055555555555555
+    },
+    {
+      "source": "L3-015",
+      "target": "03R019088",
+      "name": "Varija SHARMA",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Varija SHARMA",
+      "sourceX": 0.22777777777777777,
+      "sourceY": 0.5055555555555555
+    },
+    {
+      "source": "L3-016",
+      "target": "03R020088",
+      "name": "Chayma MASMOUDI",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Chayma MASMOUDI",
+      "sourceX": 0.2577777777777778,
+      "sourceY": 0.5055555555555555
+    },
+    {
+      "source": "L3-017",
+      "target": "03R024088",
+      "name": "Patrick Pemezec",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Patrick Pemezec",
+      "sourceX": 0.2877777777777778,
+      "sourceY": 0.5055555555555555
+    },
+    {
+      "source": "L3-018",
+      "target": "03R025088",
+      "name": "Peter Jan SNIJDERS",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Peter Jan SNIJDERS",
+      "sourceX": 0.31777777777777777,
+      "sourceY": 0.5055555555555555
+    },
+    {
+      "source": "L3-019",
+      "target": "03R029088",
+      "name": "Niels Van Beusichem",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Niels Van Beusichem",
+      "sourceX": 0.3477777777777778,
+      "sourceY": 0.5055555555555555
+    },
+    {
+      "source": "L3-020",
+      "target": "03R030088",
+      "name": "Yosr GABSI",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Yosr GABSI",
+      "sourceX": 0.37777777777777777,
+      "sourceY": 0.5055555555555555
+    },
+    {
+      "source": "L3-021",
+      "target": "03R009090",
+      "name": "Nadia Khairoune",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Nadia Khairoune",
+      "sourceX": 0.10777777777777778,
+      "sourceY": 0.5305555555555556
+    },
+    {
+      "source": "L3-022",
+      "target": "03R010090",
+      "name": "Anandu Gherghel",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Anandu Gherghel",
+      "sourceX": 0.13777777777777778,
+      "sourceY": 0.5305555555555556
+    },
+    {
+      "source": "L3-023",
+      "target": "03R014090",
+      "name": "Theo LEDUCQ",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Theo LEDUCQ",
+      "sourceX": 0.16777777777777778,
+      "sourceY": 0.5305555555555556
+    },
+    {
+      "source": "L3-024",
+      "target": "03R015090",
+      "name": "Yassine Lamri",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Yassine Lamri",
+      "sourceX": 0.19777777777777777,
+      "sourceY": 0.5305555555555556
+    },
+    {
+      "source": "L3-025",
+      "target": "03R019090",
+      "name": "Faye Panagiotou",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Faye Panagiotou",
+      "sourceX": 0.22777777777777777,
+      "sourceY": 0.5305555555555556
+    },
+    {
+      "source": "L3-026",
+      "target": "03R020090",
+      "name": "Guillaume Di Paolantonio",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Guillaume Di Paolantonio",
+      "sourceX": 0.2577777777777778,
+      "sourceY": 0.5305555555555556
+    },
+    {
+      "source": "L3-027",
+      "target": "03R024090",
+      "name": "Alexandre Nicol",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Alexandre Nicol",
+      "sourceX": 0.2877777777777778,
+      "sourceY": 0.5305555555555556
+    },
+    {
+      "source": "L3-028",
+      "target": "03R025090",
+      "name": "Lucas van Cortenberghe",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Lucas van Cortenberghe",
+      "sourceX": 0.31777777777777777,
+      "sourceY": 0.5305555555555556
+    },
+    {
+      "source": "L3-029",
+      "target": "03R029090",
+      "name": "Open",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Open",
+      "sourceX": 0.3477777777777778,
+      "sourceY": 0.5305555555555556
+    },
+    {
+      "source": "L3-030",
+      "target": "03R030090",
+      "name": "Lina HOMOR",
+      "sourceRevision": 3,
+      "evidence": "South-west bank: three rows of ten between management and central offices.",
+      "sourceName": "Lina HOMOR",
+      "sourceX": 0.37777777777777777,
+      "sourceY": 0.5305555555555556
+    },
+    {
+      "source": "L3-031",
+      "target": "03R012070",
+      "name": "Ramprasad Rajalingam",
+      "sourceRevision": 2,
+      "evidence": "North-west bank: three rows of four beside toilets.",
+      "sourceName": "Ramprasad Rajalingam",
+      "sourceX": 0.14055555555555554,
+      "sourceY": 0.28055555555555556
+    },
+    {
+      "source": "L3-032",
+      "target": "03R013070",
+      "name": "Arnaud Seguret",
+      "sourceRevision": 1,
+      "evidence": "North-west bank: three rows of four beside toilets.",
+      "sourceName": "Arnaud Seguret",
+      "sourceX": 0.17055555555555554,
+      "sourceY": 0.28055555555555556
+    },
+    {
+      "source": "L3-033",
+      "target": "03R017070",
+      "name": "Aymeri Gallais",
+      "sourceRevision": 1,
+      "evidence": "North-west bank: three rows of four beside toilets.",
+      "sourceName": "Aymeri Gallais",
+      "sourceX": 0.20055555555555554,
+      "sourceY": 0.28055555555555556
+    },
+    {
+      "source": "L3-034",
+      "target": "03R018070",
+      "name": "Aurele Bohbot",
+      "sourceRevision": 1,
+      "evidence": "North-west bank: three rows of four beside toilets.",
+      "sourceName": "Aurele Bohbot",
+      "sourceX": 0.23055555555555557,
+      "sourceY": 0.28055555555555556
+    },
+    {
+      "source": "L3-035",
+      "target": "03R012072",
+      "name": "Samy Niddam",
+      "sourceRevision": 1,
+      "evidence": "North-west bank: three rows of four beside toilets.",
+      "sourceName": "Samy Niddam",
+      "sourceX": 0.14055555555555554,
+      "sourceY": 0.305
+    },
+    {
+      "source": "L3-036",
+      "target": "03R013072",
+      "name": "EL HACEN ZEIN",
+      "sourceRevision": 2,
+      "evidence": "North-west bank: three rows of four beside toilets.",
+      "sourceName": "EL HACEN ZEIN",
+      "sourceX": 0.17055555555555554,
+      "sourceY": 0.305
+    },
+    {
+      "source": "L3-037",
+      "target": "03R017072",
+      "name": "Marc Benmarra",
+      "sourceRevision": 1,
+      "evidence": "North-west bank: three rows of four beside toilets.",
+      "sourceName": "Marc Benmarra",
+      "sourceX": 0.20055555555555554,
+      "sourceY": 0.305
+    },
+    {
+      "source": "L3-038",
+      "target": "03R018072",
+      "name": "David Cohen",
+      "sourceRevision": 1,
+      "evidence": "North-west bank: three rows of four beside toilets.",
+      "sourceName": "David Cohen",
+      "sourceX": 0.23055555555555557,
+      "sourceY": 0.305
+    },
+    {
+      "source": "L3-039",
+      "target": "03R012074",
+      "name": "Crystal Zhu",
+      "sourceRevision": 1,
+      "evidence": "North-west bank: three rows of four beside toilets.",
+      "sourceName": "Crystal Zhu",
+      "sourceX": 0.14055555555555554,
+      "sourceY": 0.32944444444444443
+    },
+    {
+      "source": "L3-040",
+      "target": "03R013074",
+      "name": "Samy Ben Aoun",
+      "sourceRevision": 1,
+      "evidence": "North-west bank: three rows of four beside toilets.",
+      "sourceName": "Samy Ben Aoun",
+      "sourceX": 0.17055555555555554,
+      "sourceY": 0.32944444444444443
+    },
+    {
+      "source": "L3-041",
+      "target": "03R017074",
+      "name": "Matthieu Thevenet",
+      "sourceRevision": 1,
+      "evidence": "North-west bank: three rows of four beside toilets.",
+      "sourceName": "Matthieu Thevenet",
+      "sourceX": 0.20055555555555554,
+      "sourceY": 0.32944444444444443
+    },
+    {
+      "source": "L3-042",
+      "target": "03R018074",
+      "name": "Agathe HOSPITAL",
+      "sourceRevision": 2,
+      "evidence": "North-west bank: three rows of four beside toilets.",
+      "sourceName": "Agathe HOSPITAL",
+      "sourceX": 0.23055555555555557,
+      "sourceY": 0.32944444444444443
+    },
+    {
+      "source": "L3-043",
+      "target": "03R011079",
+      "name": "Natacha Dervisevic",
+      "sourceRevision": 1,
+      "evidence": "West middle bank: two rows of three.",
+      "sourceName": "Natacha Dervisevic",
+      "sourceX": 0.15166666666666667,
+      "sourceY": 0.39444444444444443
+    },
+    {
+      "source": "L3-044",
+      "target": "03R015079",
+      "name": "Alvaro PRAT HERNANDO",
+      "sourceRevision": 2,
+      "evidence": "West middle bank: two rows of three.",
+      "sourceName": "Alvaro PRAT HERNANDO",
+      "sourceX": 0.1811111111111111,
+      "sourceY": 0.39444444444444443
+    },
+    {
+      "source": "L3-045",
+      "target": "03R016079",
+      "name": "Nils ABRAHMI",
+      "sourceRevision": 2,
+      "evidence": "West middle bank: two rows of three.",
+      "sourceName": "Nils ABRAHMI",
+      "sourceX": 0.21055555555555555,
+      "sourceY": 0.39444444444444443
+    },
+    {
+      "source": "L3-046",
+      "target": "03R011081",
+      "name": "Rishi Patel",
+      "sourceRevision": 1,
+      "evidence": "West middle bank: two rows of three.",
+      "sourceName": "Rishi Patel",
+      "sourceX": 0.15166666666666667,
+      "sourceY": 0.41888888888888887
+    },
+    {
+      "source": "L3-047",
+      "target": "03R015081",
+      "name": "Francesco Casapenta",
+      "sourceRevision": 1,
+      "evidence": "West middle bank: two rows of three.",
+      "sourceName": "Francesco Casapenta",
+      "sourceX": 0.1811111111111111,
+      "sourceY": 0.41888888888888887
+    },
+    {
+      "source": "L3-048",
+      "target": "03R016081",
+      "name": "Sami Ben El Mamoun",
+      "sourceRevision": 1,
+      "evidence": "West middle bank: two rows of three.",
+      "sourceName": "Sami Ben El Mamoun",
+      "sourceX": 0.21055555555555555,
+      "sourceY": 0.41888888888888887
+    },
+    {
+      "source": "L3-049",
+      "target": "03B043086",
+      "name": "Ayoub Asseli",
+      "sourceRevision": 2,
+      "evidence": "South-east bank: three rows of eight; final pair beside east corridor.",
+      "sourceName": "Ayoub Asseli",
+      "sourceX": 0.51,
+      "sourceY": 0.48277777777777775
+    },
+    {
+      "source": "L3-050",
+      "target": "03B044086",
+      "name": "Open",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight; final pair beside east corridor.",
+      "sourceName": "Open",
+      "sourceX": 0.5394444444444444,
+      "sourceY": 0.48277777777777775
+    },
+    {
+      "source": "L3-051",
+      "target": "03B048086",
+      "name": "Marc-Antoine Le Mer",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight; final pair beside east corridor.",
+      "sourceName": "Marc-Antoine Le Mer",
+      "sourceX": 0.5688888888888889,
+      "sourceY": 0.48277777777777775
+    },
+    {
+      "source": "L3-052",
+      "target": "03B049086",
+      "name": "Nour Gaaloul",
+      "sourceRevision": 2,
+      "evidence": "South-east bank: three rows of eight; final pair beside east corridor.",
+      "sourceName": "Nour Gaaloul",
+      "sourceX": 0.5983333333333334,
+      "sourceY": 0.48277777777777775
+    },
+    {
+      "source": "L3-053",
+      "target": "03B053086",
+      "name": "Open",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight; final pair beside east corridor.",
+      "sourceName": "Open",
+      "sourceX": 0.6277777777777778,
+      "sourceY": 0.48277777777777775
+    },
+    {
+      "source": "L3-054",
+      "target": "03B054086",
+      "name": "Sami Ben El Mamoun",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight; final pair beside east corridor.",
+      "sourceName": "Sami Ben El Mamoun",
+      "sourceX": 0.6572222222222223,
+      "sourceY": 0.48277777777777775
+    },
+    {
+      "source": "L3-067",
+      "target": "03B058086",
+      "name": "Damien BERTRAND",
+      "sourceRevision": 2,
+      "evidence": "South-east bank: three rows of eight; final pair beside east corridor.",
+      "sourceName": "Damien BERTRAND",
+      "sourceX": 0.6888888888888889,
+      "sourceY": 0.48333333333333334
+    },
+    {
+      "source": "L3-068",
+      "target": "03B059086",
+      "name": "Greg May",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight; final pair beside east corridor.",
+      "sourceName": "Greg May",
+      "sourceX": 0.7172222222222222,
+      "sourceY": 0.48333333333333334
+    },
+    {
+      "source": "L3-055",
+      "target": "03B043088",
+      "name": "Julien GAUTHIER",
+      "sourceRevision": 2,
+      "evidence": "South-east bank: three rows of eight; final pair beside east corridor.",
+      "sourceName": "Julien GAUTHIER",
+      "sourceX": 0.51,
+      "sourceY": 0.5066666666666667
+    },
+    {
+      "source": "L3-056",
+      "target": "03B044088",
+      "name": "Benjamin Neves",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight; final pair beside east corridor.",
+      "sourceName": "Benjamin Neves",
+      "sourceX": 0.5394444444444444,
+      "sourceY": 0.5066666666666667
+    },
+    {
+      "source": "L3-057",
+      "target": "03B048088",
+      "name": "Julien Brissiaud",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight; final pair beside east corridor.",
+      "sourceName": "Julien Brissiaud",
+      "sourceX": 0.5688888888888889,
+      "sourceY": 0.5066666666666667
+    },
+    {
+      "source": "L3-058",
+      "target": "03B049088",
+      "name": "Idriss El Kadiri",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight; final pair beside east corridor.",
+      "sourceName": "Idriss El Kadiri",
+      "sourceX": 0.5983333333333334,
+      "sourceY": 0.5066666666666667
+    },
+    {
+      "source": "L3-059",
+      "target": "03B053088",
+      "name": "Open",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight; final pair beside east corridor.",
+      "sourceName": "Open",
+      "sourceX": 0.6277777777777778,
+      "sourceY": 0.5066666666666667
+    },
+    {
+      "source": "L3-060",
+      "target": "03B054088",
+      "name": "PAUL RUELLOUX",
+      "sourceRevision": 2,
+      "evidence": "South-east bank: three rows of eight; final pair beside east corridor.",
+      "sourceName": "PAUL RUELLOUX",
+      "sourceX": 0.6572222222222223,
+      "sourceY": 0.5066666666666667
+    },
+    {
+      "source": "L3-069",
+      "target": "03B058088",
+      "name": "Ralph El Fassi",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight; final pair beside east corridor.",
+      "sourceName": "Ralph El Fassi",
+      "sourceX": 0.6888888888888889,
+      "sourceY": 0.5072222222222222
+    },
+    {
+      "source": "L3-070",
+      "target": "03B059088",
+      "name": "Omaya FETOURI",
+      "sourceRevision": 2,
+      "evidence": "South-east bank: three rows of eight; final pair beside east corridor.",
+      "sourceName": "Omaya FETOURI",
+      "sourceX": 0.7172222222222222,
+      "sourceY": 0.5072222222222222
+    },
+    {
+      "source": "L3-061",
+      "target": "03B043090",
+      "name": "Yuta Ishida",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight; final pair beside east corridor.",
+      "sourceName": "Yuta Ishida",
+      "sourceX": 0.51,
+      "sourceY": 0.5305555555555556
+    },
+    {
+      "source": "L3-062",
+      "target": "03B044090",
+      "name": "Baptiste Flais",
+      "sourceRevision": 2,
+      "evidence": "South-east bank: three rows of eight; final pair beside east corridor.",
+      "sourceName": "Baptiste Flais",
+      "sourceX": 0.5394444444444444,
+      "sourceY": 0.5305555555555556
+    },
+    {
+      "source": "L3-063",
+      "target": "03B048090",
+      "name": "Thomas Grzeskowiak",
+      "sourceRevision": 2,
+      "evidence": "South-east bank: three rows of eight; final pair beside east corridor.",
+      "sourceName": "Thomas Grzeskowiak",
+      "sourceX": 0.5688888888888889,
+      "sourceY": 0.5305555555555556
+    },
+    {
+      "source": "L3-064",
+      "target": "03B049090",
+      "name": "Samuel SUISSA",
+      "sourceRevision": 2,
+      "evidence": "South-east bank: three rows of eight; final pair beside east corridor.",
+      "sourceName": "Samuel SUISSA",
+      "sourceX": 0.5983333333333334,
+      "sourceY": 0.5305555555555556
+    },
+    {
+      "source": "L3-065",
+      "target": "03B053090",
+      "name": "Zied Maalej",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight; final pair beside east corridor.",
+      "sourceName": "Zied Maalej",
+      "sourceX": 0.6277777777777778,
+      "sourceY": 0.5305555555555556
+    },
+    {
+      "source": "L3-066",
+      "target": "03B054090",
+      "name": "Open",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight; final pair beside east corridor.",
+      "sourceName": "Open",
+      "sourceX": 0.6572222222222223,
+      "sourceY": 0.5305555555555556
+    },
+    {
+      "source": "L3-071",
+      "target": "03B058090",
+      "name": "Denis Tian",
+      "sourceRevision": 2,
+      "evidence": "South-east bank: three rows of eight; final pair beside east corridor.",
+      "sourceName": "Denis Tian",
+      "sourceX": 0.6888888888888889,
+      "sourceY": 0.5311111111111111
+    },
+    {
+      "source": "L3-072",
+      "target": "03B059090",
+      "name": "Christophe Simon",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight; final pair beside east corridor.",
+      "sourceName": "Christophe Simon",
+      "sourceX": 0.7172222222222222,
+      "sourceY": 0.5311111111111111
+    },
+    {
+      "source": "L3-073",
+      "target": "03B048069",
+      "name": "Myriam TNANI",
+      "sourceRevision": 2,
+      "evidence": "North-east bank: three rows of four.",
+      "sourceName": "Myriam TNANI",
+      "sourceX": 0.5661111111111111,
+      "sourceY": 0.2811111111111111
+    },
+    {
+      "source": "L3-074",
+      "target": "03B049069",
+      "name": "Kafia Khalef",
+      "sourceRevision": 1,
+      "evidence": "North-east bank: three rows of four.",
+      "sourceName": "Kafia Khalef",
+      "sourceX": 0.5955555555555555,
+      "sourceY": 0.2811111111111111
+    },
+    {
+      "source": "L3-075",
+      "target": "03B053069",
+      "name": "Igor Akulov",
+      "sourceRevision": 2,
+      "evidence": "North-east bank: three rows of four.",
+      "sourceName": "Igor Akulov",
+      "sourceX": 0.625,
+      "sourceY": 0.2811111111111111
+    },
+    {
+      "source": "L3-076",
+      "target": "03B054069",
+      "name": "Jeremy Binder",
+      "sourceRevision": 1,
+      "evidence": "North-east bank: three rows of four.",
+      "sourceName": "Jeremy Binder",
+      "sourceX": 0.6544444444444445,
+      "sourceY": 0.2811111111111111
+    },
+    {
+      "source": "L3-077",
+      "target": "03B048071",
+      "name": "Olivier Chokron",
+      "sourceRevision": 1,
+      "evidence": "North-east bank: three rows of four.",
+      "sourceName": "Olivier Chokron",
+      "sourceX": 0.5661111111111111,
+      "sourceY": 0.3055555555555556
+    },
+    {
+      "source": "L3-078",
+      "target": "03B049071",
+      "name": "Louise Jorest",
+      "sourceRevision": 1,
+      "evidence": "North-east bank: three rows of four.",
+      "sourceName": "Louise Jorest",
+      "sourceX": 0.5955555555555555,
+      "sourceY": 0.3055555555555556
+    },
+    {
+      "source": "L3-079",
+      "target": "03B053071",
+      "name": "Lucas da Rosa Pinheiro",
+      "sourceRevision": 1,
+      "evidence": "North-east bank: three rows of four.",
+      "sourceName": "Lucas da Rosa Pinheiro",
+      "sourceX": 0.625,
+      "sourceY": 0.3055555555555556
+    },
+    {
+      "source": "L3-080",
+      "target": "03B054071",
+      "name": "Anna MOSKALEVA",
+      "sourceRevision": 2,
+      "evidence": "North-east bank: three rows of four.",
+      "sourceName": "Anna MOSKALEVA",
+      "sourceX": 0.6544444444444445,
+      "sourceY": 0.3055555555555556
+    },
+    {
+      "source": "L3-081",
+      "target": "03B048073",
+      "name": "Benjamin SOULAS",
+      "sourceRevision": 2,
+      "evidence": "North-east bank: three rows of four.",
+      "sourceName": "Benjamin SOULAS",
+      "sourceX": 0.5661111111111111,
+      "sourceY": 0.33
+    },
+    {
+      "source": "L3-082",
+      "target": "03B049073",
+      "name": "Oreste D’Angelo",
+      "sourceRevision": 1,
+      "evidence": "North-east bank: three rows of four.",
+      "sourceName": "Oreste D’Angelo",
+      "sourceX": 0.5955555555555555,
+      "sourceY": 0.33
+    },
+    {
+      "source": "L3-083",
+      "target": "03B053073",
+      "name": "Open",
+      "sourceRevision": 1,
+      "evidence": "North-east bank: three rows of four.",
+      "sourceName": "Open",
+      "sourceX": 0.625,
+      "sourceY": 0.33
+    },
+    {
+      "source": "L3-084",
+      "target": "03B054073",
+      "name": "Lea BRANDEIS",
+      "sourceRevision": 2,
+      "evidence": "North-east bank: three rows of four.",
+      "sourceName": "Lea BRANDEIS",
+      "sourceX": 0.6544444444444445,
+      "sourceY": 0.33
+    },
+    {
+      "source": "L3-085",
+      "target": "03B047079",
+      "name": "Youssef EL IDRISSI",
+      "sourceRevision": 2,
+      "evidence": "East middle bank: two rows of four.",
+      "sourceName": "Youssef EL IDRISSI",
+      "sourceX": 0.5561111111111111,
+      "sourceY": 0.395
+    },
+    {
+      "source": "L3-086",
+      "target": "03B048079",
+      "name": "Henrik Rickardsson",
+      "sourceRevision": 1,
+      "evidence": "East middle bank: two rows of four.",
+      "sourceName": "Henrik Rickardsson",
+      "sourceX": 0.5855555555555556,
+      "sourceY": 0.395
+    },
+    {
+      "source": "L3-087",
+      "target": "03B052079",
+      "name": "Open",
+      "sourceRevision": 1,
+      "evidence": "East middle bank: two rows of four.",
+      "sourceName": "Open",
+      "sourceX": 0.615,
+      "sourceY": 0.395
+    },
+    {
+      "source": "L3-088",
+      "target": "03B053079",
+      "name": "Macro EM Intern",
+      "sourceRevision": 1,
+      "evidence": "East middle bank: two rows of four.",
+      "sourceName": "Macro EM Intern",
+      "sourceX": 0.6444444444444445,
+      "sourceY": 0.395
+    },
+    {
+      "source": "L3-089",
+      "target": "03B047081",
+      "name": "Tobias Schnitzlein",
+      "sourceRevision": 1,
+      "evidence": "East middle bank: two rows of four.",
+      "sourceName": "Tobias Schnitzlein",
+      "sourceX": 0.5561111111111111,
+      "sourceY": 0.41888888888888887
+    },
+    {
+      "source": "L3-090",
+      "target": "03B048081",
+      "name": "eFX",
+      "sourceRevision": 1,
+      "evidence": "East middle bank: two rows of four.",
+      "sourceName": "eFX",
+      "sourceX": 0.5855555555555556,
+      "sourceY": 0.41888888888888887
+    },
+    {
+      "source": "L3-091",
+      "target": "03B052081",
+      "name": "Open",
+      "sourceRevision": 1,
+      "evidence": "East middle bank: two rows of four.",
+      "sourceName": "Open",
+      "sourceX": 0.615,
+      "sourceY": 0.41888888888888887
+    },
+    {
+      "source": "L3-092",
+      "target": "03B053081",
+      "name": "Jon Isufaj",
+      "sourceRevision": 1,
+      "evidence": "East middle bank: two rows of four.",
+      "sourceName": "Jon Isufaj",
+      "sourceX": 0.6444444444444445,
+      "sourceY": 0.41888888888888887
+    },
+    {
+      "source": "L3-093",
+      "target": "03R031059",
+      "name": "Sabri El Jailani",
+      "sourceRevision": 1,
+      "evidence": "Angled wing column/row or uniquely labelled enclosed office, matched against walls and central lifts.",
+      "sourceName": "Sabri El Jailani",
+      "sourceX": 0.4033333333333333,
+      "sourceY": 0.13722222222222222
+    },
+    {
+      "source": "L3-094",
+      "target": "03R037091",
+      "name": "Corinne Grain",
+      "sourceRevision": 1,
+      "evidence": "Angled wing column/row or uniquely labelled enclosed office, matched against walls and central lifts.",
+      "sourceName": "Corinne Grain",
+      "sourceX": 0.4633333333333333,
+      "sourceY": 0.51
+    },
+    {
+      "source": "L3-100",
+      "target": "03R021068",
+      "name": "Salim NADIR",
+      "sourceRevision": 2,
+      "evidence": "Angled wing column/row or uniquely labelled enclosed office, matched against walls and central lifts.",
+      "sourceName": "Salim NADIR",
+      "sourceX": 0.27,
+      "sourceY": 0.2627777777777778
+    },
+    {
+      "source": "L3-101",
+      "target": "03R023070",
+      "name": "Flavien Bellocq",
+      "sourceRevision": 2,
+      "evidence": "Angled wing column/row or uniquely labelled enclosed office, matched against walls and central lifts.",
+      "sourceName": "Flavien Bellocq",
+      "sourceX": 0.2877777777777778,
+      "sourceY": 0.28
+    },
+    {
+      "source": "L3-102",
+      "target": "03R024071",
+      "name": "Xinhui Yang",
+      "sourceRevision": 1,
+      "evidence": "Angled wing column/row or uniquely labelled enclosed office, matched against walls and central lifts.",
+      "sourceName": "Xinhui Yang",
+      "sourceX": 0.3061111111111111,
+      "sourceY": 0.2966666666666667
+    },
+    {
+      "source": "L3-103",
+      "target": "03R024066",
+      "name": "Mohamed El Meghini",
+      "sourceRevision": 1,
+      "evidence": "Angled wing column/row or uniquely labelled enclosed office, matched against walls and central lifts.",
+      "sourceName": "Mohamed El Meghini",
+      "sourceX": 0.29555555555555557,
+      "sourceY": 0.2338888888888889
+    },
+    {
+      "source": "L3-104",
+      "target": "03R025065",
+      "name": "Tiphaine Laurent",
+      "sourceRevision": 1,
+      "evidence": "Angled wing column/row or uniquely labelled enclosed office, matched against walls and central lifts.",
+      "sourceName": "Tiphaine Laurent",
+      "sourceX": 0.31555555555555553,
+      "sourceY": 0.21444444444444444
+    },
+    {
+      "source": "L3-105",
+      "target": "03R026066",
+      "name": "Chao Boudjemaa",
+      "sourceRevision": 1,
+      "evidence": "Angled wing column/row or uniquely labelled enclosed office, matched against walls and central lifts.",
+      "sourceName": "Chao Boudjemaa",
+      "sourceX": 0.33166666666666667,
+      "sourceY": 0.23666666666666666
+    },
+    {
+      "source": "L3-106",
+      "target": "03R028068",
+      "name": "Mamadou Bah",
+      "sourceRevision": 1,
+      "evidence": "Angled wing column/row or uniquely labelled enclosed office, matched against walls and central lifts.",
+      "sourceName": "Mamadou Bah",
+      "sourceX": 0.3516666666666667,
+      "sourceY": 0.25277777777777777
+    },
+    {
+      "source": "L3-107",
+      "target": "03R029064",
+      "name": "Karim Bouraoui",
+      "sourceRevision": 1,
+      "evidence": "Angled wing column/row or uniquely labelled enclosed office, matched against walls and central lifts.",
+      "sourceName": "Karim Bouraoui",
+      "sourceX": 0.3527777777777778,
+      "sourceY": 0.21333333333333335
+    },
+    {
+      "source": "L3-108",
+      "target": "03R030065",
+      "name": "Miroslav Dloui",
+      "sourceRevision": 1,
+      "evidence": "Angled wing column/row or uniquely labelled enclosed office, matched against walls and central lifts.",
+      "sourceName": "Miroslav Dloui",
+      "sourceX": 0.37,
+      "sourceY": 0.23444444444444446
+    },
+    {
+      "source": "L3-109",
+      "target": "03R029061",
+      "name": "Fabien ROMIEUX",
+      "sourceRevision": 2,
+      "evidence": "Angled wing column/row or uniquely labelled enclosed office, matched against walls and central lifts.",
+      "sourceName": "Fabien ROMIEUX",
+      "sourceX": 0.3616666666666667,
+      "sourceY": 0.17833333333333334
+    },
+    {
+      "source": "L3-110",
+      "target": "03R030063",
+      "name": "Nathalie Noelle Emmerich",
+      "sourceRevision": 1,
+      "evidence": "Angled wing column/row or uniquely labelled enclosed office, matched against walls and central lifts.",
+      "sourceName": "Nathalie Noelle Emmerich",
+      "sourceX": 0.3788888888888889,
+      "sourceY": 0.195
+    },
+    {
+      "source": "L4-001",
+      "target": "04R009086",
+      "name": "Alexandre COULIER",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "Alexandre COULIER",
+      "sourceX": 0.14555555555555555,
+      "sourceY": 0.45166666666666666
+    },
+    {
+      "source": "L4-002",
+      "target": "04R011086",
+      "name": "Vincent Buzelin",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "Vincent Buzelin",
+      "sourceX": 0.17555555555555555,
+      "sourceY": 0.45166666666666666
+    },
+    {
+      "source": "L4-003",
+      "target": "04R014086",
+      "name": "Nikolas Lamothe",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "Nikolas Lamothe",
+      "sourceX": 0.20555555555555555,
+      "sourceY": 0.45166666666666666
+    },
+    {
+      "source": "L4-004",
+      "target": "04R015086",
+      "name": "Marcus Wiberg",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "Marcus Wiberg",
+      "sourceX": 0.23555555555555555,
+      "sourceY": 0.45166666666666666
+    },
+    {
+      "source": "L4-005",
+      "target": "04R019086",
+      "name": "Benedict Parry",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "Benedict Parry",
+      "sourceX": 0.26555555555555554,
+      "sourceY": 0.45166666666666666
+    },
+    {
+      "source": "L4-006",
+      "target": "04R020086",
+      "name": "William Dugue",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "William Dugue",
+      "sourceX": 0.29555555555555557,
+      "sourceY": 0.45166666666666666
+    },
+    {
+      "source": "L4-007",
+      "target": "04R024086",
+      "name": "Emma Soussan",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "Emma Soussan",
+      "sourceX": 0.32555555555555554,
+      "sourceY": 0.45166666666666666
+    },
+    {
+      "source": "L4-008",
+      "target": "04R025086",
+      "name": "Louis LE DREF",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "Louis LE DREF",
+      "sourceX": 0.35555555555555557,
+      "sourceY": 0.45166666666666666
+    },
+    {
+      "source": "L4-009",
+      "target": "04R028086",
+      "name": "EQ",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "EQ",
+      "sourceX": 0.38555555555555554,
+      "sourceY": 0.45166666666666666
+    },
+    {
+      "source": "L4-010",
+      "target": "04R030086",
+      "name": "EQ",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "EQ",
+      "sourceX": 0.41555555555555557,
+      "sourceY": 0.45166666666666666
+    },
+    {
+      "source": "L4-011",
+      "target": "04R009088",
+      "name": "Baptiste CHASSEAU",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "Baptiste CHASSEAU",
+      "sourceX": 0.14555555555555555,
+      "sourceY": 0.4738888888888889
+    },
+    {
+      "source": "L4-012",
+      "target": "04R011088",
+      "name": "Thomas Lindqvist",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "Thomas Lindqvist",
+      "sourceX": 0.17555555555555555,
+      "sourceY": 0.4738888888888889
+    },
+    {
+      "source": "L4-013",
+      "target": "04R014088",
+      "name": "Kim Berg",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "Kim Berg",
+      "sourceX": 0.20555555555555555,
+      "sourceY": 0.4738888888888889
+    },
+    {
+      "source": "L4-014",
+      "target": "04R015088",
+      "name": "Jonatan Sellin",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "Jonatan Sellin",
+      "sourceX": 0.23555555555555555,
+      "sourceY": 0.4738888888888889
+    },
+    {
+      "source": "L4-015",
+      "target": "04R019088",
+      "name": "Pierre Florentz",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "Pierre Florentz",
+      "sourceX": 0.26555555555555554,
+      "sourceY": 0.4738888888888889
+    },
+    {
+      "source": "L4-016",
+      "target": "04R020088",
+      "name": "Paul RENAUDEAU",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "Paul RENAUDEAU",
+      "sourceX": 0.29555555555555557,
+      "sourceY": 0.4738888888888889
+    },
+    {
+      "source": "L4-017",
+      "target": "04R024088",
+      "name": "Iman Lalani",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "Iman Lalani",
+      "sourceX": 0.32555555555555554,
+      "sourceY": 0.4738888888888889
+    },
+    {
+      "source": "L4-018",
+      "target": "04R025088",
+      "name": "EQ",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "EQ",
+      "sourceX": 0.35555555555555557,
+      "sourceY": 0.4738888888888889
+    },
+    {
+      "source": "L4-019",
+      "target": "04R028088",
+      "name": "EQ",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "EQ",
+      "sourceX": 0.38555555555555554,
+      "sourceY": 0.4738888888888889
+    },
+    {
+      "source": "L4-020",
+      "target": "04R030088",
+      "name": "EQ",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "EQ",
+      "sourceX": 0.41555555555555557,
+      "sourceY": 0.4738888888888889
+    },
+    {
+      "source": "L4-021",
+      "target": "04R009090",
+      "name": "Romain Maison",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "Romain Maison",
+      "sourceX": 0.14555555555555555,
+      "sourceY": 0.4961111111111111
+    },
+    {
+      "source": "L4-022",
+      "target": "04R011090",
+      "name": "Cash Sales",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "Cash Sales",
+      "sourceX": 0.17555555555555555,
+      "sourceY": 0.4961111111111111
+    },
+    {
+      "source": "L4-023",
+      "target": "04R014090",
+      "name": "Petteri Arinen",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "Petteri Arinen",
+      "sourceX": 0.20555555555555555,
+      "sourceY": 0.4961111111111111
+    },
+    {
+      "source": "L4-024",
+      "target": "04R015090",
+      "name": "Jan Asboth",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "Jan Asboth",
+      "sourceX": 0.23555555555555555,
+      "sourceY": 0.4961111111111111
+    },
+    {
+      "source": "L4-025",
+      "target": "04R019090",
+      "name": "Matthieu Legrez",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "Matthieu Legrez",
+      "sourceX": 0.26555555555555554,
+      "sourceY": 0.4961111111111111
+    },
+    {
+      "source": "L4-026",
+      "target": "04R020090",
+      "name": "perrine andrio",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "perrine andrio",
+      "sourceX": 0.29555555555555557,
+      "sourceY": 0.4961111111111111
+    },
+    {
+      "source": "L4-027",
+      "target": "04R024090",
+      "name": "Maxime Romanos",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "Maxime Romanos",
+      "sourceX": 0.32555555555555554,
+      "sourceY": 0.4961111111111111
+    },
+    {
+      "source": "L4-028",
+      "target": "04R025090",
+      "name": "Ihab El Saidi",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "Ihab El Saidi",
+      "sourceX": 0.35555555555555557,
+      "sourceY": 0.4961111111111111
+    },
+    {
+      "source": "L4-029",
+      "target": "04R028090",
+      "name": "EQ",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "EQ",
+      "sourceX": 0.38555555555555554,
+      "sourceY": 0.4961111111111111
+    },
+    {
+      "source": "L4-030",
+      "target": "04R030090",
+      "name": "EQ",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of ten.",
+      "sourceName": "EQ",
+      "sourceX": 0.41555555555555557,
+      "sourceY": 0.4961111111111111
+    },
+    {
+      "source": "L4-031",
+      "target": "04R011069",
+      "name": "Anthony Nadjari - Finckelstein",
+      "sourceRevision": 2,
+      "evidence": "North-west bank: three rows of four.",
+      "sourceName": "Anthony Nadjari - Finckelstein",
+      "sourceX": 0.18555555555555556,
+      "sourceY": 0.2633333333333333
+    },
+    {
+      "source": "L4-032",
+      "target": "04R013069",
+      "name": "Robin Goyde",
+      "sourceRevision": 1,
+      "evidence": "North-west bank: three rows of four.",
+      "sourceName": "Robin Goyde",
+      "sourceX": 0.21555555555555556,
+      "sourceY": 0.2633333333333333
+    },
+    {
+      "source": "L4-033",
+      "target": "04R016069",
+      "name": "EQ",
+      "sourceRevision": 1,
+      "evidence": "North-west bank: three rows of four.",
+      "sourceName": "EQ",
+      "sourceX": 0.24555555555555555,
+      "sourceY": 0.2633333333333333
+    },
+    {
+      "source": "L4-034",
+      "target": "04R017069",
+      "name": "Louis Gaudefroy",
+      "sourceRevision": 1,
+      "evidence": "North-west bank: three rows of four.",
+      "sourceName": "Louis Gaudefroy",
+      "sourceX": 0.27555555555555555,
+      "sourceY": 0.2633333333333333
+    },
+    {
+      "source": "L4-035",
+      "target": "04R011071",
+      "name": "Jules Moutal",
+      "sourceRevision": 1,
+      "evidence": "North-west bank: three rows of four.",
+      "sourceName": "Jules Moutal",
+      "sourceX": 0.18555555555555556,
+      "sourceY": 0.28555555555555556
+    },
+    {
+      "source": "L4-036",
+      "target": "04R013071",
+      "name": "Hugo BROUSSAUD",
+      "sourceRevision": 2,
+      "evidence": "North-west bank: three rows of four.",
+      "sourceName": "Hugo BROUSSAUD",
+      "sourceX": 0.21555555555555556,
+      "sourceY": 0.28555555555555556
+    },
+    {
+      "source": "L4-037",
+      "target": "04R016071",
+      "name": "Gaspard Vienne",
+      "sourceRevision": 1,
+      "evidence": "North-west bank: three rows of four.",
+      "sourceName": "Gaspard Vienne",
+      "sourceX": 0.24555555555555555,
+      "sourceY": 0.28555555555555556
+    },
+    {
+      "source": "L4-038",
+      "target": "04R017071",
+      "name": "Enzo Nicloux",
+      "sourceRevision": 1,
+      "evidence": "North-west bank: three rows of four.",
+      "sourceName": "Enzo Nicloux",
+      "sourceX": 0.27555555555555555,
+      "sourceY": 0.28555555555555556
+    },
+    {
+      "source": "L4-039",
+      "target": "04R011073",
+      "name": "Selim Benyamina",
+      "sourceRevision": 2,
+      "evidence": "North-west bank: three rows of four.",
+      "sourceName": "Selim Benyamina",
+      "sourceX": 0.18555555555555556,
+      "sourceY": 0.30777777777777776
+    },
+    {
+      "source": "L4-040",
+      "target": "04R013073",
+      "name": "Solene Benoit",
+      "sourceRevision": 1,
+      "evidence": "North-west bank: three rows of four.",
+      "sourceName": "Solene Benoit",
+      "sourceX": 0.21555555555555556,
+      "sourceY": 0.30777777777777776
+    },
+    {
+      "source": "L4-041",
+      "target": "04R016073",
+      "name": "Jonathan Azran",
+      "sourceRevision": 1,
+      "evidence": "North-west bank: three rows of four.",
+      "sourceName": "Jonathan Azran",
+      "sourceX": 0.24555555555555555,
+      "sourceY": 0.30777777777777776
+    },
+    {
+      "source": "L4-042",
+      "target": "04R017073",
+      "name": "Agnes RADERT",
+      "sourceRevision": 2,
+      "evidence": "North-west bank: three rows of four.",
+      "sourceName": "Agnes RADERT",
+      "sourceX": 0.27555555555555555,
+      "sourceY": 0.30777777777777776
+    },
+    {
+      "source": "L4-043",
+      "target": "04R011079",
+      "name": "Sebastien KANAR GIUSTI",
+      "sourceRevision": 2,
+      "evidence": "West middle bank: two rows of three.",
+      "sourceName": "Sebastien KANAR GIUSTI",
+      "sourceX": 0.19111111111111112,
+      "sourceY": 0.36944444444444446
+    },
+    {
+      "source": "L4-044",
+      "target": "04R015079",
+      "name": "Marc Duhamet",
+      "sourceRevision": 1,
+      "evidence": "West middle bank: two rows of three.",
+      "sourceName": "Marc Duhamet",
+      "sourceX": 0.22111111111111112,
+      "sourceY": 0.36944444444444446
+    },
+    {
+      "source": "L4-045",
+      "target": "04R016079",
+      "name": "Maxime Hazard",
+      "sourceRevision": 1,
+      "evidence": "West middle bank: two rows of three.",
+      "sourceName": "Maxime Hazard",
+      "sourceX": 0.2511111111111111,
+      "sourceY": 0.36944444444444446
+    },
+    {
+      "source": "L4-046",
+      "target": "04R011081",
+      "name": "GUILLAUME CHOUABI",
+      "sourceRevision": 2,
+      "evidence": "West middle bank: two rows of three.",
+      "sourceName": "GUILLAUME CHOUABI",
+      "sourceX": 0.19111111111111112,
+      "sourceY": 0.39222222222222225
+    },
+    {
+      "source": "L4-047",
+      "target": "04R015081",
+      "name": "Maxime Thibault",
+      "sourceRevision": 1,
+      "evidence": "West middle bank: two rows of three.",
+      "sourceName": "Maxime Thibault",
+      "sourceX": 0.22111111111111112,
+      "sourceY": 0.39222222222222225
+    },
+    {
+      "source": "L4-048",
+      "target": "04R016081",
+      "name": "Pauline MERLE",
+      "sourceRevision": 2,
+      "evidence": "West middle bank: two rows of three.",
+      "sourceName": "Pauline MERLE",
+      "sourceX": 0.2511111111111111,
+      "sourceY": 0.39222222222222225
+    },
+    {
+      "source": "L4-049",
+      "target": "04B042086",
+      "name": "Antoine Debusschere",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight.",
+      "sourceName": "Antoine Debusschere",
+      "sourceX": 0.5405555555555556,
+      "sourceY": 0.4533333333333333
+    },
+    {
+      "source": "L4-050",
+      "target": "04B044086",
+      "name": "Amine Lamridi",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight.",
+      "sourceName": "Amine Lamridi",
+      "sourceX": 0.5683333333333334,
+      "sourceY": 0.4533333333333333
+    },
+    {
+      "source": "L4-051",
+      "target": "04B047086",
+      "name": "Antoine CHEYMOL",
+      "sourceRevision": 2,
+      "evidence": "South-east bank: three rows of eight.",
+      "sourceName": "Antoine CHEYMOL",
+      "sourceX": 0.5961111111111111,
+      "sourceY": 0.4533333333333333
+    },
+    {
+      "source": "L4-052",
+      "target": "04B048086",
+      "name": "Marc Ismael Djiala Ngnitedem",
+      "sourceRevision": 2,
+      "evidence": "South-east bank: three rows of eight.",
+      "sourceName": "Marc Ismael Djiala Ngnitedem",
+      "sourceX": 0.6238888888888889,
+      "sourceY": 0.4533333333333333
+    },
+    {
+      "source": "L4-053",
+      "target": "04B052086",
+      "name": "QA",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight.",
+      "sourceName": "QA",
+      "sourceX": 0.6516666666666666,
+      "sourceY": 0.4533333333333333
+    },
+    {
+      "source": "L4-054",
+      "target": "04B053086",
+      "name": "SMAD",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight.",
+      "sourceName": "SMAD",
+      "sourceX": 0.6794444444444444,
+      "sourceY": 0.4533333333333333
+    },
+    {
+      "source": "L4-055",
+      "target": "04B057086",
+      "name": "Antoine Belpois",
+      "sourceRevision": 2,
+      "evidence": "South-east bank: three rows of eight.",
+      "sourceName": "Antoine Belpois",
+      "sourceX": 0.7072222222222222,
+      "sourceY": 0.4533333333333333
+    },
+    {
+      "source": "L4-056",
+      "target": "04B058086",
+      "name": "Sebastien Moritz",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight.",
+      "sourceName": "Sebastien Moritz",
+      "sourceX": 0.735,
+      "sourceY": 0.4533333333333333
+    },
+    {
+      "source": "L4-057",
+      "target": "04B042088",
+      "name": "Anais Despres",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight.",
+      "sourceName": "Anais Despres",
+      "sourceX": 0.5405555555555556,
+      "sourceY": 0.47555555555555556
+    },
+    {
+      "source": "L4-058",
+      "target": "04B044088",
+      "name": "Ben Bullough",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight.",
+      "sourceName": "Ben Bullough",
+      "sourceX": 0.5683333333333334,
+      "sourceY": 0.47555555555555556
+    },
+    {
+      "source": "L4-059",
+      "target": "04B047088",
+      "name": "Youba Tarziz",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight.",
+      "sourceName": "Youba Tarziz",
+      "sourceX": 0.5961111111111111,
+      "sourceY": 0.47555555555555556
+    },
+    {
+      "source": "L4-060",
+      "target": "04B048088",
+      "name": "Bilal Mouhib",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight.",
+      "sourceName": "Bilal Mouhib",
+      "sourceX": 0.6238888888888889,
+      "sourceY": 0.47555555555555556
+    },
+    {
+      "source": "L4-061",
+      "target": "04B052088",
+      "name": "QA",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight.",
+      "sourceName": "QA",
+      "sourceX": 0.6516666666666666,
+      "sourceY": 0.47555555555555556
+    },
+    {
+      "source": "L4-062",
+      "target": "04B053088",
+      "name": "Marouane Joziti",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight.",
+      "sourceName": "Marouane Joziti",
+      "sourceX": 0.6794444444444444,
+      "sourceY": 0.47555555555555556
+    },
+    {
+      "source": "L4-063",
+      "target": "04B057088",
+      "name": "Clement SIMON",
+      "sourceRevision": 2,
+      "evidence": "South-east bank: three rows of eight.",
+      "sourceName": "Clement SIMON",
+      "sourceX": 0.7072222222222222,
+      "sourceY": 0.47555555555555556
+    },
+    {
+      "source": "L4-064",
+      "target": "04B058088",
+      "name": "Jean Monet",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight.",
+      "sourceName": "Jean Monet",
+      "sourceX": 0.735,
+      "sourceY": 0.47555555555555556
+    },
+    {
+      "source": "L4-065",
+      "target": "04B042090",
+      "name": "Martin du Reau",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight.",
+      "sourceName": "Martin du Reau",
+      "sourceX": 0.5405555555555556,
+      "sourceY": 0.49777777777777776
+    },
+    {
+      "source": "L4-066",
+      "target": "04B044090",
+      "name": "Ralph Laviolette",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight.",
+      "sourceName": "Ralph Laviolette",
+      "sourceX": 0.5683333333333334,
+      "sourceY": 0.49777777777777776
+    },
+    {
+      "source": "L4-067",
+      "target": "04B047090",
+      "name": "Mourad Chikhi",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight.",
+      "sourceName": "Mourad Chikhi",
+      "sourceX": 0.5961111111111111,
+      "sourceY": 0.49777777777777776
+    },
+    {
+      "source": "L4-068",
+      "target": "04B048090",
+      "name": "Cheng LUO",
+      "sourceRevision": 2,
+      "evidence": "South-east bank: three rows of eight.",
+      "sourceName": "Cheng LUO",
+      "sourceX": 0.6238888888888889,
+      "sourceY": 0.49777777777777776
+    },
+    {
+      "source": "L4-069",
+      "target": "04B052090",
+      "name": "QA",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight.",
+      "sourceName": "QA",
+      "sourceX": 0.6516666666666666,
+      "sourceY": 0.49777777777777776
+    },
+    {
+      "source": "L4-070",
+      "target": "04B053090",
+      "name": "Hugo Jupin",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight.",
+      "sourceName": "Hugo Jupin",
+      "sourceX": 0.6794444444444444,
+      "sourceY": 0.49777777777777776
+    },
+    {
+      "source": "L4-071",
+      "target": "04B057090",
+      "name": "Nathanael Wurtz",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight.",
+      "sourceName": "Nathanael Wurtz",
+      "sourceX": 0.7072222222222222,
+      "sourceY": 0.49777777777777776
+    },
+    {
+      "source": "L4-072",
+      "target": "04B058090",
+      "name": "Antoine Riolacci",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of eight.",
+      "sourceName": "Antoine Riolacci",
+      "sourceX": 0.735,
+      "sourceY": 0.49777777777777776
+    },
+    {
+      "source": "L4-073",
+      "target": "04B048069",
+      "name": "Antoine Bertet MR",
+      "sourceRevision": 1,
+      "evidence": "Same position within north-east bank, angled wing, or central enclosed offices.",
+      "sourceName": "Antoine Bertet MR",
+      "sourceX": 0.625,
+      "sourceY": 0.27
+    },
+    {
+      "source": "L4-074",
+      "target": "04B051069",
+      "name": "Alan Ceballos Paniagua",
+      "sourceRevision": 1,
+      "evidence": "Same position within north-east bank, angled wing, or central enclosed offices.",
+      "sourceName": "Alan Ceballos Paniagua",
+      "sourceX": 0.6533333333333333,
+      "sourceY": 0.27
+    },
+    {
+      "source": "L4-075",
+      "target": "04B054069",
+      "name": "Open",
+      "sourceRevision": 1,
+      "evidence": "Same position within north-east bank, angled wing, or central enclosed offices.",
+      "sourceName": "Open",
+      "sourceX": 0.6816666666666666,
+      "sourceY": 0.27
+    },
+    {
+      "source": "L4-076",
+      "target": "04B051071",
+      "name": "Antoine Bechet",
+      "sourceRevision": 1,
+      "evidence": "Same position within north-east bank, angled wing, or central enclosed offices.",
+      "sourceName": "Antoine Bechet",
+      "sourceX": 0.6533333333333333,
+      "sourceY": 0.2916666666666667
+    },
+    {
+      "source": "L4-077",
+      "target": "04B054071",
+      "name": "Open",
+      "sourceRevision": 1,
+      "evidence": "Same position within north-east bank, angled wing, or central enclosed offices.",
+      "sourceName": "Open",
+      "sourceX": 0.6816666666666666,
+      "sourceY": 0.2916666666666667
+    },
+    {
+      "source": "L4-078",
+      "target": "04B048073",
+      "name": "Pujari Ajinkya",
+      "sourceRevision": 1,
+      "evidence": "Same position within north-east bank, angled wing, or central enclosed offices.",
+      "sourceName": "Pujari Ajinkya",
+      "sourceX": 0.625,
+      "sourceY": 0.31333333333333335
+    },
+    {
+      "source": "L4-079",
+      "target": "04B052073",
+      "name": "Charlotte Gundry",
+      "sourceRevision": 1,
+      "evidence": "Same position within north-east bank, angled wing, or central enclosed offices.",
+      "sourceName": "Charlotte Gundry",
+      "sourceX": 0.6533333333333333,
+      "sourceY": 0.31333333333333335
+    },
+    {
+      "source": "L4-080",
+      "target": "04B053073",
+      "name": "Open",
+      "sourceRevision": 1,
+      "evidence": "Same position within north-east bank, angled wing, or central enclosed offices.",
+      "sourceName": "Open",
+      "sourceX": 0.6816666666666666,
+      "sourceY": 0.31333333333333335
+    },
+    {
+      "source": "L4-090",
+      "target": "04R031059",
+      "name": "Raoul Salomon",
+      "sourceRevision": 1,
+      "evidence": "Same position within north-east bank, angled wing, or central enclosed offices.",
+      "sourceName": "Raoul Salomon",
+      "sourceX": 0.4494444444444444,
+      "sourceY": 0.14166666666666666
+    },
+    {
+      "source": "L4-091",
+      "target": "04R036091",
+      "name": "Jan Asboth",
+      "sourceRevision": 1,
+      "evidence": "Same position within north-east bank, angled wing, or central enclosed offices.",
+      "sourceName": "Jan Asboth",
+      "sourceX": 0.4538888888888889,
+      "sourceY": 0.4888888888888889
+    },
+    {
+      "source": "L4-092",
+      "target": "04R037091",
+      "name": "Isabelle MILLAT",
+      "sourceRevision": 2,
+      "evidence": "Same position within north-east bank, angled wing, or central enclosed offices.",
+      "sourceName": "Isabelle MILLAT",
+      "sourceX": 0.49777777777777776,
+      "sourceY": 0.45555555555555555
+    },
+    {
+      "source": "L4-096",
+      "target": "04R024065",
+      "name": "Alessandro Milano",
+      "sourceRevision": 2,
+      "evidence": "Same position within north-east bank, angled wing, or central enclosed offices.",
+      "sourceName": "Alessandro Milano",
+      "sourceX": 0.3605555555555556,
+      "sourceY": 0.20555555555555555
+    },
+    {
+      "source": "L4-097",
+      "target": "04R026067",
+      "name": "Paul Segando",
+      "sourceRevision": 2,
+      "evidence": "Same position within north-east bank, angled wing, or central enclosed offices.",
+      "sourceName": "Paul Segando",
+      "sourceX": 0.3761111111111111,
+      "sourceY": 0.22166666666666668
+    },
+    {
+      "source": "L4-098",
+      "target": "04R027068",
+      "name": "Hala CHIADLI",
+      "sourceRevision": 2,
+      "evidence": "Same position within north-east bank, angled wing, or central enclosed offices.",
+      "sourceName": "Hala CHIADLI",
+      "sourceX": 0.39222222222222225,
+      "sourceY": 0.24
+    },
+    {
+      "source": "L4-099",
+      "target": "04R028064",
+      "name": "Victor Marie",
+      "sourceRevision": 2,
+      "evidence": "Same position within north-east bank, angled wing, or central enclosed offices.",
+      "sourceName": "Victor Marie",
+      "sourceX": 0.3988888888888889,
+      "sourceY": 0.2038888888888889
+    },
+    {
+      "source": "L4-081",
+      "target": "04B047079",
+      "name": "Manon MAURICE",
+      "sourceRevision": 2,
+      "evidence": "East middle bank: two rows of four.",
+      "sourceName": "Manon MAURICE",
+      "sourceX": 0.5855555555555556,
+      "sourceY": 0.37333333333333335
+    },
+    {
+      "source": "L4-082",
+      "target": "04B048079",
+      "name": "Open",
+      "sourceRevision": 1,
+      "evidence": "East middle bank: two rows of four.",
+      "sourceName": "Open",
+      "sourceX": 0.6133333333333333,
+      "sourceY": 0.37333333333333335
+    },
+    {
+      "source": "L4-083",
+      "target": "04B051079",
+      "name": "Open",
+      "sourceRevision": 1,
+      "evidence": "East middle bank: two rows of four.",
+      "sourceName": "Open",
+      "sourceX": 0.6411111111111111,
+      "sourceY": 0.37333333333333335
+    },
+    {
+      "source": "L4-084",
+      "target": "04B054079",
+      "name": "Open",
+      "sourceRevision": 1,
+      "evidence": "East middle bank: two rows of four.",
+      "sourceName": "Open",
+      "sourceX": 0.6688888888888889,
+      "sourceY": 0.37333333333333335
+    },
+    {
+      "source": "L4-085",
+      "target": "04B047081",
+      "name": "Christine Karatay",
+      "sourceRevision": 1,
+      "evidence": "East middle bank: two rows of four.",
+      "sourceName": "Christine Karatay",
+      "sourceX": 0.5855555555555556,
+      "sourceY": 0.39555555555555555
+    },
+    {
+      "source": "L4-086",
+      "target": "04B048081",
+      "name": "Open",
+      "sourceRevision": 1,
+      "evidence": "East middle bank: two rows of four.",
+      "sourceName": "Open",
+      "sourceX": 0.6133333333333333,
+      "sourceY": 0.39555555555555555
+    },
+    {
+      "source": "L4-087",
+      "target": "04B051081",
+      "name": "Open",
+      "sourceRevision": 1,
+      "evidence": "East middle bank: two rows of four.",
+      "sourceName": "Open",
+      "sourceX": 0.6411111111111111,
+      "sourceY": 0.39555555555555555
+    },
+    {
+      "source": "L4-088",
+      "target": "04B054081",
+      "name": "Open",
+      "sourceRevision": 1,
+      "evidence": "East middle bank: two rows of four.",
+      "sourceName": "Open",
+      "sourceX": 0.6688888888888889,
+      "sourceY": 0.39555555555555555
+    },
+    {
+      "source": "L6-001",
+      "target": "06R009086",
+      "name": "Christelle Zajac",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of eight; desk order accounts for scan skew and empty cells.",
+      "sourceName": "Christelle Zajac",
+      "sourceX": 0.1338888888888889,
+      "sourceY": 0.5233333333333333
+    },
+    {
+      "source": "L6-002",
+      "target": "06R014086",
+      "name": "Nathan Dely",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of eight; desk order accounts for scan skew and empty cells.",
+      "sourceName": "Nathan Dely",
+      "sourceX": 0.19611111111111112,
+      "sourceY": 0.5233333333333333
+    },
+    {
+      "source": "L6-003",
+      "target": "06R019086",
+      "name": "Alexis Jesequel",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of eight; desk order accounts for scan skew and empty cells.",
+      "sourceName": "Alexis Jesequel",
+      "sourceX": 0.25833333333333336,
+      "sourceY": 0.5233333333333333
+    },
+    {
+      "source": "L6-014",
+      "target": "06R025086",
+      "name": "Pierre Antoine Lac",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of eight; desk order accounts for scan skew and empty cells.",
+      "sourceName": "Pierre Antoine Lac",
+      "sourceX": 0.35333333333333333,
+      "sourceY": 0.5166666666666667
+    },
+    {
+      "source": "L6-004",
+      "target": "06R010088",
+      "name": "Arthur Delfour",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of eight; desk order accounts for scan skew and empty cells.",
+      "sourceName": "Arthur Delfour",
+      "sourceX": 0.165,
+      "sourceY": 0.5472222222222223
+    },
+    {
+      "source": "L6-005",
+      "target": "06R014088",
+      "name": "Noe Saradin",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of eight; desk order accounts for scan skew and empty cells.",
+      "sourceName": "Noe Saradin",
+      "sourceX": 0.19611111111111112,
+      "sourceY": 0.5472222222222223
+    },
+    {
+      "source": "L6-006",
+      "target": "06R015088",
+      "name": "Antoine MOUFID",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of eight; desk order accounts for scan skew and empty cells.",
+      "sourceName": "Antoine MOUFID",
+      "sourceX": 0.22722222222222221,
+      "sourceY": 0.5472222222222223
+    },
+    {
+      "source": "L6-007",
+      "target": "06R019088",
+      "name": "Robin Aye",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of eight; desk order accounts for scan skew and empty cells.",
+      "sourceName": "Robin Aye",
+      "sourceX": 0.25833333333333336,
+      "sourceY": 0.5472222222222223
+    },
+    {
+      "source": "L6-008",
+      "target": "06R020088",
+      "name": "Arthur HEBERT STEVENS",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of eight; desk order accounts for scan skew and empty cells.",
+      "sourceName": "Arthur HEBERT STEVENS",
+      "sourceX": 0.28944444444444445,
+      "sourceY": 0.5472222222222223
+    },
+    {
+      "source": "L6-015",
+      "target": "06R024088",
+      "name": "Leo Kuentz",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of eight; desk order accounts for scan skew and empty cells.",
+      "sourceName": "Leo Kuentz",
+      "sourceX": 0.3244444444444444,
+      "sourceY": 0.5383333333333333
+    },
+    {
+      "source": "L6-009",
+      "target": "06R009091",
+      "name": "Guillaume DE GABORY",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of eight; desk order accounts for scan skew and empty cells.",
+      "sourceName": "Guillaume DE GABORY",
+      "sourceX": 0.1338888888888889,
+      "sourceY": 0.5711111111111111
+    },
+    {
+      "source": "L6-010",
+      "target": "06R010091",
+      "name": "Hugo Assouline",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of eight; desk order accounts for scan skew and empty cells.",
+      "sourceName": "Hugo Assouline",
+      "sourceX": 0.165,
+      "sourceY": 0.5711111111111111
+    },
+    {
+      "source": "L6-011",
+      "target": "06R014091",
+      "name": "Dorine Dos Santos",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of eight; desk order accounts for scan skew and empty cells.",
+      "sourceName": "Dorine Dos Santos",
+      "sourceX": 0.19611111111111112,
+      "sourceY": 0.5711111111111111
+    },
+    {
+      "source": "L6-012",
+      "target": "06R015091",
+      "name": "Robin Coste",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of eight; desk order accounts for scan skew and empty cells.",
+      "sourceName": "Robin Coste",
+      "sourceX": 0.22722222222222221,
+      "sourceY": 0.5711111111111111
+    },
+    {
+      "source": "L6-013",
+      "target": "06R019091",
+      "name": "Floriane Robardet",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of eight; desk order accounts for scan skew and empty cells.",
+      "sourceName": "Floriane Robardet",
+      "sourceX": 0.25833333333333336,
+      "sourceY": 0.5711111111111111
+    },
+    {
+      "source": "L6-016",
+      "target": "06R024091",
+      "name": "Azade Berger",
+      "sourceRevision": 1,
+      "evidence": "South-west bank: three rows of eight; desk order accounts for scan skew and empty cells.",
+      "sourceName": "Azade Berger",
+      "sourceX": 0.3244444444444444,
+      "sourceY": 0.56
+    },
+    {
+      "source": "L6-017",
+      "target": "06R025091",
+      "name": "Alexandre LALANCE",
+      "sourceRevision": 2,
+      "evidence": "South-west bank: three rows of eight; desk order accounts for scan skew and empty cells.",
+      "sourceName": "Alexandre LALANCE",
+      "sourceX": 0.35333333333333333,
+      "sourceY": 0.56
+    },
+    {
+      "source": "L6-018",
+      "target": "06B051086",
+      "name": "George KALBIN",
+      "sourceRevision": 2,
+      "evidence": "South-east bank: three rows of six, preserving empty cells.",
+      "sourceName": "George KALBIN",
+      "sourceX": 0.6288888888888889,
+      "sourceY": 0.5
+    },
+    {
+      "source": "L6-019",
+      "target": "06B052086",
+      "name": "Intern",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of six, preserving empty cells.",
+      "sourceName": "Intern",
+      "sourceX": 0.6566666666666666,
+      "sourceY": 0.5
+    },
+    {
+      "source": "L6-020",
+      "target": "06B056086",
+      "name": "Lex Finance",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of six, preserving empty cells.",
+      "sourceName": "Lex Finance",
+      "sourceX": 0.6844444444444444,
+      "sourceY": 0.5
+    },
+    {
+      "source": "L6-021",
+      "target": "06B057086",
+      "name": "Fiona Simon",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of six, preserving empty cells.",
+      "sourceName": "Fiona Simon",
+      "sourceX": 0.7122222222222222,
+      "sourceY": 0.5
+    },
+    {
+      "source": "L6-022",
+      "target": "06B062086",
+      "name": "Intern",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of six, preserving empty cells.",
+      "sourceName": "Intern",
+      "sourceX": 0.7677777777777778,
+      "sourceY": 0.5
+    },
+    {
+      "source": "L6-023",
+      "target": "06B051088",
+      "name": "Aditya Sharma",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of six, preserving empty cells.",
+      "sourceName": "Aditya Sharma",
+      "sourceX": 0.6288888888888889,
+      "sourceY": 0.5233333333333333
+    },
+    {
+      "source": "L6-024",
+      "target": "06B052088",
+      "name": "Joumana Marichi",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of six, preserving empty cells.",
+      "sourceName": "Joumana Marichi",
+      "sourceX": 0.6566666666666666,
+      "sourceY": 0.5233333333333333
+    },
+    {
+      "source": "L6-025",
+      "target": "06B056088",
+      "name": "Caroline Clement",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of six, preserving empty cells.",
+      "sourceName": "Caroline Clement",
+      "sourceX": 0.6844444444444444,
+      "sourceY": 0.5233333333333333
+    },
+    {
+      "source": "L6-026",
+      "target": "06B061088",
+      "name": "Nicolas Millardet",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of six, preserving empty cells.",
+      "sourceName": "Nicolas Millardet",
+      "sourceX": 0.74,
+      "sourceY": 0.5233333333333333
+    },
+    {
+      "source": "L6-027",
+      "target": "06B062088",
+      "name": "Agathe Flament",
+      "sourceRevision": 2,
+      "evidence": "South-east bank: three rows of six, preserving empty cells.",
+      "sourceName": "Agathe Flament",
+      "sourceX": 0.7677777777777778,
+      "sourceY": 0.5233333333333333
+    },
+    {
+      "source": "L6-028",
+      "target": "06B051090",
+      "name": "Sam Wareham",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of six, preserving empty cells.",
+      "sourceName": "Sam Wareham",
+      "sourceX": 0.6288888888888889,
+      "sourceY": 0.5466666666666666
+    },
+    {
+      "source": "L6-029",
+      "target": "06B052090",
+      "name": "Marie Dowding",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of six, preserving empty cells.",
+      "sourceName": "Marie Dowding",
+      "sourceX": 0.6566666666666666,
+      "sourceY": 0.5466666666666666
+    },
+    {
+      "source": "L6-030",
+      "target": "06B056090",
+      "name": "Aude Chetiot",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of six, preserving empty cells.",
+      "sourceName": "Aude Chetiot",
+      "sourceX": 0.6844444444444444,
+      "sourceY": 0.5466666666666666
+    },
+    {
+      "source": "L6-031",
+      "target": "06B057090",
+      "name": "Pierre Legendre",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of six, preserving empty cells.",
+      "sourceName": "Pierre Legendre",
+      "sourceX": 0.7122222222222222,
+      "sourceY": 0.5466666666666666
+    },
+    {
+      "source": "L6-032",
+      "target": "06B061090",
+      "name": "Camille PELLETIER",
+      "sourceRevision": 2,
+      "evidence": "South-east bank: three rows of six, preserving empty cells.",
+      "sourceName": "Camille PELLETIER",
+      "sourceX": 0.74,
+      "sourceY": 0.5466666666666666
+    },
+    {
+      "source": "L6-033",
+      "target": "06B062090",
+      "name": "Antoine Charles",
+      "sourceRevision": 1,
+      "evidence": "South-east bank: three rows of six, preserving empty cells.",
+      "sourceName": "Antoine Charles",
+      "sourceX": 0.7677777777777778,
+      "sourceY": 0.5466666666666666
+    },
+    {
+      "source": "L6-034",
+      "target": "06B051069",
+      "name": "Bastien DUARTE",
+      "sourceRevision": 2,
+      "evidence": "North-east bank, western pair of columns.",
+      "sourceName": "Bastien DUARTE",
+      "sourceX": 0.6277777777777778,
+      "sourceY": 0.3111111111111111
+    },
+    {
+      "source": "L6-035",
+      "target": "06B052069",
+      "name": "Arnaud Riviere",
+      "sourceRevision": 1,
+      "evidence": "North-east bank, western pair of columns.",
+      "sourceName": "Arnaud Riviere",
+      "sourceX": 0.6555555555555556,
+      "sourceY": 0.3111111111111111
+    },
+    {
+      "source": "L6-036",
+      "target": "06B051071",
+      "name": "Thibault RAFFESTIN",
+      "sourceRevision": 2,
+      "evidence": "North-east bank, western pair of columns.",
+      "sourceName": "Thibault RAFFESTIN",
+      "sourceX": 0.6277777777777778,
+      "sourceY": 0.33444444444444443
+    },
+    {
+      "source": "L6-037",
+      "target": "06B052071",
+      "name": "Moctar Niang",
+      "sourceRevision": 1,
+      "evidence": "North-east bank, western pair of columns.",
+      "sourceName": "Moctar Niang",
+      "sourceX": 0.6555555555555556,
+      "sourceY": 0.33444444444444443
+    },
+    {
+      "source": "L6-039",
+      "target": "06B051073",
+      "name": "Lucrece Lamontanara",
+      "sourceRevision": 1,
+      "evidence": "North-east bank, western pair of columns.",
+      "sourceName": "Lucrece Lamontanara",
+      "sourceX": 0.6277777777777778,
+      "sourceY": 0.35777777777777775
+    },
+    {
+      "source": "L6-040",
+      "target": "06B052073",
+      "name": "Alix RICHEPIN",
+      "sourceRevision": 2,
+      "evidence": "North-east bank, western pair of columns.",
+      "sourceName": "Alix RICHEPIN",
+      "sourceX": 0.6555555555555556,
+      "sourceY": 0.35777777777777775
+    },
+    {
+      "source": "L6-038",
+      "target": "06B056071",
+      "name": "Bloomberg",
+      "sourceRevision": 1,
+      "evidence": "North-east bank: Bloomberg is middle row of third column.",
+      "sourceName": "Bloomberg",
+      "sourceX": 0.6833333333333333,
+      "sourceY": 0.33444444444444443
+    },
+    {
+      "source": "L6-041",
+      "target": "06R002088",
+      "name": "Francois Baroin",
+      "sourceRevision": 1,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Francois Baroin",
+      "sourceX": 0.065,
+      "sourceY": 0.5844444444444444
+    },
+    {
+      "source": "L6-042",
+      "target": "06R010070",
+      "name": "Ghislain De Brondeau",
+      "sourceRevision": 2,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Ghislain De Brondeau",
+      "sourceX": 0.175,
+      "sourceY": 0.3211111111111111
+    },
+    {
+      "source": "L6-043",
+      "target": "06R014069",
+      "name": "Marie-Charlotte Etienne",
+      "sourceRevision": 1,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Marie-Charlotte Etienne",
+      "sourceX": 0.2288888888888889,
+      "sourceY": 0.32
+    },
+    {
+      "source": "L6-044",
+      "target": "06R034059",
+      "name": "Arnaud BOUYER",
+      "sourceRevision": 2,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Arnaud BOUYER",
+      "sourceX": 0.4166666666666667,
+      "sourceY": 0.18555555555555556
+    },
+    {
+      "source": "L6-045",
+      "target": "06R031091",
+      "name": "Gauthier Le Milon",
+      "sourceRevision": 2,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Gauthier Le Milon",
+      "sourceX": 0.395,
+      "sourceY": 0.5088888888888888
+    },
+    {
+      "source": "L6-046",
+      "target": "06R033091",
+      "name": "Thibery Gleizes",
+      "sourceRevision": 1,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Thibery Gleizes",
+      "sourceX": 0.4483333333333333,
+      "sourceY": 0.5066666666666667
+    },
+    {
+      "source": "L6-047",
+      "target": "06B041091",
+      "name": "Reda Hebri",
+      "sourceRevision": 1,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Reda Hebri",
+      "sourceX": 0.5338888888888889,
+      "sourceY": 0.5033333333333333
+    },
+    {
+      "source": "L6-048",
+      "target": "06B045069",
+      "name": "Hugues Desportes",
+      "sourceRevision": 1,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Hugues Desportes",
+      "sourceX": 0.585,
+      "sourceY": 0.3611111111111111
+    },
+    {
+      "source": "L6-049",
+      "target": "06B076076",
+      "name": "Francois Villemain",
+      "sourceRevision": 1,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Francois Villemain",
+      "sourceX": 0.9266666666666666,
+      "sourceY": 0.39611111111111114
+    },
+    {
+      "source": "L6-054",
+      "target": "06R027063",
+      "name": "Lucie Belrose",
+      "sourceRevision": 1,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Lucie Belrose",
+      "sourceX": 0.37555555555555553,
+      "sourceY": 0.23055555555555557
+    },
+    {
+      "source": "L6-055",
+      "target": "06R028064",
+      "name": "Thomas LIU",
+      "sourceRevision": 2,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Thomas LIU",
+      "sourceX": 0.39166666666666666,
+      "sourceY": 0.24833333333333332
+    },
+    {
+      "source": "L6-056",
+      "target": "06R030066",
+      "name": "Luc Wu",
+      "sourceRevision": 1,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Luc Wu",
+      "sourceX": 0.40944444444444444,
+      "sourceY": 0.26666666666666666
+    },
+    {
+      "source": "L6-057",
+      "target": "06R026063",
+      "name": "Tanguy Verbavatz",
+      "sourceRevision": 1,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Tanguy Verbavatz",
+      "sourceX": 0.34833333333333333,
+      "sourceY": 0.25
+    },
+    {
+      "source": "L6-058",
+      "target": "06R028065",
+      "name": "Victor Sielicz",
+      "sourceRevision": 1,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Victor Sielicz",
+      "sourceX": 0.365,
+      "sourceY": 0.27055555555555555
+    },
+    {
+      "source": "L6-059",
+      "target": "06R029066",
+      "name": "Yang-Mai Chin",
+      "sourceRevision": 1,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Yang-Mai Chin",
+      "sourceX": 0.38,
+      "sourceY": 0.28888888888888886
+    },
+    {
+      "source": "L6-060",
+      "target": "06R023066",
+      "name": "Camille Cadiou",
+      "sourceRevision": 2,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Camille Cadiou",
+      "sourceX": 0.32555555555555554,
+      "sourceY": 0.27166666666666667
+    },
+    {
+      "source": "L6-061",
+      "target": "06R025067",
+      "name": "Luca-Enrico Ghilardi",
+      "sourceRevision": 1,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Luca-Enrico Ghilardi",
+      "sourceX": 0.3416666666666667,
+      "sourceY": 0.2922222222222222
+    },
+    {
+      "source": "L6-062",
+      "target": "06R026069",
+      "name": "Yannik Vermeulen",
+      "sourceRevision": 1,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Yannik Vermeulen",
+      "sourceX": 0.35888888888888887,
+      "sourceY": 0.31055555555555553
+    },
+    {
+      "source": "L6-063",
+      "target": "06R023067",
+      "name": "Marie Millard",
+      "sourceRevision": 1,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Marie Millard",
+      "sourceX": 0.3016666666666667,
+      "sourceY": 0.29333333333333333
+    },
+    {
+      "source": "L6-064",
+      "target": "06R024068",
+      "name": "Romain Seba Mouka",
+      "sourceRevision": 1,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Romain Seba Mouka",
+      "sourceX": 0.31777777777777777,
+      "sourceY": 0.3138888888888889
+    },
+    {
+      "source": "L6-065",
+      "target": "06R026070",
+      "name": "Raphael Cassan",
+      "sourceRevision": 1,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Raphael Cassan",
+      "sourceX": 0.33555555555555555,
+      "sourceY": 0.3333333333333333
+    },
+    {
+      "source": "L6-066",
+      "target": "06R021071",
+      "name": "Yola Judith",
+      "sourceRevision": 1,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Yola Judith",
+      "sourceX": 0.295,
+      "sourceY": 0.33444444444444443
+    },
+    {
+      "source": "L6-067",
+      "target": "06R023072",
+      "name": "Yasmine Amorode",
+      "sourceRevision": 1,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Yasmine Amorode",
+      "sourceX": 0.3088888888888889,
+      "sourceY": 0.3561111111111111
+    },
+    {
+      "source": "L6-068",
+      "target": "06R022073",
+      "name": "Oceane Duhamel",
+      "sourceRevision": 1,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Oceane Duhamel",
+      "sourceX": 0.28055555555555556,
+      "sourceY": 0.37444444444444447
+    },
+    {
+      "source": "L6-069",
+      "target": "06B067085",
+      "name": "Hugo Perret",
+      "sourceRevision": 1,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Hugo Perret",
+      "sourceX": 0.8272222222222222,
+      "sourceY": 0.47
+    },
+    {
+      "source": "L6-070",
+      "target": "06B071083",
+      "name": "Hugo Suchod",
+      "sourceRevision": 1,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Hugo Suchod",
+      "sourceX": 0.8533333333333334,
+      "sourceY": 0.465
+    },
+    {
+      "source": "L6-071",
+      "target": "06B068086",
+      "name": "Maxime Gervais",
+      "sourceRevision": 1,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Maxime Gervais",
+      "sourceX": 0.8411111111111111,
+      "sourceY": 0.48944444444444446
+    },
+    {
+      "source": "L6-072",
+      "target": "06B067087",
+      "name": "Aurelia Jacy",
+      "sourceRevision": 1,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Aurelia Jacy",
+      "sourceX": 0.8133333333333334,
+      "sourceY": 0.5077777777777778
+    },
+    {
+      "source": "L6-073",
+      "target": "06B073085",
+      "name": "Alexandra Biasi",
+      "sourceRevision": 1,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Alexandra Biasi",
+      "sourceX": 0.8833333333333333,
+      "sourceY": 0.47944444444444445
+    },
+    {
+      "source": "L6-074",
+      "target": "06B074084",
+      "name": "Charles de Francqueville",
+      "sourceRevision": 1,
+      "evidence": "Angled desk bank column/row or unique enclosed office; matched by surrounding rooms and order.",
+      "sourceName": "Charles de Francqueville",
+      "sourceX": 0.9038888888888889,
+      "sourceY": 0.45944444444444443
+    }
+  ]
+}

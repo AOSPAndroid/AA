@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- The default floor drawing is the slowest map dependency; fetch it with the page. -->
+    <link rel="preload" as="image" href="studio-floor-2.svg?v=3" />
+    <link rel="stylesheet" href="/assets/ui-tokens.css?v=75" />
+    <script src="/assets/shared-ui.js?v=10"></script>
+    <script defer src="/assets/atlas-app.js"></script>
+    <script src="/assets/client.js"></script>
+    <script defer src="/assets/axis-chat.js"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>AA · Atlas + Axis</title>
+    <link rel="stylesheet" href="style.css?v=8" />
+    <link rel="stylesheet" href="operations.css?v=2" />
+    <link rel="stylesheet" href="official.css?v=78" />
+    <link rel="stylesheet" href="/assets/machine-health.css" />
+    <link rel="stylesheet" href="/assets/atlas-shell.css" />
+    <link rel="stylesheet" href="/assets/catalogue.css" />
+    <script src="/assets/machine-health.js?v=2"></script>
+    <link rel="stylesheet" href="/assets/knowledge-base.css" />
+    <link rel="stylesheet" href="/assets/atlas-interactions.css" />
+    <link rel="stylesheet" href="/assets/design-system.css" />
+  </head>
+  <body class="atlas-map">
+    <header class="atlas-app-header">
+      <a class="atlas-brand" href="./" aria-label="Atlas Admin home"
+        ><img
+          src="/assets/barclays-eagle.svg"
+          alt=""
+          width="30"
+          height="32"
+        /><span>AA</span><span class="atlas-admin-badge">Admin</span></a
+      >
+      <div class="atlas-primary-nav" aria-label="Atlas sections">
+        <a href="/" aria-current="page" data-atlas-icon="map">Map</a
+        ><a href="/installer" data-atlas-icon="workspace">Workspace</a
+        ><a href="/installer?command=knowledge" data-atlas-icon="knowledge"
+          >Knowledge Base</a
+        >
+      </div>
+      <div class="header-right atlas-header-actions">
+        <a
+          class="atlas-return"
+          href="/manage-database"
+          title="Manage database"
+          aria-label="Manage database"
+          >Database</a
+        ><button id="ops-audit" hidden>Review previous mappings</button
+        ><button id="ops-catalog" title="Open package catalogue">
+          Packages</button
+        ><button id="ops-settings">Package settings</button
+        ><button id="ops-history" title="View deployment history">
+          Deployments</button
+        ><a
+          class="ops-header-link"
+          href="/installer"
+          target="_blank"
+          rel="noopener"
+          title="Open IT console"
+          >Console ↗</a
+        >
+        <details class="atlas-header-more">
+          <summary aria-label="More actions" title="More actions">More</summary>
+          <div id="atlasMoreActions" class="atlas-header-menu">
+            <button id="export">Export records ↗</button>
+            <button id="import">Import records</button>
+            <input type="file" id="file" accept="application/json" hidden />
+            <button id="ops-import-atlas">Import previous seating .db</button>
+            <input id="ops-db-file" type="file" accept=".db,.sqlite" hidden />
+          </div>
+        </details>
+      </div>
+    </header>
+    <div class="workspace">
+      <aside class="directory">
+        <div class="side-head">
+          <span class="eyebrow">PARIS OFFICE MAP</span>
+          <h1>Find your people.</h1>
+          <label class="search"
+            ><span>⌕</span
+            ><input
+              id="search"
+              type="search"
+              placeholder="Find a person, team or room…"
+              aria-label="Search all floors"
+            /><kbd>/</kbd></label
+          >
+          <div class="filter-row">
+            <select id="scope" aria-label="Search floor">
+              <option value="all">All Paris floors</option></select
+            ><select id="team" aria-label="Filter by team">
+              <option value="all">All teams</option>
+            </select>
+          </div>
+        </div>
+        <div class="list-title">
+          <span id="resultcount"></span><button id="clear">Clear</button>
+        </div>
+        <div id="results" role="list" aria-label="Search results"></div>
+        <div class="directory-foot">
+          <span class="eyebrow">SOURCE & COVERAGE</span>
+          <p>Paris · 10 official plans · B1–08</p>
+          <small
+            >Official desk codes from the PDFs. Hover or select a desk for its
+            official number. Seating names carry across from the previous
+            register.</small
+          >
+        </div>
+      </aside>
+      <main>
+        <div class="map-heading">
+          <div>
+            <span class="eyebrow">EXPLORE THE OFFICE</span>
+            <h2 id="floor-title">Level 3 <span>Markets</span></h2>
+          </div>
+          <div class="view-switch" aria-label="Map view">
+            <label class="name-toggle view-toggle"
+              ><input
+                id="three-d-toggle"
+                type="checkbox"
+                role="switch"
+                aria-label="3D view"
+              /><span class="switch-track" aria-hidden="true"></span
+              ><span>3D view</span></label
+            >
+          </div>
+        </div>
+        <div id="viewport">
+          <button
+            id="site-info"
+            class="map-info-button"
+            type="button"
+            aria-label="Site information: VLANs and contacts"
+            title="VLANs &amp; contacts"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 11v6" />
+              <circle cx="12" cy="7.5" r=".8" class="info-dot" />
+            </svg>
+          </button>
+          <div id="map-labels" aria-label="Names on the map"></div>
+          <svg id="label-lines" aria-hidden="true"></svg>
+          <div
+            id="location-banner"
+            role="status"
+            aria-live="polite"
+            hidden
+          ></div>
+          <canvas
+            id="canvas"
+            aria-label="Interactive official office plan. Select a name from the directory for keyboard access."
+          ></canvas>
+          <div id="source" hidden>
+            <img
+              id="source-image"
+              loading="lazy"
+              alt="Original scanned floor plan"
+            />
+          </div>
+          <div class="map-top">
+            <span class="pill">PARIS · OFFICIAL DESK POSITIONS</span>
+            <div class="map-display-controls">
+              <label class="name-toggle"
+                ><input
+                  id="name-tags"
+                  type="checkbox"
+                  role="switch"
+                  checked
+                /><span class="switch-track" aria-hidden="true"></span
+                ><span>Name tags</span></label
+              ><button id="add" hidden>＋ Add location</button>
+            </div>
+          </div>
+          <nav class="floor-rail" aria-label="Floor selection"></nav>
+          <div class="map-tools" role="group" aria-label="Map navigation">
+            <button id="zoom-in" aria-label="Zoom in" title="Zoom in">＋</button
+            ><button id="zoom-out" aria-label="Zoom out" title="Zoom out">
+              −</button
+            ><button
+              id="reset"
+              aria-label="Fit floor"
+              title="Fit the whole floor to the map"
+            >
+              ⛶</button
+            ><button id="rotate" aria-label="Rotate view" title="Rotate view">
+              ↻
+            </button>
+          </div>
+          <output id="map-metrics" hidden></output>
+          <div id="hover" hidden></div>
+          <div class="map-bottom">
+            <div class="legend">
+              <i></i>Desk / person <i class="area"></i>Room / team
+              <i class="selected"></i>Selected
+            </div>
+            <span id="hint">Drag to pan · Scroll or pinch to zoom</span>
+          </div>
+          <div id="webgl-error" hidden>
+            3D is unavailable in this browser. Use Fast map to inspect the plan;
+            directory search and records remain available.
+          </div>
+        </div>
+        <footer>
+          <span id="floor-stats"></span
+          ><span id="mapSource">Paris map · Europe-wide directory</span>
+        </footer>
+      </main>
+      <aside id="detail">
+        <div class="empty-detail">
+          <span class="crosshair">⌖</span
+          ><span class="eyebrow">LOCATION INSPECTOR</span>
+          <h2>Select a desk</h2>
+          <p>
+            Choose a location on the map or a person in the list to see their
+            directory record and devices.
+          </p>
+          <small>Right-click a desk for seating actions and history.</small>
+        </div>
+      </aside>
+    </div>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="official-app.js?v=105"></script>
+    <script
+      type="module"
+      src="/assets/atlas-interactions.js"
+      data-atlas-interactions
+    ></script>
+  </body>
+</html>

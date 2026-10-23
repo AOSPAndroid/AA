@@ -1,0 +1,22 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const {fixture, root} = require('./ui_fixture.cjs');
+(async () => {
+  const f = await fixture({fetch: async () => {throw Error('No network expected')}});
+  const {w} = f, d = w.document;
+  w.localStorage.setItem('atlas-controls-mode','auto');
+  w.localStorage.setItem('atlas-controls-pins',JSON.stringify({menu:true,'admin-tools':true}));
+  const controls = [...d.querySelectorAll('button,input,select,form')];
+  const parents = controls.map(x => x.parentNode);
+  let kills = 0; d.querySelector('#killOpenFin').disabled = false; d.querySelector('#killOpenFin').onclick = () => kills++;
+  assert(!fs.existsSync(root+'/frontend/assets/edge-controls.js'));
+  for (const entry of ['frontend/index.html','frontend/database.html','atlas/official-index.html']) assert(!fs.readFileSync(root+'/'+entry,'utf8').includes('/assets/edge-controls.js'));
+  assert(!d.documentElement.classList.contains('atlas-auto-hide'));
+  assert.equal(d.querySelectorAll('.atlas-edge-panel,.atlas-edge-handle,.atlas-edge-settings').length,0);
+  controls.forEach((control,i) => {assert.equal(control.parentNode,parents[i]);assert(!control.inert)});
+  w.dispatchEvent(new w.MouseEvent('pointermove',{clientX:1,clientY:1}));
+  d.querySelector('#killOpenFin').click();assert.equal(kills,1);
+  assert.equal(d.querySelectorAll('.atlas-edge-panel,.atlas-edge-handle').length,0);
+  assert.equal(f.errors.length,0,f.errors.join('\n'));
+  w.close();console.log('PASS: legacy pin preferences cannot move/hide controls; handlers remain usable');
+})().catch(e=>{console.error(e);process.exitCode=1});

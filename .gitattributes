@@ -1,0 +1,4 @@
+frontend/drawio/** -text
+# Preserve exact package payload bytes: hashes and the MSIX must agree after checkout.
+notification-listener/package/** -text whitespace=cr-at-eol
+notification-listener/*.msix -text

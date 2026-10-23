@@ -1,0 +1,40 @@
+__pycache__/
+*.py[cod]
+.venv/
+.venv-assistant/
+models/
+venv/
+logs/
+data/
+backups/
+*.db-wal
+*.db-shm
+*.db-journal
+config.json
+.env
+.env.*
+!.env.example
+# Historical transfer builders are no longer distributed.
+Build-Transfer.py
+Build-Transfer.bat
+
+node_modules/
+
+# Local test environments, build packages and screenshots are never source data.
+output/
+
+# Axis local configuration and generated files.
+axis/state/
+axis/workspace/
+axis/data/
+axis/server.log
+axis/*.db*
+axis/*.sqlite*
+axis/firecrawl.key
+axis/llama-cpu/
+axis/llama-vulkan/
+*.gguf
+*.gguf.part*
+*.gguf.joining*
+dist-aa/
+aa-windows.zip*
