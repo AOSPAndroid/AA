@@ -212,6 +212,10 @@ class Agent:
                           atlas_db=self.atlas.path if self.atlas.available else None)
         # The server is local; never route it through a system proxy.
         self.http = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        try:
+            self.it.prune()  # Saved outputs grow with every tool call.
+        except (OSError, ValueError, KeyError) as error:
+            self.ui.notice("Old Axis state was not pruned: %s" % error, "warning")
         self.stats = {}
         self.facts, self.elevated = system_facts()
         self.reset()

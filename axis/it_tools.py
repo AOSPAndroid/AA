@@ -60,6 +60,9 @@ SUFFIXES = {"Install": ("_i", "_install", "_installs"),
             "Uninstall": ("_u", "_uninstall", "_uninstalls"),
             "Repair": ("_r", "_repair", "_repairs")}
 ACTIVE = {"queued", "running"}
+RETAINED_JOBS = 200          # finished jobs kept for /jobs; active and unresolved jobs are never pruned
+SNAPSHOT_SECONDS = 3600      # snapshots expire after 15 minutes; keep a margin for in-flight approvals
+OUTPUT_SECONDS = 30 * 86400  # saved full tool results
 REMOTE_ROOT = r"C:\Temp\LocalAgent"
 DEFAULT_PACKAGE_REPO = r"C:\Users\x01426046\OneDrive - Barclays Bank PLC\Shortcuts\EPP_PACKAGE_REPO_BetaPackages - BetaPackages"
 
@@ -372,6 +375,30 @@ class ITTools:
                 return job
         return None
 
+    def prune(self):
+        """Bound saved state. Never removes a job that is active or has an unacknowledged unknown outcome."""
+        finished = [job for job in self.jobs() if job["state"] not in ACTIVE
+                    and not (job["state"] == "unknown" and not job.get("acknowledged"))]
+        removed = 0
+        for job in finished[RETAINED_JOBS:]:
+            base = self.state / "jobs" / identifier(job["id"])
+            for path in (base.with_suffix(".json"), base.with_suffix(".worker.log")):
+                try:
+                    path.unlink()
+                    removed += 1
+                except FileNotFoundError:
+                    pass
+        now = time.time()
+        for folder, age in (("snapshots", SNAPSHOT_SECONDS), ("outputs", OUTPUT_SECONDS)):
+            for path in (self.state / folder).glob("*") if (self.state / folder).is_dir() else ():
+                try:
+                    if path.is_file() and now - path.stat().st_mtime > age:
+                        path.unlink()
+                        removed += 1
+                except OSError:
+                    pass  # In use or already gone; the next prune retries.
+        return removed
+
     def ensure_available(self, pc, exclude=None):
         job = self.blocking_job(pc, exclude)
         if job:
@@ -380,6 +407,10 @@ class ITTools:
             raise RuntimeError("%s has an unresolved Atlas operation. Inspect the PC, then acknowledge it in Atlas's Operation recovery." % pc)
 
     def spawn(self, plan):
+        try:
+            self.prune()
+        except (OSError, ValueError, KeyError) as error:
+            sys.stderr.write("Axis state was not pruned: %s\n" % error)  # Never blocks new work.
         job_id = uuid.uuid4().hex
         job = dict(plan, id=job_id, state="queued", created=now(), created_epoch=time.time(),
                    results=[], events=[], worker_pid=None)

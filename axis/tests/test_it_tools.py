@@ -232,6 +232,39 @@ class ITTests(unittest.TestCase):
         self.assertEqual(len(calls), 2)
         self.assertEqual(list(path.parent.glob("*.tmp")), [])
 
+    def test_prune_keeps_recent_active_and_unresolved_state(self):
+        def job(index, state, **extra):
+            key = "%032x" % index
+            path = self.job_file(dict(self.plan(), id=key, state=state, **extra))
+            data = it.read_json(path)
+            data["created"] = "2026-01-01T00:00:%02d.%06d+00:00" % (index // 1000000, index)
+            it.write_json(path, data)
+            path.with_suffix(".worker.log").write_text("log")
+            return path
+        oldest = [job(i, "complete") for i in range(1, 6)]
+        unresolved = job(6, "unknown")
+        acknowledged = job(7, "unknown", acknowledged=it.now())
+        running = job(8, "running")
+        kept = [job(i, "failed") for i in range(100, 100 + it.RETAINED_JOBS - 1)]
+        old = time.time() - it.OUTPUT_SECONDS - 60
+        for folder, name, age in (("snapshots", "old.json", time.time() - it.SNAPSHOT_SECONDS - 60),
+                                  ("snapshots", "new.json", time.time()), ("outputs", "old.txt", old),
+                                  ("outputs", "new.txt", time.time())):
+            path = self.backend.state / folder / name
+            path.parent.mkdir(exist_ok=True)
+            path.write_text("x")
+            os.utime(path, (age, age))
+        self.backend.prune()
+        for path in oldest:
+            self.assertFalse(path.exists())
+            self.assertFalse(path.with_suffix(".worker.log").exists())
+        for path in [unresolved, running, acknowledged] + kept:
+            self.assertTrue(path.exists(), path.name)
+        self.assertEqual(sorted(p.name for p in (self.backend.state / "snapshots").iterdir()), ["new.json"])
+        self.assertEqual(sorted(p.name for p in (self.backend.state / "outputs").iterdir()), ["new.txt"])
+        with self.assertRaisesRegex(RuntimeError, "unresolved"):
+            self.backend.ensure_available("PC-1")
+
     def test_short_and_qualified_names_share_one_target(self):
         self.assertEqual(it.target_key("pc-1.corp.example."), "PC-1")
         self.assertEqual(it.target_key("10.0.0.5"), "10.0.0.5")
