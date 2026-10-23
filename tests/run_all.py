@@ -1,4 +1,5 @@
 """Run regressions against disposable databases and local simulated operations."""
+import argparse
 import os
 from pathlib import Path
 import sqlite3
@@ -15,7 +16,7 @@ def run(*args, env, timeout=180):
     subprocess.run(args, cwd=ROOT, env=env, check=True, timeout=timeout)
 
 
-def main():
+def main(python_only=False):
     with tempfile.TemporaryDirectory(prefix='atlas-tests-') as tmp:
         db = Path(tmp) / 'fixture.db'
         source = sqlite3.connect((ROOT / 'office_atlas.db').as_uri() + '?mode=ro&immutable=1', uri=True)
@@ -27,6 +28,9 @@ def main():
         # The complete imported Atlas suite starts many real PowerShell fixtures
         # on Windows. Give the whole suite room; individual tests keep their limits.
         run(sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-v', env=env, timeout=600)
+        if python_only:
+            print('PASS: Python regression suite.')
+            return
         children = []
         try:
             for script, port in [('serve_ui_fixture.py', 8892), ('serve_seating_fixture.py', 8893)]:
@@ -60,4 +64,6 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--python-only', action='store_true', help='Run the Python suite; frontend coverage runs in the Linux CI job.')
+    main(python_only=parser.parse_args().python_only)

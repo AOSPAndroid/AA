@@ -185,7 +185,7 @@ class VdiImportApi(unittest.TestCase):
         self.assertNotIn('VDI-NEW', text)
         with fixture_connect(self.db) as con:
             path = con.execute('select backup from vdi_imports order by at desc limit 1').fetchone()[0]
-        self.assertEqual(Path(path), backup)
+        self.assertTrue(Path(path).samefile(backup), 'Backup must refer to the same file, including Windows short paths')
 
     def test_discarded_replaced_and_expired_previews_cannot_apply(self):
         first = self.preview([device()])

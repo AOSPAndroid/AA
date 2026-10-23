@@ -402,7 +402,8 @@ class PackageImport(unittest.TestCase):
         with fixture_connect(self.db) as con:
             con.execute('create table users(id integer, name text)'); con.execute("insert into users values(1,'Stored Person')")
             con.execute('create table package_catalog(repository text,folder text,display_name text,version text,revision integer)')
-            con.execute('insert into package_catalog values(?,?,?,?,?)', (str(self.repo), 'ixExample', 'Custom display', 'v1', 2))
+            # Match the real catalogue writer, including Windows short TEMP paths.
+            con.execute('insert into package_catalog values(?,?,?,?,?)', (str(self.repo.resolve()), 'ixExample', 'Custom display', 'v1', 2))
         app = FastAPI()
         def check(request):
             if request.headers.get('x-atlas-token') != 'test': raise HTTPException(403, 'token')

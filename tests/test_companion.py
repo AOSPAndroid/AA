@@ -124,6 +124,7 @@ class Companion(unittest.TestCase):
 
     def test_outlook_mail_reaches_live_inbox_through_the_companion(self):
         local = MailQueue(self.root / 'companion-local', utcnow())
+        self.addCleanup(local.close)
         for n in range(1, 4):
             local.insert('sourceabc123', mail(n))
         forwarder = core.MailForwarder(local, self.client, batch=2)
@@ -136,7 +137,7 @@ class Companion(unittest.TestCase):
         self.assertEqual(forwarder.forward(), 0, 'Only new messages are sent')
         local.insert('sourceabc123', mail(4)); local.db.execute("update watcher_state set value='1' where key='forwarded'"); local.db.commit()
         forwarder.forward()  # Re-sending already delivered messages is harmless: Atlas keeps one copy.
-        with sqlite3.connect(self.root / 'companion-inbox' / 'inbox.sqlite3') as c:
+        with connect(self.root / 'companion-inbox' / 'inbox.sqlite3') as c:
             self.assertEqual(c.execute('select count(*) from messages').fetchone()[0], 4)
         local.close()
         self.assertEqual(mail_inbox.mail_directory(), self.root / 'companion-inbox', 'Live Inbox reads the Companion mail')
