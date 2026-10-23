@@ -210,39 +210,6 @@ class SharedLauncherTests(unittest.TestCase):
                 self.assertNotIn("--atlas-dir", command)
                 self.assertEqual(atlas.call_count, int(shared))
 
-    def test_terminal_inside_aa_uses_the_browser_chat_state_database_and_packages(self):
-        aa = self.root / "AA"
-        (aa / "axis" / "state" / "jobs").mkdir(parents=True)
-        source = Path(start.__file__).resolve().parents[1]
-        for name in ("runtime_paths.py", "package_paths.py"):
-            shutil.copyfile(source / name, aa / name)
-        (aa / "config.json").write_text(json.dumps({"database_folder": str(self.root / "DB"),
-                                                    "package_repository": "pkgs"}), encoding="utf-8")
-        (aa / "axis" / "state" / "jobs" / "old.json").write_text(json.dumps({"id": "old", "state": "unknown"}))
-        expected = {"--state-dir": str(aa / "data" / "axis" / "state"),
-                    "--atlas-db": str(self.root / "DB" / "office_atlas.db"), "--package-repo": str(aa / "pkgs")}
-        cases = (([], True, expected), (["--state-dir", "mine"], True, dict(expected, **{"--state-dir": "mine"})),
-                 ([], False, {}))
-        for options, inside, wanted in cases:
-            with self.subTest(options=options, inside=inside), \
-                 patch.dict(os.environ, {"ATLAS_DB_PATH": "", "WMI_PACKAGE_REPO": "", "AGENT_PACKAGE_REPO": ""}), \
-                 patch.object(start, "HERE", str(aa / "axis")), patch.object(start, "AA_ROOT", str(aa)), \
-                 patch.object(start, "prepare_model", return_value=("35b", "model.gguf")), \
-                 patch.object(start, "server_ready", return_value=True), \
-                 patch.object(start, "server_model", return_value="fixture-model"), \
-                 patch.object(start, "TerminalUI"), \
-                 patch.object(start, "wait_for_agent", return_value=0) as agent:
-                launcher = aa / "aa_launcher.py"
-                launcher.write_text("") if inside else launcher.unlink(missing_ok=True)
-                self.output.truncate(0)
-                self.assertEqual(start.main(["--workdir", str(self.here), "--plain"] + options), 0)
-                command = agent.call_args.args[0]
-                for option in ("--state-dir", "--atlas-db", "--package-repo"):
-                    self.assertEqual(command.count(option), int(option in wanted), option)
-                    if option in wanted:
-                        self.assertEqual(command[command.index(option) + 1], wanted[option])
-                self.assertEqual("Earlier terminal jobs" in self.output.getvalue(), inside and not options)
-
     def test_aa_terminal_refuses_to_start_a_second_atlas(self):
         aa = self.root / "AA"
         (aa / "axis").mkdir(parents=True)

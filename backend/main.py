@@ -29,6 +29,10 @@ REPO=package_repository(CONFIG,ROOT)
 REMOTE_ROOT=r'C:\Temp\Packages'; NW=0x08000000 if os.name=='nt' else 0
 # Axis stages under its own root; one cleanup clears both. Axis job logs beside it are kept.
 STAGING_ROOTS=(REMOTE_ROOT,r'C:\Temp\LocalAgent\Packages')
+def staging_linked(root):
+ """A link anywhere on the staging path could redirect deletion; C:\\Temp is writable by standard users."""
+ from axis.it_tools import linked
+ return any(item.exists() and linked(item) for item in [root,*root.parents])
 logging.basicConfig(filename=LOGS/'application.log',level=logging.INFO,format='%(asctime)s %(levelname)s %(message)s')
 app=FastAPI(title='Office Atlas',version=__version__,docs_url='/api/docs',redoc_url=None)
 from response_compression import compress_responses
@@ -480,7 +484,7 @@ def package_folder_info(pc:str):
     pc=validate_pc(pc);folders=files=size=0;locations=[]
     for staging in STAGING_ROOTS:
         root=Path(unc(pc,staging))
-        if not root.exists():continue
+        if not root.exists() or staging_linked(root):continue
         locations.append(staging)
         for item in root.rglob('*'):
             try:
@@ -505,8 +509,8 @@ def _cleanup_package_folder(pc:str):
     # Hard safety boundary: only children of the fixed staging roots are removed, never through a link.
     for staging,root in roots:
         label='' if staging==REMOTE_ROOT else 'Axis: '
-        if root.is_symlink() or root.is_junction():
-            failed.append({'item':staging,'error':'Staging folder is a link; not followed'});continue
+        if staging_linked(root):
+            failed.append({'item':staging,'error':'Staging path contains a link; not followed'});continue
         for item in list(root.iterdir()) if root.is_dir() else ():
             try:
                 if item.is_dir():shutil.rmtree(item)

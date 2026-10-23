@@ -53,14 +53,17 @@ class HistoryTests(unittest.TestCase):
         self.assertTrue(first["operator"].endswith("(Axis)"))
         self.assertTrue(first["finished"])
         self.assertEqual((second["state"], second["exit_code"]), ("failed", ""))
+        self.assertEqual(it.history_outcome({"state": "unknown", "exit_code": 0}), "unknown")
         self.assertEqual(json.loads(first["payload"]), {"computer": "PC-1", "folder": str(self.root / "repo" / "Example 1.0"),
                                                         "script": "app_i.ps1", "action": "Install", "mode": "full"})
 
     def test_history_problems_never_change_the_deployment(self):
-        job = self.worker([{"computer": "PC-1", "state": "script_succeeded", "exit_code": 0}],
-                          computers=("PC-1",), database=self.root / "missing" / "atlas.db")
-        self.assertEqual(job["state"], "complete")
-        self.assertEqual(sum("history was not updated" in e["message"] for e in job["events"]), 1)
+        for missing in (self.root / "missing" / "atlas.db", self.root / "absent.db"):
+            job = self.worker([{"computer": "PC-1", "state": "script_succeeded", "exit_code": 0}],
+                              computers=("PC-1",), database=missing)
+            self.assertEqual(job["state"], "complete")
+            self.assertEqual(sum("history was not updated" in e["message"] for e in job["events"]), 1)
+            self.assertFalse(missing.exists(), "History never creates a database")
         self.worker([{"computer": "PC-1", "state": "copied"}], history=False, computers=("PC-1",))
         con = sqlite3.connect(self.database)
         self.assertIsNone(con.execute("select 1 from sqlite_master where name='deployments'").fetchone())

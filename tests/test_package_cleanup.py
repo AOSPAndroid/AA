@@ -11,7 +11,7 @@ from backend import main
 class PackageCleanup(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(); self.addCleanup(self.tmp.cleanup)
-        self.share = Path(self.tmp.name) / 'PC1'
+        self.share = Path(self.tmp.name).resolve() / 'PC1'
         def unc(pc, path='C:'):
             return str(self.share.joinpath(*PureWindowsPath(path).parts[1:]))
         for name, value in (('unc', unc), ('validate_pc', lambda pc: pc), ('identity', lambda: 'TEST OPERATOR')):
@@ -43,9 +43,23 @@ class PackageCleanup(unittest.TestCase):
         except OSError:
             self.skipTest('Creating a directory link needs extra rights on this machine')
         result = main._cleanup_package_folder('PC1')
-        self.assertEqual(result['errors'], [{'item': main.STAGING_ROOTS[1], 'error': 'Staging folder is a link; not followed'}])
+        self.assertEqual(result['errors'], [{'item': main.STAGING_ROOTS[1], 'error': 'Staging path contains a link; not followed'}])
         self.assertTrue((elsewhere / 'Important').is_dir())
         self.assertEqual(list(self.atlas.iterdir()), [])
+
+    def test_a_link_above_the_staging_folder_is_never_followed(self):
+        # A standard user can replace C:\Temp\LocalAgent with a link to another profile's folder.
+        victim = Path(self.tmp.name) / 'profile' / 'AppData'
+        (victim / 'Packages' / 'StoreApp').mkdir(parents=True)
+        import shutil; shutil.rmtree(self.share / 'Temp' / 'LocalAgent')
+        try:
+            os.symlink(victim, self.share / 'Temp' / 'LocalAgent', target_is_directory=True)
+        except OSError:
+            self.skipTest('Creating a directory link needs extra rights on this machine')
+        self.assertEqual(main.package_folder_info('PC1')['locations'], [main.STAGING_ROOTS[0]])
+        result = main._cleanup_package_folder('PC1')
+        self.assertEqual([e['item'] for e in result['errors']], [main.STAGING_ROOTS[1]])
+        self.assertTrue((victim / 'Packages' / 'StoreApp').is_dir())
 
 
 if __name__ == '__main__':

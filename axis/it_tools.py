@@ -85,7 +85,8 @@ HISTORY_TABLE = ("CREATE TABLE IF NOT EXISTS deployments(id text primary key,sta
 
 
 def record_history(database, row_id, fields, create=False):
-    con = sqlite3.connect(str(database), timeout=10)
+    # mode=rw: an absent database is an error, never a new empty file.
+    con = sqlite3.connect(Path(database).resolve().as_uri() + "?mode=rw", uri=True, timeout=10)
     try:
         with con:
             if create:
@@ -103,6 +104,8 @@ def record_history(database, row_id, fields, create=False):
 
 def history_outcome(result):
     """Atlas's convention: an executed installer is 'launched' with its exit code, never 'installed'."""
+    if result["state"] == "unknown":
+        return "unknown"  # Even after an exit code was read, a later failure leaves the outcome open.
     if "exit_code" in result:
         return "launched"
     return {"copied": "complete", "unknown": "unknown", "running": "running"}.get(result["state"], "failed")
@@ -260,19 +263,35 @@ def target_lock(state_dir, pc):
                 fcntl.flock(handle, fcntl.LOCK_UN)
 
 
-def atlas_unresolved(database, pc):
-    """True when Atlas left this PC with an unknown outcome that nobody has acknowledged."""
+# Atlas's job_service.TERMINAL; any other saved state means the work may still be running.
+ATLAS_TERMINAL = {"launched", "complete", "failed", "cancelled", "interrupted", "unknown"}
+
+
+def atlas_blocking(database, pc):
+    """Why Atlas's records forbid work on this PC, or None. Unreadable records never read as clear."""
+    key = target_key(pc)
     try:
         con = sqlite3.connect(Path(database).resolve().as_uri() + "?mode=ro", uri=True, timeout=5)
         try:
-            if not con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='operation_guard'").fetchone():
-                return False
-            return any(target_key(row[0]) == target_key(pc) for row in con.execute("SELECT target FROM operation_guard"))
+            tables = {row[0] for row in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            if "operation_guard" in tables and any(target_key(row[0]) == key for row in con.execute("SELECT target FROM operation_guard")):
+                return ("%s has an unresolved Atlas operation. Inspect the PC, then acknowledge it in Atlas's "
+                        "Operation recovery." % pc)
+            # A job that was running when Atlas stopped is marked interrupted only at Atlas's next start.
+            for (body,) in con.execute("SELECT body FROM operation_state WHERE kind='job'") if "operation_state" in tables else ():
+                job = json.loads(body)
+                if job.get("state") in ATLAS_TERMINAL:
+                    continue
+                targets = [job.get("target")] + [row.get("target") or row.get("machine")
+                                                 for row in job.get("items", job.get("results", [])) if isinstance(row, dict)]
+                if any(isinstance(name, str) and target_key(name) == key for name in targets):
+                    return ("%s has an Atlas operation that is running, or was running when Atlas stopped. Wait for it, "
+                            "or open AA so an interrupted operation is listed in Operation recovery." % pc)
+            return None
         finally:
             con.close()
-    except (sqlite3.Error, OSError, ValueError) as error:
-        # Unknown remote state is never treated as clear.
-        raise RuntimeError("Cannot read Atlas's operation guard (%s); no change was started" % error) from None
+    except (sqlite3.Error, OSError, ValueError, TypeError, AttributeError) as error:
+        raise RuntimeError("Cannot read Atlas's operation records (%s); no change was started" % error) from None
 
 
 class ITTools:
@@ -441,8 +460,9 @@ class ITTools:
         job = self.blocking_job(pc, exclude)
         if job:
             raise RuntimeError("%s has an active or unresolved job %s. Inspect it with it_job_status first." % (pc, job["id"]))
-        if self.atlas_db and atlas_unresolved(self.atlas_db, pc):
-            raise RuntimeError("%s has an unresolved Atlas operation. Inspect the PC, then acknowledge it in Atlas's Operation recovery." % pc)
+        reason = atlas_blocking(self.atlas_db, pc) if self.atlas_db else None
+        if reason:
+            raise RuntimeError(reason)
 
     def spawn(self, plan):
         try:

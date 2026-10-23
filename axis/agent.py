@@ -12,8 +12,10 @@ import html
 import http.client
 import json
 import os
+from pathlib import Path
 import platform
 import re
+import sqlite3
 import subprocess
 import sys
 import threading
@@ -162,7 +164,8 @@ NOTE_TYPES = (".md", ".txt")
 ALWAYS_NOTE = "ALWAYS.md"   # loaded into every conversation
 MAX_ALWAYS = 2000           # chars of ALWAYS.md put in the prompt
 # Inside AA, Axis also writes its deployments into Atlas's history; standalone Axis only reads Atlas.
-IN_AA = os.path.isfile(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "aa_launcher.py"))
+AA_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+IN_AA = os.path.isfile(os.path.join(AA_ROOT, "aa_launcher.py"))
 MEMORY_FILE = "MEMORY.md"   # in the state folder: runtime data, loaded into every conversation
 MAX_MEMORY = 4000           # chars; remember refuses beyond this so the prompt holds all of it
 MAX_MEMORY_ENTRY = 300
@@ -200,7 +203,14 @@ def change_memory(path, change):
         try:
             with open(temporary, "w", encoding="utf-8") as out:
                 out.write(updated)
-            os.replace(temporary, path)
+            for attempt in range(20):
+                try:
+                    os.replace(temporary, path)
+                    break
+                except PermissionError:
+                    if attempt == 19:  # Windows refuses while another program reads the file.
+                        raise
+                    time.sleep(0.05)
         finally:
             if os.path.exists(temporary):
                 os.remove(temporary)
@@ -278,8 +288,11 @@ class Agent:
         self.history_budget = max(0, int((ctx - self.max_reply) * 3) - len(json.dumps(self.tools)))
         self.state_dir = os.path.realpath(state_dir or os.path.join(os.path.dirname(os.path.abspath(__file__)), "state"))
         self.memory_path = os.path.realpath(memory_file or os.path.join(self.state_dir, MEMORY_FILE))
+        # A configured database that is missing still guards: its read error refuses the change.
+        seed = IN_AA and self.atlas.path is not None and os.path.realpath(str(self.atlas.path)) == \
+            os.path.realpath(os.path.join(AA_ROOT, "office_atlas.db"))
         self.it = ITTools(self.state_dir, package_repo, self.confirm, deployment_timeout,
-                          atlas_db=self.atlas.path if self.atlas.available else None, atlas_history=IN_AA)
+                          atlas_db=self.atlas.path, atlas_history=IN_AA and not seed)
         # The server is local; never route it through a system proxy.
         self.http = urllib.request.build_opener(urllib.request.ProxyHandler({}))
         try:
@@ -1179,6 +1192,60 @@ def saved_id(agent, folder, prefix=None):
     return matches[0]
 
 
+def _aa_module(name):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("aa_" + name, os.path.join(AA_ROOT, name + ".py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def unresolved_jobs(state):
+    """Jobs in a state folder that would stop guarding their PCs if Axis used another folder."""
+    folder = os.path.join(state, "jobs")
+    found = []
+    for name in sorted(os.listdir(folder)) if os.path.isdir(folder) else ():
+        if not name.endswith(".json"):
+            continue
+        try:
+            with open(os.path.join(folder, name), encoding="utf-8") as f:
+                job = json.load(f)
+        except (OSError, ValueError):
+            found.append(name[:-5])  # Unreadable is not resolved.
+            continue
+        if not isinstance(job, dict) or job.get("state") in ("queued", "running") or \
+                job.get("state") == "unknown" and not job.get("acknowledged"):
+            found.append(str(job.get("id", name[:-5])) if isinstance(job, dict) else name[:-5])
+    return found
+
+
+def apply_aa_defaults(a):
+    """Inside AA, use the browser chat's jobs, locks and memory, Atlas's active database and its package
+    repository, however Axis was started. Returns a reason not to start, or None."""
+    if a.state_dir is None:
+        legacy = unresolved_jobs(os.path.join(AA_ROOT, "axis", "state"))
+        if legacy:
+            return ("Earlier terminal jobs in axis\\state are still active or unresolved: %s. They would stop guarding "
+                    "their PCs. Inspect those PCs, then review and acknowledge the jobs with: "
+                    "\"Start Agent.bat\" --state-dir state" % ", ".join(legacy))
+        a.state_dir = os.path.join(AA_ROOT, "data", "axis", "state")
+    paths = _aa_module("runtime_paths")
+    if a.atlas_db is None and not os.environ.get("AGENT_ATLAS_DB"):
+        try:
+            a.atlas_db = str(paths.prepare_runtime_database())  # Atlas's own first start: never the seed.
+        except (OSError, ValueError, sqlite3.Error):
+            a.atlas_db = str(paths.database_path())  # Missing: Axis refuses changes until it is back.
+    if a.package_repo is None and not os.environ.get("AGENT_PACKAGE_REPO"):
+        try:
+            with open(os.path.join(AA_ROOT, "config.json"), encoding="utf-8") as f:
+                config = json.load(f)
+        except (OSError, ValueError):
+            config = {}
+        a.package_repo = str(_aa_module("package_paths").package_repository(
+            config if isinstance(config, dict) else {}, Path(AA_ROOT)))
+    return None
+
+
 def handle_command(agent, ui, command, history):
     parts = command.split()
     name, arguments = parts[0].lower(), parts[1:]
@@ -1271,7 +1338,7 @@ def main(argv=None):
                           help="disable model thinking for faster answers")
     p.add_argument("--notes", help="notes folder (default: the notes folder next to agent.py)")
     p.add_argument("--atlas-db", help="read-only Atlas office_atlas.db path (or AGENT_ATLAS_DB)")
-    p.add_argument("--package-repo", default=os.environ.get("AGENT_PACKAGE_REPO") or os.environ.get("WMI_PACKAGE_REPO") or DEFAULT_PACKAGE_REPO,
+    p.add_argument("--package-repo",
                    help="package root (default: the configured OneDrive BetaPackages folder)")
     p.add_argument("--state-dir", help="folder for durable IT jobs, snapshots and full tool output (default: state next to agent.py)")
     p.add_argument("--memory-file", help="Markdown memory loaded into every conversation (default: MEMORY.md in the state folder)")
@@ -1285,6 +1352,13 @@ def main(argv=None):
                         help="summarize tool results; thinking remains visible")
     p.add_argument("--no-web", action="store_true", help="disable public web search and page reading")
     a = p.parse_args(argv)
+    if IN_AA:
+        problem = apply_aa_defaults(a)
+        if problem:
+            print(problem)
+            return 1
+    a.package_repo = (a.package_repo or os.environ.get("AGENT_PACKAGE_REPO") or os.environ.get("WMI_PACKAGE_REPO")
+                      or DEFAULT_PACKAGE_REPO)
     ui = TerminalUI(plain=a.plain, verbose=a.verbose)
     sampling = {name: getattr(a, name) for name in ("temperature", "top_p") if getattr(a, name) is not None}
     try:

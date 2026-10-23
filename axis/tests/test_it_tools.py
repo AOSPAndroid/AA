@@ -300,8 +300,31 @@ class ITTests(unittest.TestCase):
 
     def test_unreadable_atlas_guard_never_reads_as_clear(self):
         guarded = it.ITTools(self.root / "state", str(self.repo), self.confirm, atlas_db=self.root / "missing.db")
-        with self.assertRaisesRegex(RuntimeError, "Cannot read Atlas's operation guard"):
+        with self.assertRaisesRegex(RuntimeError, "Cannot read Atlas's operation records"):
             guarded.ensure_available("PC-1")
+
+    def test_an_atlas_job_running_or_left_running_by_a_stopped_atlas_blocks_axis(self):
+        import sqlite3
+        database = self.atlas_guard()
+        con = sqlite3.connect(database)
+        con.execute("create table operation_state(id text primary key,kind text,body text,updated real)")
+        rows = [("a", "job", json.dumps({"state": "running", "target": "PC-1.CORP.EXAMPLE"})),
+                ("b", "job", json.dumps({"state": "complete", "target": "PC-2"})),
+                ("c", "job", json.dumps({"state": "running", "results": [{"machine": "PC-3"}]})),
+                ("d", "queue", json.dumps({"state": "paused", "items": [{"target": "PC-4", "state": "waiting"}]}))]
+        con.executemany("insert into operation_state values(?,?,?,0)", rows)
+        con.commit(); con.close()
+        guarded = it.ITTools(self.root / "state", str(self.repo), self.confirm, atlas_db=database)
+        for pc in ("PC-1", "PC-3"):
+            with self.assertRaisesRegex(RuntimeError, "was running when Atlas stopped"):
+                guarded.ensure_available(pc)
+        guarded.ensure_available("PC-2")
+        guarded.ensure_available("PC-4")  # A waiting queue item becomes its own job when it starts.
+        con = sqlite3.connect(database)
+        con.execute("insert into operation_state values('e','job','not json',0)")
+        con.commit(); con.close()
+        with self.assertRaisesRegex(RuntimeError, "Cannot read Atlas's operation records"):
+            guarded.ensure_available("PC-2")
 
     def test_detached_worker_rechecks_the_atlas_guard(self):
         database = self.atlas_guard()

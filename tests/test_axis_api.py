@@ -296,6 +296,16 @@ class AxisAPI(unittest.TestCase):
             self.assertEqual(client.post("/api/axis/reset", json={"session_id": session.id}).status_code, 200)
             self.assertEqual(client.post("/api/axis/resume", json={}).json()["transcript"], [])
 
+    def test_a_saved_conversation_continues_only_under_the_same_settings(self):
+        identifier = events(self.post(message="first"))[0]["session_id"]
+        self.sessions.sessions.clear()  # As after a restart.
+        continued = events(self.post(message="second", session_id=identifier))
+        self.assertFalse(any("settings changed" in e.get("text", "") for e in continued))
+        self.sessions.sessions.clear()
+        self.backend.REPO = Path(self.temp.name) / "other-packages"
+        changed = events(self.post(message="third", session_id=identifier))
+        self.assertTrue(any("settings changed" in e.get("text", "") for e in changed))
+
     def test_saved_chats_are_bounded(self):
         long = "x" * (api.MAX_STORED_TEXT + 50)
         with patch.object(api, "MAX_CHATS", 2):
@@ -318,9 +328,14 @@ class AxisAPI(unittest.TestCase):
         forgotten = self.post("memory/forget", entry="Old printer").json()
         self.assertEqual((forgotten["entries"], forgotten["message"]), (["Keep this"], "Forgot: Old printer"))
         self.assertEqual(self.post("memory/forget", entry="Old printer").status_code, 409)
+        long = "Hand-edited " + "x" * 600
+        with (state / axis_agent.MEMORY_FILE).open("a", encoding="utf-8") as memory:
+            memory.write("- " + long + "\n")
+        self.assertEqual(self.post("memory/forget", entry=long).json()["entries"], ["Keep this"])
         audit = [json.loads(line) for line in (state / axis_agent.AUDIT_FILE).read_text(encoding="utf-8").splitlines()]
         self.assertEqual([(a["decision"], a["action"]) for a in audit],
-                         [("approved (memory panel)", "forget: Old printer"), ("approved (memory panel)", "forget: Old printer")])
+                         [("approved (memory panel)", "forget: Old printer"), ("approved (memory panel)", "forget: " + long)],
+                         "A forget that changed nothing is not recorded")
 
 
 class Helpers(unittest.TestCase):

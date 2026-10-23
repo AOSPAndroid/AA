@@ -56,6 +56,8 @@ class DeploymentRetry(unittest.TestCase):
                'script': 'setup_i.ps1', 'script_sha256': '0' * 64, 'action': 'Install', 'mode': 'full', 'timeout': 60,
                'state': 'queued', 'created': it_tools.now(), 'created_epoch': 0, 'results': [], 'events': [],
                'worker_pid': None, 'atlas_db': str(app.HISTORY_DB), 'atlas_history': True}
+        with app.hist_db():
+            pass  # Atlas's database exists; Axis history never creates one.
         path = Path(self.tmp.name) / 'axis' / 'jobs' / (job['id'] + '.json')
         it_tools.write_json(path, job)
         with patch.object(it_tools.ITTools, 'deploy_one', return_value={'computer': 'TESTPC', 'state': 'failed', 'message': 'Access denied'}):

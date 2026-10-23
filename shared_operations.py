@@ -4,6 +4,7 @@ Axis workers keep their durable job files under data/axis/state; Atlas reads the
 and Axis reads Atlas's operation_guard table, so neither app starts work on a PC
 that the other is changing or left with an unresolved outcome.
 """
+import os
 import threading
 import time
 from pathlib import Path
@@ -12,7 +13,8 @@ from fastapi import HTTPException
 
 from axis import it_tools
 
-AXIS_STATE = Path(__file__).resolve().parent / 'data' / 'axis' / 'state'
+# AA_AXIS_STATE lets tests use a disposable folder, as ATLAS_DB_PATH does for the database.
+AXIS_STATE = Path(os.environ.get('AA_AXIS_STATE') or Path(__file__).resolve().parent / 'data' / 'axis' / 'state')
 _cache, _cache_lock = {}, threading.Lock()
 
 

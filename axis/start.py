@@ -15,7 +15,6 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from pathlib import Path
 
 if __package__:
     from .terminal_ui import TerminalUI
@@ -28,42 +27,6 @@ PART_SIZE = 1900000000
 RELEASES = "https://github.com/AOSPAndroid/Axis/releases/tag/"
 def in_aa():
     return os.path.isfile(os.path.join(AA_ROOT, "aa_launcher.py"))
-
-
-def _aa_module(name):
-    import importlib.util
-    spec = importlib.util.spec_from_file_location("aa_" + name, os.path.join(AA_ROOT, name + ".py"))
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-def aa_settings():
-    """The state, database and package folder AA's browser chat uses, so both chats share them."""
-    config_path = os.path.join(AA_ROOT, "config.json")
-    try:
-        with open(config_path, encoding="utf-8") as f:
-            config = json.load(f)
-    except (OSError, ValueError):
-        config = {}
-    return {"--state-dir": os.path.join(AA_ROOT, "data", "axis", "state"),
-            "--atlas-db": str(_aa_module("runtime_paths").database_path()),
-            "--package-repo": str(_aa_module("package_paths").package_repository(config if isinstance(config, dict) else {}, Path(AA_ROOT)))}
-
-
-def unresolved_jobs(state):
-    """Jobs in an earlier terminal state folder that would no longer guard their PCs."""
-    folder = os.path.join(state, "jobs")
-    found = []
-    for name in sorted(os.listdir(folder)) if os.path.isdir(folder) else ():
-        try:
-            with open(os.path.join(folder, name), encoding="utf-8") as f:
-                job = json.load(f) if name.endswith(".json") else None
-        except (OSError, ValueError):
-            continue
-        if job and (job.get("state") in ("queued", "running") or job.get("state") == "unknown" and not job.get("acknowledged")):
-            found.append(job.get("id", name))
-    return found
 
 
 def load_models():
@@ -452,18 +415,7 @@ def main(argv=None):
             return 1
     if a.atlas_db:
         agent_args += ["--atlas-db", a.atlas_db]
-    if in_aa():
-        # One tool: the terminal uses the jobs, locks, memory, database and packages of AA's browser chat.
-        given = {arg.split("=", 1)[0] for arg in agent_args}
-        if os.environ.get("AGENT_PACKAGE_REPO"):
-            given.add("--package-repo")
-        for option, value in aa_settings().items():
-            if option not in given:
-                agent_args += [option, value]
-        legacy = unresolved_jobs(os.path.join(HERE, "state"))
-        if legacy and "--state-dir" not in given:
-            log("Earlier terminal jobs in axis\\state are still active or unresolved: %s. Inspect those PCs, "
-                "then review the jobs with: \"Start Agent.bat\" --state-dir state" % ", ".join(legacy))
+    # Inside AA, agent.py itself uses AA's jobs, locks, memory, database and packages.
 
     ui = TerminalUI(plain=a.plain)
     if a.plain:

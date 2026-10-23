@@ -20,8 +20,7 @@ from fastapi import HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, ValidationError
 
-from axis.agent import (Agent, MEMORY_FILE, change_memory, memory_entries, memory_entry, read_memory,
-                        without_entry, write_audit)
+from axis.agent import Agent, MEMORY_FILE, change_memory, memory_entries, read_memory, without_entry, write_audit
 from axis.it_tools import ITTools, read_json, write_json
 
 MODEL_URL = "http://127.0.0.1:8080/v1"
@@ -66,7 +65,7 @@ class Resume(Input):
 
 
 class Forget(Input):
-    entry: str = Field(min_length=1, max_length=400)
+    entry: str = Field(min_length=1, max_length=8000)
 
 
 def local_request(request):
@@ -327,7 +326,7 @@ class BrowserUI:
 
 
 class Session:
-    def __init__(self, identifier=None, transcript=None, saved_messages=None, updated=None):
+    def __init__(self, identifier=None, transcript=None, saved_messages=None, updated=None, saved_configuration=None):
         self.id = identifier or secrets.token_urlsafe(32)
         self.agent = None
         self.configuration = None
@@ -335,7 +334,8 @@ class Session:
         self.touched = time.monotonic()
         self.updated = updated or time.time()
         self.transcript = transcript or []
-        self.saved_messages = saved_messages  # A saved chat's conversation, continued by its next agent.
+        self.saved_messages = saved_messages  # A saved chat's conversation, continued by its next agent
+        self.saved_configuration = saved_configuration  # only under the same model, database and packages.
         self.lock = threading.Lock()
 
     def record(self, event):
@@ -362,6 +362,9 @@ class Session:
     def messages(self):
         messages = getattr(self.agent, "messages", None) if self.agent is not None else self.saved_messages
         return messages if isinstance(messages, list) else None
+
+    def configuration_record(self):
+        return list(self.configuration) if self.configuration is not None else self.saved_configuration
 
 
 def restore_history(agent, saved):
@@ -415,14 +418,15 @@ class Sessions:
         if not isinstance(data, dict) or data.get("id") != identifier or not isinstance(data.get("transcript"), list):
             return None
         return self.admit(Session(identifier, data["transcript"][-MAX_TRANSCRIPT:], data.get("messages"),
-                                  data.get("updated") if isinstance(data.get("updated"), (int, float)) else None))
+                                  data.get("updated") if isinstance(data.get("updated"), (int, float)) else None,
+                                  data.get("configuration")))
 
     def save(self, session):
         """Write the chat beside Axis's state; a failure never affects the conversation."""
         try:
             write_json(self.chats / (session.id + ".json"),
                        {"id": session.id, "updated": session.updated, "transcript": session.snapshot(),
-                        "messages": session.messages()})
+                        "messages": session.messages(), "configuration": session.configuration_record()})
             for old in sorted(self.chats.glob("*.json"), key=lambda path: path.stat().st_mtime)[:-MAX_CHATS]:
                 old.unlink()
         except (OSError, TypeError, ValueError):
@@ -543,8 +547,11 @@ class Sessions:
                                              sampling=settings["sampling"], atlas_db=str(self.backend.MASTER_DB))
                 session.configuration = configuration
                 if session.saved_messages:
-                    restore_history(session.agent, session.saved_messages)
-                    session.saved_messages = None
+                    if session.saved_configuration == list(configuration):
+                        restore_history(session.agent, session.saved_messages)
+                    else:
+                        ui.notice("Model or database/package settings changed since this chat; started a fresh conversation.")
+                    session.saved_messages = session.saved_configuration = None
             session.agent.ui = ui
             session.agent.http = ModelHTTP(turn)
             message = body.message.strip()
@@ -600,7 +607,7 @@ class Sessions:
     def clear(self, session):
         session.agent = None
         session.configuration = None
-        session.saved_messages = None
+        session.saved_messages = session.saved_configuration = None
         with session.lock:
             session.transcript = []
             session.updated = time.time()
@@ -624,13 +631,20 @@ class Sessions:
         return {"path": str(path), "entries": memory_entries(read_memory(str(path)))}
 
     def forget(self, body):
-        """The operator removes an entry directly from the panel; recorded like an approval."""
-        try:
-            entry = memory_entry(body.entry)
+        """The operator removes an entry directly from the panel; recorded like an approval when it happens."""
+        entry = " ".join(body.entry.split())  # Hand-edited lines may be longer than remember allows.
+        remove = without_entry(entry)
+
+        def audited(text):
+            change = remove(text)  # Raises when the entry is gone: nothing changes and nothing is recorded.
             write_audit(str(self.state), "browser", "approved (memory panel)", "forget: " + entry)
-            message, _, _ = change_memory(str(self.state / MEMORY_FILE), without_entry(entry))
+            return change
+        try:
+            message, _, _ = change_memory(str(self.state / MEMORY_FILE), audited)
         except ValueError as error:
             raise HTTPException(409, str(error)) from None
+        except OSError as error:
+            raise HTTPException(503, "Memory could not be changed: %s" % error) from None
         return dict(self.memory(), message=message)
 
 
