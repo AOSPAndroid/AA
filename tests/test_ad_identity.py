@@ -6,6 +6,9 @@ class IdentityTests(unittest.TestCase):
   source=Path('scripts/active_directory.ps1').read_text(encoding='utf8')
   source=source[:source.index('function DateText')]
   mock=r'''
+# Load serialization before the module mocks; avoid scanning unrelated runner modules.
+$PSModuleAutoLoadingPreference='None'
+Microsoft.PowerShell.Core\Import-Module "$PSHOME/Modules/Microsoft.PowerShell.Utility" -ErrorAction Stop
 $kind='user';$server='dc.test';$identity='IDENTITY';$scenario='SCENARIO'
 function Get-Module { 'fixture' }
 function Import-Module {}
@@ -24,7 +27,8 @@ function Get-ADUser {
  if($scenario -eq 'ambiguous'){[pscustomobject]@{SamAccountName='other'}}
 }
 '''.replace('IDENTITY',identity).replace('SCENARIO',scenario)
-  r=subprocess.run(['pwsh','-NoProfile','-NonInteractive','-Command',mock+'\n'+source+'\n$o | ConvertTo-Json -Compress'],capture_output=True,text=True,timeout=10)
+  # Includes cold PowerShell startup on hosted runners; all AD calls stay mocked.
+  r=subprocess.run(['pwsh','-NoProfile','-NonInteractive','-Command',mock+'\n'+source+'\n$o | ConvertTo-Json -Compress'],capture_output=True,text=True,timeout=30)
   self.assertEqual(r.returncode,0,r.stderr)
   return json.loads(r.stdout)
  def test_exact_and_fallback(self):

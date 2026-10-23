@@ -11,8 +11,8 @@ import urllib.request
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def run(*args, env):
-    subprocess.run(args, cwd=ROOT, env=env, check=True, timeout=180)
+def run(*args, env, timeout=180):
+    subprocess.run(args, cwd=ROOT, env=env, check=True, timeout=timeout)
 
 
 def main():
@@ -24,7 +24,9 @@ def main():
         source.close()
         dest.close()
         env = dict(os.environ, ATLAS_DB_PATH=str(db), PYTHON=sys.executable, PYTHONUTF8='1')
-        run(sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-v', env=env)
+        # The complete imported Atlas suite starts many real PowerShell fixtures
+        # on Windows. Give the whole suite room; individual tests keep their limits.
+        run(sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-v', env=env, timeout=600)
         children = []
         try:
             for script, port in [('serve_ui_fixture.py', 8892), ('serve_seating_fixture.py', 8893)]:
