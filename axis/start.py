@@ -408,6 +408,11 @@ def main(argv=None):
             return 1
     if a.atlas_db:
         agent_args += ["--atlas-db", a.atlas_db]
+    aa_root = os.path.dirname(HERE)
+    if (os.path.isfile(os.path.join(aa_root, "aa_launcher.py"))
+            and not any(arg.split("=", 1)[0] == "--memory-file" for arg in agent_args)):
+        # Inside AA, the terminal and the browser chat share one memory.
+        agent_args += ["--memory-file", os.path.join(aa_root, "data", "axis", "state", "MEMORY.md")]
 
     ui = TerminalUI(plain=a.plain)
     if a.plain:

@@ -24,6 +24,7 @@ In a synthetic Linux rendering check, 10,000 five-character fragments required 5
 | `/status` | View model/server, context, paths and session settings |
 | `/jobs` / `/jobs ID` | Read deployment/reboot jobs directly, without asking the model |
 | `/output` / `/output ID offset` | Read the latest or selected saved tool result in character pages |
+| `/memory` | Show the facts Axis remembers between conversations |
 | `/history` | Show recent requests from this session |
 | `/paste` | Enter a multiline request; submit with a single `.` line |
 | `/reset` | Clear model conversation; retain jobs and saved output |
@@ -188,6 +189,7 @@ python agent.py --workdir C:\path\to\project "list the .ps1 files and say what e
 | `--atlas-db` | automatic local detection | Read-only Atlas inventory file; overrides `AGENT_ATLAS_DB` / `ATLAS_DB_PATH` |
 | `--package-repo` | OneDrive BetaPackages folder above; environment variables override | Root containing deployable package folders |
 | `--state-dir` | `state` next to agent.py | Durable jobs, snapshots and full tool results |
+| `--memory-file` | `MEMORY.md` in the state folder | Memory loaded into every conversation; inside AA the launcher uses AA's shared file |
 | `--max-steps` | `30` | Maximum model/tool rounds per request (1–200) |
 | `--deployment-timeout` | `3600` | Copy/installer monitoring timeout in seconds (60–86400) |
 | `--plain` | off | Disable colours and animation |
@@ -197,6 +199,8 @@ python agent.py --workdir C:\path\to\project "list the .ps1 files and say what e
 ## Your notes
 
 Put runbooks, procedures, known fixes and names as `.md` or `.txt` files in the `notes` folder next to `agent.py` (or pass `--notes DIR`). The agent sees the list of files, searches them with `search_notes` before guessing, and opens one with `read_note`. `notes/ALWAYS.md` is loaded into every conversation, so keep it short. `notes/EXAMPLE.md` shows the format.
+
+Axis keeps its own memory in `MEMORY.md` in the `state` folder (or `--memory-file`). Ask it to remember or forget a fact; each change shows the exact line and needs approval. Axis may also offer to remember a lasting preference you state. New conversations load the whole file (up to 4,000 characters, so Axis refuses to add more until you remove entries); an open conversation receives changes made elsewhere with its next request. Entries are reference, not instructions. Lines that look like passwords, keys or tokens are refused; save where a secret is kept, not its value. `/memory` shows the file; you can edit it directly.
 
 The model's reasoning is enabled and displayed by default, including separate reasoning fields and inline think blocks from compatible servers. Reasoning is displayed but excluded from conversation history sent back to the model. `--no-think` disables thinking. If a reused model server was started with thinking disabled, restart it to apply the new default.
 

@@ -208,6 +208,29 @@ class SharedLauncherTests(unittest.TestCase):
                 self.assertNotIn("--atlas-dir", command)
                 self.assertEqual(atlas.call_count, int(shared))
 
+    def test_terminal_inside_aa_shares_the_browser_chat_memory(self):
+        aa = self.root / "AA"
+        (aa / "axis").mkdir(parents=True)
+        expected = os.path.join(str(aa), "data", "axis", "state", "MEMORY.md")
+        cases = (([], True, expected), (["--memory-file", "mine.md"], True, "mine.md"), ([], False, None))
+        for options, inside, memory in cases:
+            with self.subTest(options=options, inside=inside), \
+                 patch.object(start, "HERE", str(aa / "axis")), \
+                 patch.object(start, "prepare_model", return_value=("35b", "model.gguf")), \
+                 patch.object(start, "server_ready", return_value=True), \
+                 patch.object(start, "server_model", return_value="fixture-model"), \
+                 patch.object(start, "TerminalUI"), \
+                 patch.object(start, "wait_for_agent", return_value=0) as agent:
+                launcher = aa / "aa_launcher.py"
+                launcher.write_text("") if inside else launcher.unlink(missing_ok=True)
+                self.assertEqual(start.main(["--workdir", str(self.here), "--plain"] + options), 0)
+                command = agent.call_args.args[0]
+                if memory is None:
+                    self.assertNotIn("--memory-file", command)
+                else:
+                    self.assertEqual(command.count("--memory-file"), 1)
+                    self.assertEqual(command[command.index("--memory-file") + 1], memory)
+
     def test_conflicting_database_override_is_rejected_before_starting_anything(self):
         with patch.object(launch_atlas, "start_atlas") as atlas, patch.object(start, "prepare_model") as prepare, \
              redirect_stderr(io.StringIO()) as errors:

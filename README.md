@@ -38,6 +38,11 @@ If the model is missing, the map still opens and chat explains how to start it.
   never change the same PC at once. An unknown outcome in either app blocks the
   PC in both until it is acknowledged where it happened: Atlas's Operation
   recovery, or by asking Axis after you inspect the PC.
+- **Memory:** ask Axis to remember a fact (or forget one). After your approval it
+  saves a line in `data/axis/state/MEMORY.md`, shared by the browser chat and the
+  Axis terminal; open chats receive changes with their next request. Use
+  `/memory` to view it; edit or delete lines in the file freely. Lines that look
+  like passwords, keys or tokens are refused.
 - **Viewer stays read-only:** Axis execution is available only on the local
   Admin interface, not the LAN Viewer.
 
@@ -66,7 +71,7 @@ on sending private directory data to external sites.
 Download the new AA ZIP and extract it into a new folder. Stop the old AA first,
 then reuse your model and `config.json`, and point the new copy at your existing
 runtime database. Copy `data/axis/state` and `data/axis/workspace` only after
-stopping AA if you want to retain saved jobs, tool outputs and working files.
+stopping AA if you want to retain saved jobs, memory, tool outputs and working files.
 Keep the old folder until the new copy works. See [Updating AA](docs/updating-atlas.md).
 The inherited Atlas updater is disabled for AA so it cannot replace the combined
 app with standalone Atlas.
