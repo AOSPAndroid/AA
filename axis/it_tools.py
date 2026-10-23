@@ -71,6 +71,43 @@ class UnknownOutcome(RuntimeError):
     pass
 
 
+def windows_account():
+    """The Windows account running this process, as Atlas records it."""
+    import getpass
+    domain = os.environ.get("USERDOMAIN", "") if os.name == "nt" else ""
+    return ((domain + "\\") if domain else "") + getpass.getuser()
+
+
+# Atlas's deployment history. AA's Axis adds its own deployments so one history shows both apps.
+HISTORY_TABLE = ("CREATE TABLE IF NOT EXISTS deployments(id text primary key,started text,finished text,operator text,"
+                 "target text,package text,action text,script text,mode text,state text,robocopy_code text,pid text,"
+                 "exit_code text,details text,payload text)")
+
+
+def record_history(database, row_id, fields, create=False):
+    con = sqlite3.connect(str(database), timeout=10)
+    try:
+        with con:
+            if create:
+                con.execute(HISTORY_TABLE)
+                if "payload" not in {row[1] for row in con.execute("PRAGMA table_info(deployments)")}:
+                    con.execute("ALTER TABLE deployments ADD COLUMN payload text")
+                con.execute("INSERT OR REPLACE INTO deployments(id, %s) VALUES (?%s)" % (", ".join(fields), ", ?" * len(fields)),
+                            [row_id] + list(fields.values()))
+            else:
+                con.execute("UPDATE deployments SET %s WHERE id=?" % ", ".join(key + "=?" for key in fields),
+                            list(fields.values()) + [row_id])
+    finally:
+        con.close()
+
+
+def history_outcome(result):
+    """Atlas's convention: an executed installer is 'launched' with its exit code, never 'installed'."""
+    if "exit_code" in result:
+        return "launched"
+    return {"copied": "complete", "unknown": "unknown", "running": "running"}.get(result["state"], "failed")
+
+
 def now():
     return datetime.datetime.now(datetime.timezone.utc).isoformat()
 
@@ -239,9 +276,10 @@ def atlas_unresolved(database, pc):
 
 
 class ITTools:
-    def __init__(self, state_dir, package_repo=None, confirm=None, timeout=3600, atlas_db=None):
+    def __init__(self, state_dir, package_repo=None, confirm=None, timeout=3600, atlas_db=None, atlas_history=False):
         self.state = Path(state_dir).expanduser().resolve()
         self.atlas_db = str(atlas_db) if atlas_db else None
+        self.atlas_history = bool(atlas_history and self.atlas_db)
         package_repo = package_repo or os.environ.get("AGENT_PACKAGE_REPO") or os.environ.get("WMI_PACKAGE_REPO") or DEFAULT_PACKAGE_REPO
         self.repository = Path(os.path.expandvars(package_repo)).expanduser().resolve()
         self.confirm = confirm or (lambda action: False)
@@ -416,6 +454,7 @@ class ITTools:
                    results=[], events=[], worker_pid=None)
         if self.atlas_db:
             job["atlas_db"] = self.atlas_db  # The detached worker rechecks the same guard.
+            job["atlas_history"] = self.atlas_history
         path = self.state / "jobs" / (job_id + ".json")
         write_json(path, job)
         try:
@@ -671,10 +710,32 @@ def run_worker(path):
         job["events"].append({"at": now(), "computer": pc, "message": message})
         write_json(path, job)
 
+    history = {"failed": False, "open": None}
+
+    def recorded(index, fields, create=False):
+        # History is a record of the work, never a reason to stop or fail it.
+        if not job.get("atlas_history") or history["failed"]:
+            return
+        try:
+            record_history(job["atlas_db"], "axis-%s-%d" % (job["id"], index), fields, create)
+            history["open"] = index if create else None
+        except (sqlite3.Error, OSError) as error:
+            history["failed"] = True
+            event("", "Atlas deployment history was not updated: %s" % error)
+
     try:
-        for pc in job["computers"]:
+        for index, pc in enumerate(job["computers"]):
             if job["kind"] == "deploy":
+                recorded(index, {"started": time.strftime("%Y-%m-%d %H:%M:%S"), "operator": windows_account() + " (Axis)",
+                                 "target": pc, "package": job["package"], "action": job["action"], "script": job["script"],
+                                 "mode": job["mode"], "state": "running", "payload": json.dumps({
+                                     "computer": pc, "folder": str(Path(job["repository"]) / job["package"]),
+                                     "script": job["script"], "action": job["action"], "mode": job["mode"]})}, create=True)
                 result = backend.deploy_one(job, pc, event)
+                recorded(index, {"finished": time.strftime("%Y-%m-%d %H:%M:%S"), "state": history_outcome(result),
+                                 "exit_code": str(result.get("exit_code", "")), "pid": str(result.get("pid", "")),
+                                 "robocopy_code": str(result.get("robocopy_code", "")),
+                                 "details": ((result.get("message") or "") + "\n" + (result.get("log_tail") or "")).strip()[-4000:]})
             elif job["kind"] == "reboot":
                 result = {"computer": pc, "state": "unknown", "verified": False}
                 try:
@@ -704,6 +765,9 @@ def run_worker(path):
         job["state"] = "unknown" if "unknown" in states else "failed" if "failed" in states else "complete"
     except BaseException as error:
         job.update(state="unknown", error=str(error) + "; inspect target state before retrying")
+        if history["open"] is not None:
+            recorded(history["open"], {"finished": time.strftime("%Y-%m-%d %H:%M:%S"), "state": "unknown",
+                                       "details": job["error"]})
     finally:
         job["finished"] = now()
         write_json(path, job)

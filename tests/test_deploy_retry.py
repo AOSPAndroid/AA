@@ -50,6 +50,23 @@ class DeploymentRetry(unittest.TestCase):
         self.assertEqual(self.client.post(f'/api/deploy/{old}/retry').status_code, 200)
         self.assertEqual(self.client.post('/api/deploy/missing/retry').status_code, 404)
 
+    def test_an_axis_deployment_appears_in_history_and_retries_through_atlas(self):
+        from axis import it_tools
+        job = {'id': 'd' * 32, 'kind': 'deploy', 'computers': ['TESTPC'], 'repository': str(app.REPO), 'package': 'Example',
+               'script': 'setup_i.ps1', 'script_sha256': '0' * 64, 'action': 'Install', 'mode': 'full', 'timeout': 60,
+               'state': 'queued', 'created': it_tools.now(), 'created_epoch': 0, 'results': [], 'events': [],
+               'worker_pid': None, 'atlas_db': str(app.HISTORY_DB), 'atlas_history': True}
+        path = Path(self.tmp.name) / 'axis' / 'jobs' / (job['id'] + '.json')
+        it_tools.write_json(path, job)
+        with patch.object(it_tools.ITTools, 'deploy_one', return_value={'computer': 'TESTPC', 'state': 'failed', 'message': 'Access denied'}):
+            it_tools.run_worker(path)
+        row = next(r for r in self.client.get('/api/history').json() if r['id'] == 'axis-' + 'd' * 32 + '-0')
+        self.assertEqual((row['target'], row['package'], row['state']), ('TESTPC', 'Example', 'failed'))
+        self.assertTrue(row['operator'].endswith('(Axis)'))
+        retried = self.client.post('/api/deploy/' + row['id'] + '/retry')
+        self.assertEqual(retried.status_code, 200, retried.text)
+        self.assertEqual((self.started[-1][1]['computer'], Path(self.started[-1][1]['folder']).name), ('TESTPC', 'Example'))
+
     def test_monitor_cards_offer_retry_for_single_deployments_only(self):
         single = self.deploy()
         self.assertTrue(app.deployment_details(single, app.jobs[single])['retry'])

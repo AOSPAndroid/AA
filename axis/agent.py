@@ -23,12 +23,12 @@ import urllib.request
 import uuid
 
 if __package__:
-    from .it_tools import DEFAULT_PACKAGE_REPO, ITTools, TOOLS as IT_TOOLS, TOOL_NAMES as IT_TOOL_NAMES
+    from .it_tools import DEFAULT_PACKAGE_REPO, ITTools, TOOLS as IT_TOOLS, TOOL_NAMES as IT_TOOL_NAMES, windows_account
     from .terminal_ui import TerminalUI
     from .web_tools import WebTools, TOOLS as WEB_TOOLS, TOOL_NAMES as WEB_TOOL_NAMES
     from .atlas_db import AtlasDatabase, TOOLS as ATLAS_TOOLS, TOOL_NAMES as ATLAS_TOOL_NAMES
 else:
-    from it_tools import DEFAULT_PACKAGE_REPO, ITTools, TOOLS as IT_TOOLS, TOOL_NAMES as IT_TOOL_NAMES
+    from it_tools import DEFAULT_PACKAGE_REPO, ITTools, TOOLS as IT_TOOLS, TOOL_NAMES as IT_TOOL_NAMES, windows_account
     from terminal_ui import TerminalUI
     from web_tools import WebTools, TOOLS as WEB_TOOLS, TOOL_NAMES as WEB_TOOL_NAMES
     from atlas_db import AtlasDatabase, TOOLS as ATLAS_TOOLS, TOOL_NAMES as ATLAS_TOOL_NAMES
@@ -161,11 +161,15 @@ if os.name == "nt":
 NOTE_TYPES = (".md", ".txt")
 ALWAYS_NOTE = "ALWAYS.md"   # loaded into every conversation
 MAX_ALWAYS = 2000           # chars of ALWAYS.md put in the prompt
+# Inside AA, Axis also writes its deployments into Atlas's history; standalone Axis only reads Atlas.
+IN_AA = os.path.isfile(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "aa_launcher.py"))
 MEMORY_FILE = "MEMORY.md"   # in the state folder: runtime data, loaded into every conversation
 MAX_MEMORY = 4000           # chars; remember refuses beyond this so the prompt holds all of it
 MAX_MEMORY_ENTRY = 300
 MEMORY_HEADER = "# Axis memory\n\nFacts approved for later conversations. Edit or delete lines freely.\n\n"
 MEMORY_LOCK = threading.Lock()   # browser chats share one process and one file
+AUDIT_FILE = "audit.jsonl"       # in the state folder: every approval decision, append-only
+AUDIT_LOCK = threading.Lock()
 CREDENTIAL = re.compile(r"(?i)\b(?:password|passwd|pwd|passphrase|secret|api[ _-]?key|token)\s*[:=]")
 TOKEN = re.compile(r"[A-Za-z0-9+/]{32,}")
 
@@ -209,7 +213,7 @@ class Agent:
         self.state_dir = os.path.realpath(state_dir or os.path.join(os.path.dirname(os.path.abspath(__file__)), "state"))
         self.memory_path = os.path.realpath(memory_file or os.path.join(self.state_dir, MEMORY_FILE))
         self.it = ITTools(self.state_dir, package_repo, self.confirm, deployment_timeout,
-                          atlas_db=self.atlas.path if self.atlas.available else None)
+                          atlas_db=self.atlas.path if self.atlas.available else None, atlas_history=IN_AA)
         # The server is local; never route it through a system proxy.
         self.http = urllib.request.build_opener(urllib.request.ProxyHandler({}))
         try:
@@ -780,14 +784,29 @@ class Agent:
 
     def confirm(self, action):
         if self.auto_approve:
+            self.audit(action, "approved automatically (--yes)")
             return True
         if action in self._declined_actions:
             self.ui.notice("Already declined in this request; not asking again.", "warning")
             return False
         approved = self.ui.confirm(action)
+        self.audit(action, "approved" if approved else "declined")
         if not approved:
             self._declined_actions.add(action)
         return approved
+
+    def audit(self, action, decision):
+        """Who approved or declined which change, and where. Recorded before the change runs."""
+        interface = getattr(self.ui, "interface", None)
+        line = json.dumps({"at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+                           "account": windows_account(), "interface": interface if isinstance(interface, str) else "terminal",
+                           "decision": decision, "action": action}, ensure_ascii=False)
+        try:
+            os.makedirs(self.state_dir, exist_ok=True)
+            with AUDIT_LOCK, open(os.path.join(self.state_dir, AUDIT_FILE), "a", encoding="utf-8") as log:
+                log.write(line + "\n")
+        except OSError as error:
+            self.ui.error("Could not record this decision in the audit log: %s" % error)
 
 
 # ---- local system ----------------------------------------------------------

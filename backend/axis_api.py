@@ -246,6 +246,8 @@ class ModelHTTP:
 
 
 class BrowserUI:
+    interface = "browser"
+
     def __init__(self, turn):
         self.turn = turn
 

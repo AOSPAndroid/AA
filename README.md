@@ -38,6 +38,10 @@ If the model is missing, the map still opens and chat explains how to start it.
   never change the same PC at once. An unknown outcome in either app blocks the
   PC in both until it is acknowledged where it happened: Atlas's Operation
   recovery, or by asking Axis after you inspect the PC.
+- **One history and audit:** Axis deployments appear in Atlas's deployment
+  history (marked Axis, with the Windows account), where Retry and Queue use
+  Atlas's deployment. Every Axis approval decision is appended to
+  `data/axis/state/audit.jsonl` before the change runs.
 - **Memory:** ask Axis to remember a fact (or forget one). After your approval it
   saves a line in `data/axis/state/MEMORY.md`, shared by the browser chat and the
   Axis terminal; open chats receive changes with their next request. Use
@@ -62,8 +66,9 @@ seed remains available for first-run setup. Runtime databases, logs, chat tool
 outputs and model state stay outside the Git source files.
 
 The selected database is also Atlas's writable database; Axis's directory lookup
-and its check of Atlas's unresolved operations use read-only connections. Keep
-your normal Atlas backup process when moving or updating a database.
+and its check of Atlas's unresolved operations use read-only connections. Axis
+writes only its own deployment rows into Atlas's deployment history. Keep your
+normal Atlas backup process when moving or updating a database.
 
 Optional Firecrawl setup remains available in `axis/Configure Firecrawl.bat`.
 The key stays in your Windows profile. Public web tools retain Axis's restrictions
