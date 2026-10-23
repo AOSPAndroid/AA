@@ -174,6 +174,72 @@ CREDENTIAL = re.compile(r"(?i)\b(?:password|passwd|pwd|passphrase|secret|api[ _-
 TOKEN = re.compile(r"[A-Za-z0-9+/]{32,}")
 
 
+
+def read_memory(path):
+    try:
+        with MEMORY_LOCK, open(path, encoding="utf-8", errors="replace") as f:
+            return f.read()
+    except FileNotFoundError:
+        return ""
+
+
+def change_memory(path, change):
+    """Re-read under the lock, apply change(text) -> (new text or None, message), replace atomically.
+    Returns (message, text before, text after or None when nothing was written)."""
+    with MEMORY_LOCK:
+        try:
+            with open(path, encoding="utf-8", errors="replace") as f:
+                text = f.read()
+        except FileNotFoundError:
+            text = ""
+        updated, message = change(text)
+        if updated is None or updated == text:
+            return message, text, None
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        temporary = "%s.%s.tmp" % (path, uuid.uuid4().hex)
+        try:
+            with open(temporary, "w", encoding="utf-8") as out:
+                out.write(updated)
+            os.replace(temporary, path)
+        finally:
+            if os.path.exists(temporary):
+                os.remove(temporary)
+        return message, text, updated
+
+
+def memory_entry(value):
+    entry = " ".join(str(value or "").split())
+    entry = entry[2:].strip() if entry.startswith("- ") else entry
+    if not entry or len(entry) > MAX_MEMORY_ENTRY or any(ord(c) < 32 for c in entry):
+        raise ValueError("Use one memory entry of 1 to %d characters" % MAX_MEMORY_ENTRY)
+    return entry
+
+
+def memory_entries(text):
+    """The "- " lines of a memory file, with whitespace normalized as remember and forget compare them."""
+    lines = (" ".join(line.split()) for line in text.splitlines())
+    return [line[2:] for line in lines if line.startswith("- ") and line[2:]]
+
+
+def without_entry(entry):
+    def remove(text):
+        lines = text.splitlines(keepends=True)
+        kept = [line for line in lines if " ".join(line.split()) != "- " + entry]
+        if len(kept) == len(lines):
+            raise ValueError("No memory entry is exactly %r" % entry)
+        return "".join(kept), "Forgot: %s" % entry
+    return remove
+
+
+def write_audit(state_dir, interface, decision, action):
+    line = json.dumps({"at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+                       "account": windows_account(), "interface": interface,
+                       "decision": decision, "action": action}, ensure_ascii=False)
+    os.makedirs(state_dir, exist_ok=True)
+    with AUDIT_LOCK, open(os.path.join(state_dir, AUDIT_FILE), "a", encoding="utf-8") as log:
+        log.write(line + "\n")
+
+
 class Agent:
     def __init__(self, base_url, model, workdir, auto_approve, think, ctx=16384, notes=None,
                  package_repo=None, state_dir=None, max_steps=MAX_STEPS, deployment_timeout=3600, ui=None,
@@ -276,11 +342,7 @@ class Agent:
         return "\n".join(lines)
 
     def memory_text(self):
-        try:
-            with MEMORY_LOCK, open(self.memory_path, encoding="utf-8", errors="replace") as f:
-                return f.read()
-        except FileNotFoundError:
-            return ""
+        return read_memory(self.memory_path)
 
     def memory_summary(self, text=None):
         text = (self.memory_text() if text is None else text).strip()
@@ -289,44 +351,19 @@ class Agent:
         return "File: %s\n%s" % (self.memory_path, shorten(text, MAX_MEMORY))
 
     def update_memory(self, change):
-        """Re-read after approval, apply change(text) -> (new text, message), and replace atomically."""
-        with MEMORY_LOCK:
-            try:
-                with open(self.memory_path, encoding="utf-8", errors="replace") as f:
-                    text = f.read()
-            except FileNotFoundError:
-                text = ""
-            updated, message = change(text)
-            if updated is not None and updated != text:
-                os.makedirs(os.path.dirname(self.memory_path), exist_ok=True)
-                temporary = "%s.%s.tmp" % (self.memory_path, uuid.uuid4().hex)
-                try:
-                    with open(temporary, "w", encoding="utf-8") as out:
-                        out.write(updated)
-                    os.replace(temporary, self.memory_path)
-                finally:
-                    if os.path.exists(temporary):
-                        os.remove(temporary)
-                # The tool result tells the model about its own change. Changes from
-                # elsewhere since it last looked still arrive with the next request.
-                if self.memory_summary(text) == self.memory_seen:
-                    self.memory_seen = self.memory_summary(updated)
-            return message
-
-    @staticmethod
-    def memory_entry(value):
-        entry = " ".join(str(value or "").split())
-        entry = entry[2:].strip() if entry.startswith("- ") else entry
-        if not entry or len(entry) > MAX_MEMORY_ENTRY or any(ord(c) < 32 for c in entry):
-            raise ValueError("Use one memory entry of 1 to %d characters" % MAX_MEMORY_ENTRY)
-        return entry
+        message, before, after = change_memory(self.memory_path, change)
+        # The tool result tells the model about its own change. Changes from
+        # elsewhere since it last looked still arrive with the next request.
+        if after is not None and self.memory_summary(before) == self.memory_seen:
+            self.memory_seen = self.memory_summary(after)
+        return message
 
     def remember(self, fact):
-        fact = self.memory_entry(fact)
+        fact = memory_entry(fact)
         if CREDENTIAL.search(fact) or any(re.search(r"\d", t) and re.search(r"[A-Za-z]", t) for t in TOKEN.findall(fact)):
             raise ValueError("Memory must not hold passwords, keys or tokens. Save where a secret is kept, not its value")
         def add(text):
-            if any(" ".join(line.split()) == "- " + fact for line in text.splitlines()):
+            if fact in memory_entries(text):
                 return None, "Already in memory: %s" % fact
             updated = (text.rstrip("\n") + "\n" if text.strip() else MEMORY_HEADER) + "- " + fact + "\n"
             if len(updated) > MAX_MEMORY:
@@ -342,13 +379,8 @@ class Agent:
         return self.update_memory(add)
 
     def forget(self, entry):
-        entry = self.memory_entry(entry)
-        def remove(text):
-            lines = text.splitlines(keepends=True)
-            kept = [line for line in lines if " ".join(line.split()) != "- " + entry]
-            if len(kept) == len(lines):
-                raise ValueError("No memory entry is exactly %r" % entry)
-            return "".join(kept), "Forgot: %s" % entry
+        entry = memory_entry(entry)
+        remove = without_entry(entry)
         remove(self.memory_text())
         if not self.confirm("forget: " + entry):
             return "User declined; memory was not changed."
@@ -799,13 +831,8 @@ class Agent:
     def audit(self, action, decision):
         """Who approved or declined which change, and where. Recorded before the change runs."""
         interface = getattr(self.ui, "interface", None)
-        line = json.dumps({"at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
-                           "account": windows_account(), "interface": interface if isinstance(interface, str) else "terminal",
-                           "decision": decision, "action": action}, ensure_ascii=False)
         try:
-            os.makedirs(self.state_dir, exist_ok=True)
-            with AUDIT_LOCK, open(os.path.join(self.state_dir, AUDIT_FILE), "a", encoding="utf-8") as log:
-                log.write(line + "\n")
+            write_audit(self.state_dir, interface if isinstance(interface, str) else "terminal", decision, action)
         except OSError as error:
             self.ui.error("Could not record this decision in the audit log: %s" % error)
 
