@@ -623,7 +623,7 @@ async function cleanPackages() {
     return toast("The package folder does not exist on " + context.computer);
   if (
     !confirm(
-      `Delete ALL contents of ${context.computer} C:\\Temp\\Packages?\n${info.folders} folders, ${info.files} files, ${(info.bytes / 1048576).toFixed(1)} MB`,
+      `Delete ALL contents of ${context.computer} ${(info.locations || ["C:\\Temp\\Packages"]).join(" and ")}?\n${info.folders} folders, ${info.files} files, ${(info.bytes / 1048576).toFixed(1)} MB`,
     )
   )
     return;

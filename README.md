@@ -37,7 +37,8 @@ If the model is missing, the map still opens and chat explains how to start it.
 - **One operations guard:** Atlas and Axis take the same per-PC lock, so they
   never change the same PC at once. An unknown outcome in either app blocks the
   PC in both until it is acknowledged where it happened: Atlas's Operation
-  recovery, or by asking Axis after you inspect the PC.
+  recovery, or by asking Axis after you inspect the PC. Atlas's package cleanup
+  clears both apps' staging folders and keeps Axis's job logs.
 - **One history and audit:** Axis deployments appear in Atlas's deployment
   history (marked Axis, with the Windows account), where Retry and Queue use
   Atlas's deployment. Every Axis approval decision is appended to
