@@ -43,6 +43,7 @@ class ViewerTests(unittest.TestCase):
     def test_full_console_is_visible_but_execution_is_blocked(self):
         import re
         html=self.client.get('/installer?mode=admin').text
+        self.assertNotIn('axis-chat',html,'Axis chat stays in the local Admin app')
         self.assertIn('content="viewer"',html)
         self.assertIn('atlas-demo-badge',html)
         self.assertEqual(self.client.get('/assets/desktop.html').status_code, 404, 'The Desktop layout was removed')

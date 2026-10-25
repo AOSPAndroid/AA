@@ -3421,8 +3421,10 @@ body.axis-chat-open #detail { visibility: hidden; }
 .axis-chat-attached { justify-content: space-between; margin-bottom: 8px; padding: 3px 8px; background: var(--atlas-surface-subtle); border: 1px solid var(--atlas-line); border-radius: var(--atlas-control-radius); font-size: 11px; }
 .axis-chat-attached span { min-width: 0; overflow-wrap: anywhere; }
 .axis-chat-attached button { border: 0; background: transparent; padding: 0 3px; flex: 0 0 auto; }
-body.atlas-map #axis-chat-toggle[aria-expanded="true"] { color: var(--atlas-accent); border-color: var(--atlas-accent); }
-body.atlas-map #axis-chat-toggle { min-height: 28px; padding: 4px 7px; font-size: 12px; white-space: nowrap; }
+body:is(.atlas-map, .atlas-console) #axis-chat-toggle[aria-expanded="true"] { color: var(--atlas-accent); border-color: var(--atlas-accent); }
+body:is(.atlas-map, .atlas-console) #axis-chat-toggle { min-height: 28px; padding: 4px 7px; font-size: 12px; white-space: nowrap; }
+/* Console pages make room for Axis on wide screens; narrower ones show it over the page. */
+@media (min-width: 1151px) { body.atlas-console.axis-chat-open > main { margin-right: 380px; } }
 body .axis-chat-header .atlas-primary-nav { flex-wrap: wrap; }
 html[data-theme="dark"] .axis-chat { --axis-user: #c9a4f0; --axis-answer: #6bcedb; }
 @media (max-width: 1150px) { .axis-chat { box-shadow: -12px 0 28px rgb(0 0 0 / .14); } }

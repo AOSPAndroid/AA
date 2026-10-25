@@ -67,13 +67,19 @@ function channel() {
 }
 function fixture(
   t,
-  { viewer = false, route, selected = null, savedOpen = null } = {},
+  {
+    viewer = false,
+    route,
+    selected = null,
+    savedOpen = null,
+    page = "atlas-map",
+  } = {},
 ) {
   const consoleErrors = [],
     vc = new VirtualConsole();
   vc.on("jsdomError", (error) => consoleErrors.push(error.message));
   const dom = new JSDOM(
-    `<!doctype html><html><head>${viewer ? '<meta name="atlas-mode" content="viewer">' : ""}</head><body class="atlas-map"><header class="atlas-app-header"><div class="atlas-header-actions"></div></header><main id="map">Map</main></body></html>`,
+    `<!doctype html><html><head>${viewer ? '<meta name="atlas-mode" content="viewer">' : ""}</head><body class="${page}"><header class="atlas-app-header"><div class="atlas-header-actions"></div></header><main id="map">Map</main></body></html>`,
     {
       url: "http://127.0.0.1:8770/",
       runScripts: "outside-only",
@@ -480,6 +486,87 @@ test("the memory panel lists facts and forgets one only after confirmation", asy
   );
   assert.equal(f.$("#axis-chat-memory img"), null);
   assert.equal(f.w.attacked, undefined);
+});
+
+test("console pages attach the current target, a Live Inbox message or a clipboard capture", async (t) => {
+  const f = fixture(t, {
+    page: "atlas-console",
+    selected: { hostname: "PC1", name: "Alex Morgan" },
+  });
+  Object.assign(f.w.AtlasAxisSelection, {
+    button: "Use current target",
+    empty: "Select a target PC in Workspace",
+  });
+  f.select({ hostname: "PC1", name: "Alex Morgan" });
+  assert.equal(
+    f.$("#axis-chat").hidden,
+    true,
+    "Closed by default on console pages",
+  );
+  assert.equal(f.$("#axis-chat-use-desk").textContent, "Use current target");
+  assert.equal(f.$("#axis-chat-selection").textContent, "PC1 · Alex Morgan");
+  f.$("#axis-chat-use-desk").click();
+  assert.equal(
+    f.$("#axis-chat-attached span").textContent,
+    "PC PC1 · Alex Morgan",
+  );
+  f.submit("Is it online?");
+  await f.idle();
+  assert.deepEqual(f.requests("/api/axis/chat")[0].payload.context, {
+    hostname: "PC1",
+    name: "Alex Morgan",
+  });
+  assert.equal(f.requests("/api/axis/chat")[0].payload.attachment, undefined);
+  // Ask Axis from Live Inbox: opens the chat and attaches the message by ID; the prompt is only suggested.
+  assert.equal(
+    f.w.AxisChat.attach({
+      kind: "inbox",
+      id: 42,
+      label: "VPN cannot connect",
+      prompt: "Triage this request.",
+    }),
+    true,
+  );
+  assert.equal(f.$("#axis-chat").hidden, false);
+  assert.equal(
+    f.$("#axis-chat-attached span").textContent,
+    "Live Inbox · VPN cannot connect",
+  );
+  assert.equal(f.$("#axis-chat-input").value, "Triage this request.");
+  assert.equal(
+    f.requests("/api/axis/chat").length,
+    1,
+    "Attaching sends nothing",
+  );
+  f.submit("Triage this request.");
+  await f.idle();
+  const second = f.requests("/api/axis/chat")[1].payload;
+  assert.deepEqual(second.attachment, { kind: "inbox", id: "42" });
+  assert.equal(second.context, undefined);
+  assert.match(
+    [...f.w.document.querySelectorAll(".axis-attached-record")].at(-1)
+      .textContent,
+    /Live Inbox · VPN cannot connect/,
+  );
+  assert.equal(
+    f.$("#axis-chat-attached").hidden,
+    true,
+    "An attachment goes with one message",
+  );
+  // A typed draft is kept; only inbox messages and clipboard captures can be attached this way.
+  f.$("#axis-chat-input").value = "My own question";
+  f.w.AxisChat.attach({
+    kind: "clipboard",
+    id: "abc",
+    label: "LAPTOP-0001",
+    prompt: "What is this?",
+  });
+  assert.equal(f.$("#axis-chat-input").value, "My own question");
+  assert.equal(
+    f.$("#axis-chat-attached span").textContent,
+    "Clipboard · LAPTOP-0001",
+  );
+  assert.equal(f.w.AxisChat.attach({ kind: "file", id: "x" }), false);
 });
 
 test("desks found by Axis open on the map without reloading the chat", async (t) => {
