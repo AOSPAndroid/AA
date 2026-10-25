@@ -68,7 +68,7 @@
     const plain = (title, list, tone) => list?.length ? `<section><h4>${title} <small>${list.length}</small></h4><div class="clipboard-tags">${list.map((value) => `<button type="button" class="clipboard-chip clipboard-chip-${tone}" data-copy="${esc(value)}" title="Copy">${esc(value)}</button>`).join("")}</div></section>` : "";
     sections.push(plain("Tickets", item.tickets, "ticket"), plain("IP addresses", item.ips, "ip"), plain("Not in Atlas", item.unknown_machines, "unknown"));
     return sections.join("") + `<details class="clipboard-text"><summary>Copied text</summary><pre>${esc(item.text)}</pre></details>` +
-      `<div class="clipboard-item-actions"><button type="button" data-copy-text>Copy text</button><button type="button" data-refresh>Refresh data</button><button type="button" data-delete>Delete</button></div>`;
+      `<div class="clipboard-item-actions">${window.AxisChat ? '<button type="button" data-ask-axis>Ask Axis</button>' : ""}<button type="button" data-copy-text>Copy text</button><button type="button" data-refresh>Refresh data</button><button type="button" data-delete>Delete</button></div>`;
   }
   const heading = (item) => `${esc(when(item.at))} · ${esc(sources[item.source] || item.source)}${item.times > 1 ? ` · ×${item.times}` : ""}`;
   function render() {
@@ -209,6 +209,9 @@
     else if (target.dataset.person) window.dispatchEvent(new CustomEvent("atlas:inbox-person", { detail: { id: Number(target.dataset.person) } }));
     else if (target.dataset.copy) copy(target.dataset.copy, target.dataset.copy);
     else if ("copyText" in target.dataset) copy(item.text, "Text");
+    // Axis reads the capture itself by ID, as untrusted evidence; no copied text goes in the request.
+    else if ("askAxis" in target.dataset)
+      window.AxisChat?.attach({ kind: "clipboard", id: item.id, label: item.text.trim().split("\n")[0].slice(0, 80) || "Clipboard capture", prompt: "What is this, and what should I do with it?" });
     else if (target.dataset.bulk === "copy-machines") copy(item.machines.map((m) => m.name).join("\n"), plural(item.machines.length, "machine name"));
     else if (target.dataset.bulk === "copy-users") copy(item.machines.map((m) => `${m.name}\t${m.user?.full_name || m.assigned_user || ""}\t${m.user?.email || ""}`).join("\n"), "Machines and users");
     else if (target.dataset.bulk === "copy-emails") copy(item.users.map((u) => u.email).filter(Boolean).join("; "), "Emails");

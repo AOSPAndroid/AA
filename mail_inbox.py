@@ -297,6 +297,9 @@ def register(app, directory_connection, get_directory=mail_directory, packages=l
             raise HTTPException(503, 'Atlas directory lookup is unavailable. Retry after the database is ready.') from error
         return {'message': item, 'match': match, 'machines': machines, 'analysis': {**analysis, 'warnings': warnings}}
 
+    # AA's Axis chat reads the same list and detail the Live Inbox page shows (backend/axis_sources.py).
+    app.state.inbox_messages, app.state.inbox_message = messages, message
+
     @app.get('/api/inbox/person/{user_id}')
     def person_detail(user_id: int):
         """A person's directory record, linked machines and desk for the Live Inbox request tools."""

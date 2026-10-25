@@ -61,6 +61,7 @@ const response = data => ({ ok: true, status: 200, json: async () => data });
   w.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
   w.AtlasUI.motion.isReduced = () => true;
   w.addEventListener('atlas:inbox-person', event => opened = event.detail.id);
+  const asked = []; w.AxisChat = { attach: value => { asked.push(value); return true; } };
   run(fs.readFileSync('frontend/assets/atlas-interactions.js', 'utf8'));
   await sleep(150); assert.equal(requests.length, 0, 'Hidden inbox does not read mail');
   d.getElementById('workspace').classList.remove('active'); d.getElementById('inbox').classList.add('active');
@@ -71,6 +72,10 @@ const response = data => ({ ok: true, status: 200, json: async () => data });
   // The message comes first; named machines and people are highlighted and open the request tools.
   const sent = []; w.addEventListener('atlas:inbox-action', event => sent.push(event.detail));
   assert(d.querySelector('.inbox-context').firstElementChild.classList.contains('inbox-message-card'), 'The message is the first card');
+  // Ask Axis attaches the message by ID; the chat reads its text on the server as untrusted evidence.
+  [...d.querySelectorAll('.inbox-message-card button')].find(b => b.textContent === 'Ask Axis').click();
+  assert.deepEqual(JSON.parse(JSON.stringify(asked)), [{ kind: 'inbox', id: '1', label: 'VPN cannot connect · Alex Morgan',
+    prompt: 'Triage this request: who sent it, which PC is involved, what is wrong, and the next step.' }]);
   // A long sender ("Lair de Gourmont, Amaury Pierre Marie : GTB Europe <address>") once squeezed the subject to one
   // letter per line: card headers wrap, and titles keep a minimum width.
   const css = fs.readFileSync('frontend/assets/design-system.css', 'utf8');
@@ -180,6 +185,7 @@ const response = data => ({ ok: true, status: 200, json: async () => data });
   viewer.run(fs.readFileSync('frontend/assets/atlas-interactions.js', 'utf8'));
   await until(() => /available in Atlas Admin/.test(viewer.w.document.getElementById('liveInbox').textContent));
   assert(!viewer.w.document.querySelector('[data-mail-id]'));
+  assert(![...viewer.w.document.querySelectorAll('button')].some(b => b.textContent === 'Ask Axis'));
   assert.deepEqual(viewer.errors, []); viewer.w.dispatchEvent(new viewer.w.Event('pagehide')); viewer.w.close();
   console.log('PASS: live arrivals, stable selection, Seen before (safe marks, article and request links), sender/device lookup, ambiguity, safe text, stale responses, disconnect recovery, hidden-page polling and private viewer boundary');
 })().catch(error => { console.error(error); process.exit(1); });

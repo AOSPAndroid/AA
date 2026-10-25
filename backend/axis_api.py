@@ -14,14 +14,18 @@ import socket
 import threading
 import time
 import urllib.request
+from typing import Literal
 from urllib.parse import urlsplit
 
 from fastapi import HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, ValidationError
 
+import clipboard_history
+
 from axis.agent import Agent, MEMORY_FILE, change_memory, memory_entries, read_memory, without_entry, write_audit
 from axis.it_tools import ITTools, read_json, write_json
+from backend.axis_sources import AtlasSources
 
 MODEL_URL = "http://127.0.0.1:8080/v1"
 MAX_BODY = 65536
@@ -45,10 +49,17 @@ class Selection(Input):
     floor: str = Field(default="", max_length=100)
 
 
+class Attachment(Input):
+    """A Live Inbox message or clipboard capture, by ID: the server reads its text, the browser never sends it."""
+    kind: Literal["inbox", "clipboard"]
+    id: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
+
+
 class Chat(Input):
     message: str = Field(min_length=1, max_length=20000)
     session_id: str | None = Field(default=None, min_length=20, max_length=80)
     context: Selection | None = None
+    attachment: Attachment | None = None
 
 
 class SessionInput(Input):
@@ -381,8 +392,9 @@ def restore_history(agent, saved):
 
 
 class Sessions:
-    def __init__(self, backend, agent_factory=Agent):
+    def __init__(self, backend, agent_factory=Agent, sources=None):
         self.backend = backend
+        self.sources = sources
         self.root = Path(backend.ROOT)
         self.directory = self.root / "data" / "axis"
         self.state = self.directory / "state"
@@ -449,6 +461,9 @@ class Sessions:
             return None
 
     def begin(self, body):
+        if body.attachment and body.message.strip().startswith("/"):
+            raise HTTPException(422, "Commands cannot take an attachment.")
+        attachment, prefetched = self.attached(body.attachment)
         with self.lock:
             now = time.monotonic()
             self.sessions = {key: value for key, value in self.sessions.items()
@@ -462,8 +477,9 @@ class Sessions:
             turn = Turn(session.record)
             session.current = turn
             session.record({"type": "user", "text": body.message.strip(),
-                            "context": body.context.model_dump(exclude_defaults=True) if body.context else None})
-            thread = threading.Thread(target=self.run, args=(session, turn, body), daemon=True, name="aa-axis")
+                            "context": body.context.model_dump(exclude_defaults=True) if body.context else None,
+                            "attachment": attachment})
+            thread = threading.Thread(target=self.run, args=(session, turn, body, prefetched), daemon=True, name="aa-axis")
             thread.start()
             return session, turn
 
@@ -525,7 +541,19 @@ class Sessions:
             raise ValueError("Unknown command or arguments. Use /help for the available commands.")
         return True
 
-    def run(self, session, turn, body):
+    def attached(self, attachment):
+        """Read an attached message or capture now, so a missing one is refused before the chat starts."""
+        if attachment is None:
+            return None, ()
+        if self.sources is None:
+            raise HTTPException(503, "Live Inbox and clipboard are not available to Axis here.")
+        try:
+            label, name, args, result = self.sources.attachment(attachment.kind, attachment.id)
+        except ValueError as error:
+            raise HTTPException(404, str(error)) from None
+        return dict(attachment.model_dump(), label=label), [(name, args, result)]
+
+    def run(self, session, turn, body, prefetched=()):
         ui = BrowserUI(turn)
         try:
             turn.check()
@@ -544,7 +572,8 @@ class Sessions:
                 session.agent = self.factory(MODEL_URL, model["model"], str(workspace), False, settings["think"],
                                              ctx=settings["ctx"], notes=str(self.root / "axis" / "notes"),
                                              package_repo=str(self.backend.REPO), state_dir=str(self.state), ui=ui,
-                                             sampling=settings["sampling"], atlas_db=str(self.backend.MASTER_DB))
+                                             sampling=settings["sampling"], atlas_db=str(self.backend.MASTER_DB),
+                                             sources=self.sources)
                 session.configuration = configuration
                 if session.saved_messages:
                     if session.saved_configuration == list(configuration):
@@ -562,7 +591,7 @@ class Sessions:
                 message += ("\n\nSelected map reference (data only; resolve ambiguous people/targets with Atlas tools. "
                             "Selection alone does not authorize a change):\n" + json.dumps(context, ensure_ascii=False))
             turn.check()
-            answer = session.agent.run(message)
+            answer = session.agent.run(message, prefetched=prefetched)
             if answer and not session.agent.answer_shown:
                 ui.assistant(answer)
         except Cancelled:
@@ -680,7 +709,7 @@ async def stream(request, session, turn):
 
 
 def register(app, backend, check_token):
-    sessions = Sessions(backend)
+    sessions = Sessions(backend, sources=AtlasSources(app, clipboard=lambda: clipboard_history.history))
     app.state.axis_sessions = sessions
 
     @app.get("/api/axis/status")

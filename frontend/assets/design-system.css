@@ -2586,6 +2586,7 @@ body.atlas-console .inbox-request-target { display:flex; flex-direction:row; ali
 body.atlas-console #liveInbox [data-slot="card-header"] { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:2px 8px; }
 body.atlas-console #liveInbox [data-slot="card-header"] > [data-slot="card-title"] { flex:1 1 auto; min-width:min(12em,100%); }
 body.atlas-console #liveInbox [data-slot="card-header"] > [data-slot="card-description"] { flex:0 1 auto; min-width:0; }
+body.atlas-console #liveInbox [data-slot="card-header"] > [data-slot="card-action"] { flex:0 0 auto; align-self:center; }
 body.atlas-console #liveInbox :is(.inbox-request-card, .screen-reader-text, .inbox-message-card) [data-slot="card-header"] > [data-slot="card-description"] { flex-basis:100%; }
 
 /* Read from screen (Live Inbox). */

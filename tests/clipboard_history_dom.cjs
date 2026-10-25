@@ -89,7 +89,13 @@ const enrich = (text, source, id) => ({ id, at: '2026-10-20T15:40:00', source, t
   assert.equal(d.querySelector('.clipboard-item[aria-pressed="true"]').dataset.item, 'old');
   assert.match($('clipboardDetail').querySelector('.clipboard-text pre').textContent, /older note/);
   assert.equal($('clipboardDetail').querySelector('[data-clipboard-machine]'), null);
+  // Ask Axis appears only with the Admin chat and attaches the capture by ID; the server reads its text.
+  assert.equal($('clipboardDetail').querySelector('[data-ask-axis]'), null, 'No Ask Axis without the Axis chat');
+  const asked = [];
+  w.AxisChat = { attach: value => { asked.push(value); return true; } };
   d.querySelector('.clipboard-item[data-item="item1"]').click();
+  $('clipboardDetail').querySelector('[data-ask-axis]').click();
+  assert.deepEqual(JSON.parse(JSON.stringify(asked)), [{ kind: 'clipboard', id: 'item1', label: clip.text.slice(0, 80), prompt: 'What is this, and what should I do with it?' }]);
 
   // Right-click a machine: the shared menu plus the Workspace tools.
   const row = d.querySelector('[data-clipboard-machine="LAPTOP-0001"]');
