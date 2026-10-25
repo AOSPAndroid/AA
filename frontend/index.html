@@ -61,6 +61,7 @@
             <span class="nav-icon">⌂</span
             ><span class="nav-label">Workspace</span></button
           ><button data-page="inbox"><span class="nav-icon" data-atlas-icon="inbox"></span><span class="nav-label">Live Inbox</span></button
+          ><button data-page="clipboard"><span class="nav-icon" data-atlas-icon="clipboard"></span><span class="nav-label">Clipboard</span></button
           ><button data-page="active-directory"><span class="nav-icon">☷</span><span class="nav-label">Active Directory</span></button
           ><button data-page="packages"><span class="nav-icon">▤</span><span class="nav-label">Packages</span></button
           ><button data-page="admin">
@@ -118,7 +119,7 @@
           <button id="queueToggle" class="queue-toggle" data-atlas-icon="queue">
             Queue <span id="queueCount">0</span>
           </button>
-          <button id="clipboardToggle" class="queue-toggle clipboard-toggle" data-atlas-icon="clipboard" title="Clipboard history: what you copied, with what Atlas knows about it">
+          <button id="clipboardToggle" class="queue-toggle clipboard-toggle" data-atlas-icon="clipboard" title="Clipboard: what you copied, with what Atlas knows about it">
             Clipboard <span id="clipboardCount">0</span>
           </button>
           <button
@@ -169,6 +170,20 @@
         ><button id="cleanupPackages" class="danger">Clean Packages</button>
       </div>
       <section id="inbox" class="page" aria-label="Live Inbox"><div id="liveInbox" class="atlas-shadcn"><p>Loading Live Inbox…</p></div></section>
+      <section id="clipboard" class="page clipboard-page" aria-label="Clipboard">
+        <div class="clipboard-tools">
+          <button id="clipboardCapture" class="primary">Capture clipboard</button>
+          <label title="When the browser allows the clipboard, what you copied elsewhere is captured as you come back to Atlas"><input id="clipboardAuto" type="checkbox" checked /> Capture when I come back</label>
+          <input id="clipboardFilter" type="search" placeholder="Filter" aria-label="Filter clipboard history" autocomplete="off" />
+          <button id="clipboardClear">Clear</button>
+        </div>
+        <div id="clipboardCompanion" class="clipboard-companion" role="status" aria-live="polite"></div>
+        <p id="clipboardStatus" role="status">Copy machines, people, desks or tickets anywhere, then press Ctrl+V in Atlas or click Capture clipboard.</p>
+        <div class="clipboard-layout">
+          <div id="clipboardItems" class="clipboard-items" aria-label="Captured items"></div>
+          <div id="clipboardDetail" class="clipboard-detail-pane" aria-label="Selected item" tabindex="-1"></div>
+        </div>
+      </section>
       <section id="workspace" class="page active">
         <div class="lookup-column">
           <div class="lookup-heading">
@@ -912,20 +927,6 @@ Ready. Choose a command and click Run.</pre>
         </div>
         <div id="kitList"></div>
       </section>
-    </aside>
-    <aside id="clipboardDrawer" class="queue-drawer clipboard-drawer">
-      <div class="queue-head">
-        <b>Clipboard history</b><button id="closeClipboard" aria-label="Close clipboard history">×</button>
-      </div>
-      <div class="clipboard-tools">
-        <button id="clipboardCapture" class="primary">Capture clipboard</button>
-        <label title="When the browser allows the clipboard, what you copied elsewhere is captured as you come back to Atlas"><input id="clipboardAuto" type="checkbox" checked /> Capture when I come back</label>
-        <input id="clipboardFilter" type="search" placeholder="Filter" aria-label="Filter clipboard history" autocomplete="off" />
-        <button id="clipboardClear">Clear</button>
-      </div>
-      <div id="clipboardCompanion" class="clipboard-companion" role="status" aria-live="polite"></div>
-      <p id="clipboardStatus" role="status">Copy machines, people, desks or tickets anywhere, then press Ctrl+V in Atlas or click Capture clipboard.</p>
-      <div id="clipboardItems" class="clipboard-items"></div>
     </aside>
     <aside id="deploymentsDrawer" class="deployments-drawer">
       <div class="deployments-head">

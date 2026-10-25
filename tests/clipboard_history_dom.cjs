@@ -1,5 +1,6 @@
-// Clipboard history drawer: capture, coloured entity chips, machine/people tables, bulk actions,
-// Ctrl+V on any page but Live Inbox, capture on returning to Atlas, right-click menus. Fictional data.
+// Clipboard page: capture, coloured entity chips, a list with the selected capture's machine/people
+// tables, bulk actions, Ctrl+V on any page but Live Inbox, capture on returning to Atlas, right-click
+// menus. Fictional data.
 const assert = require('node:assert/strict'), fs = require('node:fs');
 const { fixture } = require('./ui_fixture.cjs');
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -47,15 +48,27 @@ const enrich = (text, source, id) => ({ id, at: '2026-10-20T15:40:00', source, t
   await until(() => $('clipboardCount').textContent === '1');
   assert(d.querySelector('#clipboardToggle [data-atlas-icon], #clipboardToggle svg') || $('clipboardToggle').dataset.atlasIcon === 'clipboard');
 
-  // Capture: stored with its source, the drawer opens on the new item with coloured chips.
+  // The Clipboard page has its own place in the sidebar, beside Workspace and Live Inbox.
+  const nav = [...d.querySelectorAll('nav [data-page]')].map(b => b.dataset.page);
+  assert.equal(nav[nav.indexOf('inbox') + 1], 'clipboard');
+  assert.equal(w.eval('navigationIcons.clipboard'), w.AtlasUI.icon('clipboard'));
+  run("page('clipboard')");
+  assert($('clipboard').classList.contains('active'));
+  assert.equal(d.querySelector('nav [data-page="clipboard"]').getAttribute('aria-current'), 'page');
+  assert.equal($('pageTitle').textContent, 'Clipboard');
+  run("page('workspace')");
+
+  // Capture: stored with its source; the page opens with the new capture selected and coloured chips.
   $('clipboardCapture').click();
-  await until(() => posts.length === 1 && d.querySelector('.clipboard-item details[open]'));
+  await until(() => posts.length === 1 && d.querySelector('#clipboardDetail [data-clipboard-machine]'));
   assert.deepEqual(posts[0], { text: clip.text, source: 'button' });
-  assert($('clipboardDrawer').classList.contains('open'));
+  assert($('clipboard').classList.contains('active'));
   assert.equal($('clipboardCount').textContent, '2');
-  const first = d.querySelector('.clipboard-item');
-  assert.deepEqual([...first.querySelectorAll('.clipboard-chips .clipboard-chip')].map(c => [c.className.split('-').pop(), c.textContent]),
+  const listed = d.querySelector('.clipboard-item');
+  assert.equal(listed.getAttribute('aria-pressed'), 'true', 'The new capture is selected');
+  assert.deepEqual([...listed.querySelectorAll('.clipboard-chips .clipboard-chip')].map(c => [c.className.split('-').pop(), c.textContent]),
     [['machine', '2 machines'], ['person', '1 person'], ['desk', '1 desk'], ['ticket', '1 ticket'], ['unknown', '1 not in Atlas']]);
+  const first = $('clipboardDetail');
   assert.deepEqual([...first.querySelectorAll('[data-clipboard-machine]')].map(r => r.dataset.clipboardMachine), ['LAPTOP-0001', 'IPHONE-0007']);
   assert.match(first.querySelector('[data-clipboard-machine="IPHONE-0007"]').textContent, /Alex Morgan/, 'An unlinked owner name is still shown');
   assert.match($('clipboardStatus').textContent, /2 machines, 1 person, 1 desk/);
@@ -67,10 +80,18 @@ const enrich = (text, source, id) => ({ id, at: '2026-10-20T15:40:00', source, t
   first.querySelector('[data-bulk="deploy"]').click();
   assert.equal($('bulkTargets').value, 'LAPTOP-0001');
   assert($('bulk').classList.contains('active'));
-  assert(!$('clipboardDrawer').classList.contains('open'));
+  assert(!$('clipboard').classList.contains('active'));
+
+  // Choosing another capture shows its own details; the header button returns to the page.
+  $('clipboardToggle').click(); await sleep(20);
+  assert($('clipboard').classList.contains('active'));
+  d.querySelector('.clipboard-item[data-item="old"]').click();
+  assert.equal(d.querySelector('.clipboard-item[aria-pressed="true"]').dataset.item, 'old');
+  assert.match($('clipboardDetail').querySelector('.clipboard-text pre').textContent, /older note/);
+  assert.equal($('clipboardDetail').querySelector('[data-clipboard-machine]'), null);
+  d.querySelector('.clipboard-item[data-item="item1"]').click();
 
   // Right-click a machine: the shared menu plus the Workspace tools.
-  $('clipboardToggle').click(); await sleep(20);
   const row = d.querySelector('[data-clipboard-machine="LAPTOP-0001"]');
   row.dispatchEvent(new w.MouseEvent('contextmenu', { bubbles: true, clientX: 5, clientY: 5 }));
   const menu = d.querySelector('.atlas-ad-context');
@@ -82,20 +103,22 @@ const enrich = (text, source, id) => ({ id, at: '2026-10-20T15:40:00', source, t
   const paste = (target, text) => { const e = new w.Event('paste', { bubbles: true, cancelable: true }); e.clipboardData = { files: [], getData: t => (t === 'text/plain' ? text : '') }; target.dispatchEvent(e); return e; };
   paste($('clipboardFilter'), 'typed into the filter'); await sleep(30);
   assert.equal(posts.length, 1);
+  run("page('workspace')");
   assert(paste(d.body, 'SPARE-PC-0042 is slow').defaultPrevented);
   await until(() => posts.length === 2);
   assert.deepEqual(posts[1], { text: 'SPARE-PC-0042 is slow', source: 'paste' });
+  await until(() => $('clipboard').classList.contains('active'));
   run("page('inbox')"); paste(d.body, 'handled by Live Inbox'); await sleep(30);
   assert.equal(posts.length, 2, 'Live Inbox keeps its own clipboard reader');
   run("page('workspace')");
 
   // Returning to Atlas: new clipboard content is captured quietly, the same content only once.
-  $('clipboardDrawer').classList.remove('open');
+  run("page('workspace')");
   clip = { text: 'LAPTOP-0001 copied in Excel' };
   w.dispatchEvent(new w.Event('focus'));
   await until(() => posts.length === 3);
   assert.deepEqual(posts[2], { text: 'LAPTOP-0001 copied in Excel', source: 'return' });
-  assert(!$('clipboardDrawer').classList.contains('open'), 'Automatic captures do not open the drawer');
+  assert($('workspace').classList.contains('active'), 'Automatic captures never change the page');
   await sleep(1600); w.dispatchEvent(new w.Event('focus')); await sleep(60);
   assert.equal(posts.length, 3, 'The same clipboard is not captured twice');
   $('clipboardAuto').click(); clip = { text: 'something new' }; await sleep(1600); w.dispatchEvent(new w.Event('focus')); await sleep(60);
@@ -105,8 +128,8 @@ const enrich = (text, source, id) => ({ id, at: '2026-10-20T15:40:00', source, t
   const row2 = () => $('clipboardCompanion').textContent;
   await until(() => /Companion not set up/.test(row2()));
   companion = { ...companion, known: true, online: true, user: 'EXAMPLE\\operator', mail: { state: 'watching' } };
-  // Opening the drawer refreshes the Companion status straight away.
-  $('clipboardToggle').click(); $('clipboardToggle').click();
+  // Opening the page refreshes the Companion status straight away.
+  $('clipboardToggle').click();
   await until(() => /Companion connected/.test(row2()));
   assert.match(row2(), /EXAMPLE\\operator · every copy is captured/);
   assert.match(row2(), /Outlook: watching/);
@@ -117,18 +140,18 @@ const enrich = (text, source, id) => ({ id, at: '2026-10-20T15:40:00', source, t
   await until(() => /clipboard capture is off/.test(row2()));
   assert(!$('clipboardAuto').disabled);
   companion = { ...companion, online: false, last_seen: '2026-10-20T15:00:00' };
-  $('clipboardToggle').click(); $('clipboardToggle').click();
+  $('clipboardToggle').click();
   await until(() => /Companion not running/.test(row2()));
 
   // Delete one, then clear all after confirming.
   $('clipboardToggle').click(); await sleep(20);
-  d.querySelector('.clipboard-item [data-delete]').click();
+  $('clipboardDetail').querySelector('[data-delete]').click();
   await until(() => deletes.length === 1);
   w.confirm = () => true; $('clipboardClear').click();
   await until(() => $('clipboardCount').textContent === '0');
   assert.equal(deletes.at(-1), '/api/clipboard');
   assert.deepEqual(f.errors, []);
   w.close();
-  console.log('PASS: clipboard history captures, colours and tabulates machines/people/desks, bulk deploy and ping, right-click tools, Ctrl+V outside Live Inbox, quiet capture on return (once), Companion status and switch, delete and clear');
+  console.log('PASS: Clipboard page in the sidebar captures, colours and lists captures, shows the selected one\'s machines/people/desks, bulk deploy and ping, right-click tools, Ctrl+V outside Live Inbox, quiet capture on return (once, without changing page), Companion status and switch, delete and clear');
   process.exit(0);
 })().catch(error => { console.error(error); process.exit(1); });
