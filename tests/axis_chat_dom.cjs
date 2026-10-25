@@ -383,7 +383,12 @@ test("the latest saved chat is shown again on load with decisions as history", a
   );
   assert.equal(f.$("#axis-chat-messages img"), null);
   assert.equal(f.w.attacked, undefined);
-  assert.equal(f.w.localStorage.getItem("aa-axis-chat-open") !== null, true);
+  assert.equal(
+    Object.keys(f.w.localStorage).every((key) =>
+      key.startsWith("aa-axis-chat-open"),
+    ),
+    true,
+  );
   assert.equal(
     Object.keys(f.w.localStorage).some((key) =>
       /session|message|transcript/i.test(key),
@@ -491,6 +496,7 @@ test("the memory panel lists facts and forgets one only after confirmation", asy
 test("console pages attach the current target, a Live Inbox message or a clipboard capture", async (t) => {
   const f = fixture(t, {
     page: "atlas-console",
+    savedOpen: "yes",
     selected: { hostname: "PC1", name: "Alex Morgan" },
   });
   Object.assign(f.w.AtlasAxisSelection, {
@@ -501,7 +507,13 @@ test("console pages attach the current target, a Live Inbox message or a clipboa
   assert.equal(
     f.$("#axis-chat").hidden,
     true,
-    "Closed by default on console pages",
+    "Closed by default on console pages, whatever the map remembers",
+  );
+  assert.equal(f.w.localStorage.getItem("aa-axis-chat-open"), "yes");
+  assert.equal(
+    f.w.localStorage.getItem("aa-axis-chat-open-console"),
+    null,
+    "Loading a page saves nothing",
   );
   assert.equal(f.$("#axis-chat-use-desk").textContent, "Use current target");
   assert.equal(f.$("#axis-chat-selection").textContent, "PC1 · Alex Morgan");
@@ -682,7 +694,13 @@ test("desk context requires explicit attachment, captures that desk, and exclude
   f.submit("General question");
   await f.idle();
   assert.equal(f.requests("/api/axis/chat")[2].payload.context, undefined);
-  assert.deepEqual(Object.keys(f.w.localStorage), ["aa-axis-chat-open"]);
+  assert.equal(
+    Object.keys(f.w.localStorage).every((key) =>
+      key.startsWith("aa-axis-chat-open"),
+    ),
+    true,
+    "Only whether the chat is open is kept in the browser",
+  );
   assert.equal(f.w.sessionStorage.length, 0);
 });
 

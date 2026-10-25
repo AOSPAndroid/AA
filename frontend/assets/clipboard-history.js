@@ -122,7 +122,8 @@
     const found = [item.machines?.length && plural(item.machines.length, "machine"), item.users?.length && (item.users.length === 1 ? "1 person" : item.users.length + " people"),
       item.desks?.length && plural(item.desks.length, "desk")].filter(Boolean).join(", ");
     status(`Captured ${when(item.at)}${found ? ": " + found : ""}.`, "good");
-    if (quiet) notify("Clipboard captured" + (found ? ": " + found : ""));
+    // Leaving Remote Admin would stop a running slowness capture: stay, and say where the capture went.
+    if (quiet || window.AtlasDiagnostics?.isRunning?.()) notify("Clipboard captured" + (found ? ": " + found : "") + (quiet ? "" : ". Open Clipboard to see it."));
     else open();
   }
   async function screenshot(blob) {
@@ -250,7 +251,7 @@
     try {
       if (file) await screenshot(file);
       else announce(await store(text, "paste"));
-    } catch (error) { status(error.message, "bad"); open(); }
+    } catch (error) { status(error.message, "bad"); if (!window.AtlasDiagnostics?.isRunning?.()) open(); }
   });
   // Coming back to Atlas after copying something elsewhere: captured without a click, when the browser allows it.
   let last = 0;

@@ -1,11 +1,14 @@
 """Axis reads Live Inbox and clipboard data as the pages show it: bounded, read-only, labelled untrusted."""
 from pathlib import Path
+import sqlite3
 import tempfile
 import unittest
 from types import SimpleNamespace
 
+from fastapi import HTTPException
+
 from clipboard_history import History
-from backend.axis_sources import TEXT, AtlasSources
+from backend.axis_sources import TEXT, AtlasSources, SourceUnavailable
 import test_mail_inbox  # Its fixture; importing the class here would run its tests twice.
 
 
@@ -45,6 +48,21 @@ class InboxSourceTests(unittest.TestCase):
                 sources.call(name, args)
         with self.assertRaisesRegex(ValueError, 'from the inbox'):
             sources.attachment('inbox', '../1')
+        with self.assertRaisesRegex(ValueError, 'whole-number') as caught:
+            sources.attachment('inbox', '9' * 30)  # Larger than SQLite integers.
+        self.assertNotIsInstance(caught.exception, SourceUnavailable)
+
+    def test_an_unavailable_inbox_is_not_a_missing_message(self):
+        def unavailable(*args, **kwargs):
+            raise HTTPException(503, 'Atlas directory lookup is unavailable.')
+        state = SimpleNamespace(inbox_messages=unavailable, inbox_message=unavailable)
+        for name, args in (('list_inbox', {}), ('read_inbox_message', {'id': 1})):
+            with self.subTest(name=name), self.assertRaisesRegex(SourceUnavailable, 'unavailable'):
+                AtlasSources(SimpleNamespace(state=state)).call(name, args)
+        def broken(*args):
+            raise sqlite3.OperationalError('database is locked')
+        with self.assertRaisesRegex(SourceUnavailable, 'locked'):
+            AtlasSources(SimpleNamespace(state=SimpleNamespace(inbox_message=broken))).call('read_inbox_message', {'id': 1})
         with self.assertRaisesRegex(ValueError, 'not available'):
             AtlasSources(SimpleNamespace(state=SimpleNamespace())).call('list_inbox', {})
 

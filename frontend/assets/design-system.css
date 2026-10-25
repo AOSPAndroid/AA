@@ -3426,6 +3426,9 @@ body:is(.atlas-map, .atlas-console) #axis-chat-toggle[aria-expanded="true"] { co
 body:is(.atlas-map, .atlas-console) #axis-chat-toggle { min-height: 28px; padding: 4px 7px; font-size: 12px; white-space: nowrap; }
 /* Console pages make room for Axis on wide screens; narrower ones show it over the page. */
 @media (min-width: 1151px) { body.atlas-console.axis-chat-open > main { width: auto; margin-right: 380px; } }
+/* Beside the open chat, Live Inbox takes the layouts it uses on a screen 380px narrower (its rules at 1280px and 950px). */
+@media (min-width: 1151px) and (max-width: 1660px) { body.atlas-console.axis-chat-open .inbox-grid:has(> .inbox-work:not([hidden])) { grid-template-columns:minmax(300px,.9fr) minmax(380px,1.1fr); } body.atlas-console.axis-chat-open .inbox-grid:has(> .inbox-work:not([hidden])) > .inbox-mail-list { display:none; } }
+@media (min-width: 1151px) and (max-width: 1330px) { body.atlas-console.axis-chat-open .inbox-grid, body.atlas-console.axis-chat-open .inbox-grid:has(> .inbox-work:not([hidden])) { grid-template-columns:minmax(0,1fr); } body.atlas-console.axis-chat-open :is(.inbox-context, .inbox-work) { position:static; max-height:none; overflow:visible; } body.atlas-console.axis-chat-open .inbox-mail-list > ul { max-height:300px; } }
 body .axis-chat-header .atlas-primary-nav { flex-wrap: wrap; }
 html[data-theme="dark"] .axis-chat { --axis-user: #c9a4f0; --axis-answer: #6bcedb; }
 @media (max-width: 1150px) { .axis-chat { box-shadow: -12px 0 28px rgb(0 0 0 / .14); } }

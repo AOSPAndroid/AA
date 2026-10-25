@@ -38,7 +38,9 @@ If the model is missing, the map still opens and chat explains how to start it.
   a clipboard capture attaches it to the chat. The Admin backend reads it by ID
   and gives it to Axis as a tool result: private, untrusted evidence, never your
   instructions. Axis can also list and read recent requests and captures itself.
-  While such text is in the conversation, each web lookup needs your approval.
+  Once such text is in a conversation, every web lookup (shown in full), shell
+  command and PC outside Atlas needs your approval, so the text cannot leave
+  through a search or a DNS lookup.
 - **Desks from chat:** ask where someone sits or which desk a PC is at. Axis
   reads the floor-plan seating (stored plan, not who is in today), and each desk
   it finds has a **Show on map** button that selects it without leaving the chat.

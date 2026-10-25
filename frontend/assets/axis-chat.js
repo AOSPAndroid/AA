@@ -59,7 +59,9 @@
     scrollFrame = null;
   const pendingTools = [],
     approvals = new Map();
-  const openKey = "aa-axis-chat-open";
+  // The map and the console pages each remember whether the operator left the chat open.
+  const onMap = document.body.classList.contains("atlas-map");
+  const openKey = onMap ? "aa-axis-chat-open" : "aa-axis-chat-open-console";
 
   function headerSize() {
     panel.style.setProperty(
@@ -70,15 +72,16 @@
   new ResizeObserver(headerSize).observe(header);
   window.addEventListener("resize", headerSize);
   headerSize();
-  function setOpen(open, focus = false) {
+  function setOpen(open, focus = false, remember = true) {
     panel.hidden = !open;
     button.setAttribute("aria-expanded", String(open));
     document.body.classList.toggle("axis-chat-open", open);
     const inspector = document.querySelector("#detail");
     if (inspector) inspector.inert = open;
-    try {
-      localStorage.setItem(openKey, open ? "yes" : "no");
-    } catch {}
+    if (remember)
+      try {
+        localStorage.setItem(openKey, open ? "yes" : "no");
+      } catch {}
     if (open) {
       updateSelection();
       headerSize();
@@ -86,13 +89,12 @@
     }
   }
   // Beside the map by default on wide screens; on console pages only when the operator opened it.
-  let initiallyOpen =
-    document.body.classList.contains("atlas-map") && window.innerWidth > 760;
+  let initiallyOpen = onMap && window.innerWidth > 760;
   try {
     const savedOpen = localStorage.getItem(openKey);
     if (savedOpen !== null) initiallyOpen = savedOpen === "yes";
   } catch {}
-  setOpen(initiallyOpen);
+  setOpen(initiallyOpen, false, false);
   button.addEventListener("click", () => setOpen(panel.hidden, panel.hidden));
   $("#axis-chat-close").addEventListener("click", () => {
     setOpen(false);

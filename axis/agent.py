@@ -37,6 +37,7 @@ else:
 
 MAX_TOOL_OUTPUT = 3000   # chars of tool output sent back to the model (start and end kept)
 MAX_STEPS = 30           # model/tool rounds per task (configurable)
+PRIVATE_WEB_TEXT = 300   # longest web query/URL the user approves while private inbox/clipboard text is present
 
 SYSTEM_PROMPT = """You are Axis, a local assistant on the user's Windows computer. Answer questions, write, translate and use tools for files, public web research and Windows administration.
 
@@ -309,6 +310,7 @@ class Agent:
         self.reset()
 
     def reset(self):
+        self.private_context = False
         self.memory_seen = self.memory_summary()
         atlas_mode = self.atlas.status
         if self.atlas.available:
@@ -569,6 +571,7 @@ class Agent:
         started = time.monotonic()
         try:
             for index, (name, args, result) in enumerate(prefetched):
+                self.private_context = True
                 call_id = "attached-%d-%s" % (index, uuid.uuid4().hex[:8])
                 self.ui.tool_start(name, args)
                 content = self.save_output(json.dumps(result, ensure_ascii=False, default=str))
@@ -585,9 +588,22 @@ class Agent:
             self._active_tool_call_id = None
 
     def private_in_context(self):
-        """Whether host-provided private text (an inbox message, a clipboard capture) is in the conversation."""
-        return bool(self.source_names) and any(
-            m.get("role") == "tool" and m.get("name") in self.source_names for m in self.messages)
+        """Whether host-provided private text (an inbox message, a clipboard capture) entered this conversation.
+        Stays set until reset: trimming can drop the read while its text lives on in later turns."""
+        if not self.private_context and self.source_names:
+            self.private_context = any(m.get("role") == "tool" and m.get("name") in self.source_names for m in self.messages)
+        return self.private_context
+
+    def known_pc(self, name):
+        """Whether name is exactly an Atlas inventory PC, so reading it cannot carry text to an outside host."""
+        if not self.atlas.available or not isinstance(name, str) or not name.strip():
+            return False
+        try:
+            found = self.atlas.call("search_atlas", {"query": name.strip(), "kind": "computers", "limit": 5})
+        except Exception:
+            return False
+        return found.get("match") == "exact" and any(
+            str(item.get("name", "")).upper() == name.strip().upper() for item in found.get("items") or [])
 
     def repair_pending_calls(self):
         """Keep history valid when Ctrl+C or a display/storage error interrupts a batch."""
@@ -781,14 +797,25 @@ class Agent:
             if name in WEB_TOOL_NAMES:
                 if self.web is None:
                     return "Error: web browsing is disabled for this session (--no-web)."
-                if self.private_in_context() and not self.confirm(
-                        "%s: %s" % (name, str(args.get("query") or args.get("url") or "")[:300])):
-                    return ("User declined. This conversation holds private Live Inbox or clipboard text, so each web "
-                            "lookup needs approval; keep queries generic or answer without the web.")
+                if self.private_in_context():
+                    # The operator approves the whole query or URL, so it must be short enough to read.
+                    target = str(args.get("query") or args.get("url") or "")
+                    if len(target) > PRIVATE_WEB_TEXT:
+                        return ("Error: this conversation holds private Live Inbox or clipboard text, so a web query or URL "
+                                "must be at most %d characters for the user to approve it." % PRIVATE_WEB_TEXT)
+                    if not self.confirm("%s: %s" % (name, target)):
+                        return ("User declined. This conversation holds private Live Inbox or clipboard text, so each web "
+                                "lookup needs approval; keep queries generic or answer without the web.")
                 return self.web.call(name, args)
             if name in IT_TOOL_NAMES:
+                # A name outside Atlas, such as text.attacker.example, would carry private text out through DNS.
+                if (name == "inspect_computer" and self.private_in_context() and not self.known_pc(args.get("computer"))
+                        and not self.confirm("inspect %s (not an Atlas PC; private Live Inbox or clipboard text is in this conversation)"
+                                             % str(args.get("computer"))[:300])):
+                    return "User declined to contact a PC that is not in Atlas."
                 return json.dumps(self.it.call(name, args), ensure_ascii=False, default=str)
             if name in self.source_names:
+                self.private_context = True
                 return json.dumps(self.sources.call(name, args), ensure_ascii=False, default=str)
             if name == "read_tool_output":
                 output_id = args["output_id"]
@@ -830,9 +857,10 @@ class Agent:
                 return "Wrote %s" % args["path"]
             if name == "run_command":
                 command = args["command"]
-                # On Windows, read-only commands run straight away; anything else asks first.
+                # On Windows, read-only commands run straight away; anything else asks first. With private
+                # inbox or clipboard text in the conversation every command asks: a lookup can leak it via DNS.
                 proc = None
-                if os.name == "nt" and not self.auto_approve:
+                if os.name == "nt" and not self.auto_approve and not self.private_in_context():
                     proc = run_shell(command, self.workdir, check_read_only=True)
                     if proc.returncode == NEEDS_APPROVAL and b"__NEEDS_APPROVAL__" in proc.stdout:
                         proc = None

@@ -154,6 +154,16 @@ const enrich = (text, source, id) => ({ id, at: '2026-10-20T15:40:00', source, t
   $('clipboardToggle').click();
   await until(() => /Companion not running/.test(row2()));
 
+  // Ctrl+V during a slowness capture on Remote Admin: captured, but the page (and the capture) stay.
+  run("page('admin')");
+  const running = w.AtlasDiagnostics.isRunning; w.AtlasDiagnostics.isRunning = () => true;
+  const pasted = posts.length;
+  paste(d.body, 'SPARE-PC-0043 too');
+  await until(() => posts.length === pasted + 1 && d.querySelector('#clipboardItems').textContent.includes('SPARE-PC-0043'));
+  await sleep(20);
+  assert($('admin').classList.contains('active'), 'A running capture keeps Remote Admin open');
+  w.AtlasDiagnostics.isRunning = running;
+
   // Delete one, then clear all after confirming.
   $('clipboardToggle').click(); await sleep(20);
   $('clipboardDetail').querySelector('[data-delete]').click();
