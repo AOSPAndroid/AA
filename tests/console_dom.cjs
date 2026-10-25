@@ -32,7 +32,7 @@ async function until(fn){for(let i=0;i<100;i++){if(fn())return;await sleep(30)}t
  assert.equal(w.location.pathname,'/installer');
  w.document.querySelector('.atlas-site-info').close();
  for(const page of ['admin','bulk','history','terminal','psexec','workspace']){w.document.querySelector(`[data-page="${page}"]`).click();assert(w.document.querySelector('#'+page).classList.contains('active'));assert(w.document.querySelector('#pageTitle').textContent.trim().length>0)}
- assert.equal(w.document.querySelectorAll('nav .nav-label').length,9); // includes Live Inbox
+ assert.equal(w.document.querySelectorAll('nav .nav-label').length,10); // includes Live Inbox and Clipboard
  assert(!w.document.querySelector('[data-page="knowledge"]'));assert(w.document.querySelector('[data-section="knowledge"]'));
  w.document.querySelector('[data-section="knowledge"]').click();assert(w.document.querySelector('#knowledge.active'));assert.equal(w.document.querySelector('#pageTitle').textContent,'Knowledge Base');vm.runInContext('page("workspace")',context);
  assert(w.document.querySelector('main > #active-directory.page'));
