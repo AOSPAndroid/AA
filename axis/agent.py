@@ -605,6 +605,17 @@ class Agent:
         return found.get("match") == "exact" and any(
             str(item.get("name", "")).upper() == name.strip().upper() for item in found.get("items") or [])
 
+    def outside_destination(self, name, args):
+        """The host a read-only IT tool would contact beyond Atlas PCs and the default domain, or None.
+        Changes already ask for approval with their target."""
+        if name == "inspect_computer":
+            return None if self.known_pc(args.get("computer")) else str(args.get("computer"))
+        if name == "directory_lookup":
+            # An explicit server, or the DOMAIN of DOMAIN\account, chooses the directory server to contact.
+            identity = str(args.get("identity") or "")
+            return str(args.get("server") or "") or (identity.split("\\", 1)[0] if "\\" in identity else "") or None
+        return None
+
     def repair_pending_calls(self):
         """Keep history valid when Ctrl+C or a display/storage error interrupts a batch."""
         for index, message in enumerate(self.messages):
@@ -808,11 +819,12 @@ class Agent:
                                 "lookup needs approval; keep queries generic or answer without the web.")
                 return self.web.call(name, args)
             if name in IT_TOOL_NAMES:
-                # A name outside Atlas, such as text.attacker.example, would carry private text out through DNS.
-                if (name == "inspect_computer" and self.private_in_context() and not self.known_pc(args.get("computer"))
-                        and not self.confirm("inspect %s (not an Atlas PC; private Live Inbox or clipboard text is in this conversation)"
-                                             % str(args.get("computer"))[:300])):
-                    return "User declined to contact a PC that is not in Atlas."
+                # A host outside Atlas, such as text.attacker.example, would carry private text out through DNS.
+                destination = self.private_in_context() and self.outside_destination(name, args)
+                if destination and not self.confirm(
+                        "%s: contact %s (not an Atlas PC or the default domain; private Live Inbox or clipboard text is "
+                        "in this conversation)" % (name, destination[:300])):
+                    return "User declined to contact a host outside Atlas."
                 return json.dumps(self.it.call(name, args), ensure_ascii=False, default=str)
             if name in self.source_names:
                 self.private_context = True
