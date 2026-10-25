@@ -38,6 +38,7 @@ function page(id) {
   const descriptions = {
     workspace: "People, devices and the tools to support them.",
     inbox: "Incoming emails and Teams/Outlook notification previews, sender records and linked machines.",
+    clipboard: "What you copied, with the machines, people, desks and tickets Atlas recognises.",
     "active-directory": "Explore accounts, memberships and directory objects.",
     packages: "Find software and prepare your next deployment.",
     admin: "Inspect device health and investigate performance.",
@@ -67,6 +68,7 @@ function page(id) {
   if (id === "psexec") window.AtlasPsExec?.open();
   if (id === "scripts") window.AtlasScripts?.open();
   if (id === "active-directory") window.AtlasAD?.open();
+  if (id === "clipboard") window.AtlasClipboard?.shown();
   if (id === "bulk" && !bulkCatalogueLoaded && !bulkBusy) bulkPackages();
   syncDeploymentPanel();
 }
@@ -539,7 +541,7 @@ function bindConsolePolish() {
   window.addEventListener("resize", closeMenus);
   const panels = [
     ...document.querySelectorAll(
-      "#queueDrawer,#deploymentsDrawer,#softwareDrawer,#clipboardDrawer",
+      "#queueDrawer,#deploymentsDrawer,#softwareDrawer",
     ),
   ];
   let active = null,
@@ -547,7 +549,6 @@ function bindConsolePolish() {
   const toggles = {
     queueDrawer: "queueToggle",
     deploymentsDrawer: "deploymentsToggle",
-    clipboardDrawer: "clipboardToggle",
   };
   panels.forEach((p) => {
     p.setAttribute("role", "dialog");

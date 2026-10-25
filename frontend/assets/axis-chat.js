@@ -1,5 +1,6 @@
-/* AA's local Axis panel. No browser storage of messages, records or approvals:
-   the local Admin backend keeps recent chats and returns the latest on load. */
+/* AA's local Axis panel on the map and the console pages. No browser storage of messages, records
+   or approvals: the local Admin backend keeps recent chats and returns the latest on load. A desk,
+   target PC, Live Inbox message or clipboard capture is attached only when the operator asks. */
 (() => {
   "use strict";
   if (document.querySelector('meta[name="atlas-mode"]')?.content === "viewer")
@@ -58,7 +59,9 @@
     scrollFrame = null;
   const pendingTools = [],
     approvals = new Map();
-  const openKey = "aa-axis-chat-open";
+  // The map and the console pages each remember whether the operator left the chat open.
+  const onMap = document.body.classList.contains("atlas-map");
+  const openKey = onMap ? "aa-axis-chat-open" : "aa-axis-chat-open-console";
 
   function headerSize() {
     panel.style.setProperty(
@@ -69,27 +72,29 @@
   new ResizeObserver(headerSize).observe(header);
   window.addEventListener("resize", headerSize);
   headerSize();
-  function setOpen(open, focus = false) {
+  function setOpen(open, focus = false, remember = true) {
     panel.hidden = !open;
     button.setAttribute("aria-expanded", String(open));
     document.body.classList.toggle("axis-chat-open", open);
     const inspector = document.querySelector("#detail");
     if (inspector) inspector.inert = open;
-    try {
-      localStorage.setItem(openKey, open ? "yes" : "no");
-    } catch {}
+    if (remember)
+      try {
+        localStorage.setItem(openKey, open ? "yes" : "no");
+      } catch {}
     if (open) {
       updateSelection();
       headerSize();
       if (focus) input.focus();
     }
   }
-  let initiallyOpen = window.innerWidth > 760;
+  // Beside the map by default on wide screens; on console pages only when the operator opened it.
+  let initiallyOpen = onMap && window.innerWidth > 760;
   try {
     const savedOpen = localStorage.getItem(openKey);
     if (savedOpen !== null) initiallyOpen = savedOpen === "yes";
   } catch {}
-  setOpen(initiallyOpen);
+  setOpen(initiallyOpen, false, false);
   button.addEventListener("click", () => setOpen(panel.hidden, panel.hidden));
   $("#axis-chat-close").addEventListener("click", () => {
     setOpen(false);
@@ -182,20 +187,29 @@
     container.append(row);
   }
   function updateSelection() {
-    const selected = window.AtlasAxisSelection?.();
+    const source = window.AtlasAxisSelection;
+    const selected = source?.();
+    $("#axis-chat-use-desk").textContent =
+      source?.button || "Use selected desk";
     $("#axis-chat-use-desk").disabled = busy || !selected;
     $("#axis-chat-selection").textContent = selected
-      ? [selected.desk_id, selected.name].filter(Boolean).join(" · ")
-      : "Select a desk on the map";
+      ? [selected.desk_id || selected.hostname, selected.name]
+          .filter(Boolean)
+          .join(" · ")
+      : source?.empty || "Select a desk on the map";
   }
   window.addEventListener("atlas:selection", updateSelection);
+  // One attachment at a time: a desk or target PC (context), or a Live Inbox
+  // message or clipboard capture (attachment) that the server reads itself.
+  const contextLabel = (value) =>
+    value.desk_id
+      ? "Desk " + value.desk_id + (value.hostname ? " · " + value.hostname : "")
+      : "PC " + value.hostname + (value.name ? " · " + value.name : "");
   function setAttached(value) {
     attached = value;
     const chip = $("#axis-chat-attached");
     chip.hidden = !value;
-    chip.querySelector("span").textContent = value
-      ? "Desk " + value.desk_id + (value.hostname ? " · " + value.hostname : "")
-      : "";
+    chip.querySelector("span").textContent = value ? value.label : "";
   }
   $("#axis-chat-use-desk").addEventListener("click", () => {
     const value = window.AtlasAxisSelection?.();
@@ -203,16 +217,32 @@
       updateSelection();
       return;
     }
-    setAttached(
-      Object.fromEntries(
-        ["desk_id", "name", "hostname", "floor"].map((key) => [
-          key,
-          String(value[key] ?? ""),
-        ]),
-      ),
+    const context = Object.fromEntries(
+      ["desk_id", "name", "hostname", "floor"]
+        .map((key) => [key, String(value[key] ?? "")])
+        .filter(([, text]) => text),
     );
+    setAttached({ context, label: contextLabel(context) });
     input.focus();
   });
+  // A suggested question replaces only an empty box or the previous suggestion, never your own text.
+  let suggested = "";
+  /** Open the chat with a Live Inbox message or clipboard capture attached. */
+  function attach({ kind, id, label, prompt } = {}) {
+    if (!["inbox", "clipboard"].includes(kind) || !id) return false;
+    setOpen(true);
+    setAttached({
+      attachment: { kind, id: String(id) },
+      label:
+        (kind === "inbox" ? "Live Inbox · " : "Clipboard · ") +
+        String(label || id).slice(0, 120),
+    });
+    if (prompt && (!input.value.trim() || input.value === suggested))
+      input.value = suggested = prompt;
+    input.focus();
+    return true;
+  }
+  window.AxisChat = { attach, open: () => setOpen(true, true) };
   $("#axis-chat-attached button").addEventListener("click", () =>
     setAttached(null),
   );
@@ -464,17 +494,11 @@
     event?.preventDefault();
     const text = input.value.trim();
     if (!text || busy) return;
-    const context = attached ? { ...attached } : null;
+    const sent = attached;
     const user = entry("user", "You", text);
-    if (context)
+    if (sent)
       user.article.append(
-        element(
-          "small",
-          "axis-attached-record",
-          "Attached desk: " +
-            context.desk_id +
-            (context.hostname ? " · " + context.hostname : ""),
-        ),
+        element("small", "axis-attached-record", "Attached: " + sent.label),
       );
     input.value = "";
     setAttached(null);
@@ -490,7 +514,8 @@
           {
             message: text,
             ...(sessionId ? { session_id: sessionId } : {}),
-            ...(context ? { context } : {}),
+            ...(sent?.context ? { context: sent.context } : {}),
+            ...(sent?.attachment ? { attachment: sent.attachment } : {}),
           },
           { signal: stream.signal },
         ),
@@ -501,7 +526,7 @@
       if (error.status === 404) {
         sessionId = null;
         input.value = text;
-        setAttached(context);
+        setAttached(sent);
       }
       entry(
         "error",
@@ -571,15 +596,14 @@
     for (const event of transcript) {
       if (event.type === "user") {
         const user = entry("user", "You", event.text);
-        if (event.context?.desk_id)
+        const label =
+          event.attachment?.label ||
+          (event.context?.desk_id || event.context?.hostname
+            ? contextLabel(event.context)
+            : "");
+        if (label)
           user.article.append(
-            element(
-              "small",
-              "axis-attached-record",
-              "Attached desk: " +
-                event.context.desk_id +
-                (event.context.hostname ? " · " + event.context.hostname : ""),
-            ),
+            element("small", "axis-attached-record", "Attached: " + label),
           );
       } else if (event.type === "approval") {
         // A saved approval is history: it shows the decision and has no controls.

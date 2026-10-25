@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Inbox, Monitor, UserRound, ArrowUpRight, RefreshCw } from "lucide-react";
+import { Inbox, Monitor, UserRound, ArrowUpRight, RefreshCw, Bot } from "lucide-react";
 import { Button } from "./components/ui/button";
 import { Badge } from "./components/ui/badge";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "./components/ui/card";
+import { Card, CardHeader, CardTitle, CardAction, CardDescription, CardContent, CardFooter } from "./components/ui/card";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "./components/ui/empty";
 import { Skeleton } from "./components/ui/skeleton";
 import { InboxControls } from "./inbox-controls";
@@ -17,6 +17,8 @@ const notificationStates = { watching: "Listening for notifications", starting: 
 const sourceLabel = item => item?.content_kind === "notification" ? (item.channel === "teams" ? "Teams preview" : "Outlook preview") : "Outlook email";
 const date = value => value ? new Date(value).toLocaleString([], { dateStyle: "short", timeStyle: "short" }) : "Not yet";
 const request = (url, signal) => window.AtlasClient.request(url, { signal, atlasSilent: true });
+// The chat reads the message itself by ID, as untrusted evidence; the browser sends no message text.
+const askAxis = (message) => window.AxisChat?.attach({ kind: "inbox", id: String(message.id), label: (message.subject || "(No subject)") + " · " + (message.sender_name || message.sender_address || ""), prompt: "Triage this request: who sent it, which PC is involved, what is wrong, and the next step." });
 function EmptyInbox({ title, children }) {
   return <Empty><EmptyHeader><EmptyMedia variant="icon"><Inbox aria-hidden="true" /></EmptyMedia><EmptyTitle>{title}</EmptyTitle><EmptyDescription>{children}</EmptyDescription></EmptyHeader></Empty>;
 }
@@ -180,7 +182,7 @@ export function LiveInbox() {
       </div>
       <div className="inbox-context" aria-label="Message and sender details">
         {selected === null ? <EmptyInbox title="Select a message">Its sender and linked machines will appear here.</EmptyInbox> : detailError ? <p role="alert" className="inbox-error">{detailError}</p> : !detail || message.id !== selected ? <Skeleton className="inbox-loading" /> : <>
-          <Card className="inbox-message-card"><CardHeader><CardTitle role="heading" aria-level={2}>{message.subject || "(No subject)"}</CardTitle><CardDescription>{sourceLabel(message)} · {message.sender_name}{message.sender_address ? " <" + message.sender_address + ">" : ""} · {date(message.received_at)}</CardDescription></CardHeader><CardContent>{message.content_kind === "notification" && <p className="inbox-match-note">Notification preview from {message.app_name || (message.channel === "teams" ? "Teams" : "Outlook")}. Text may be incomplete or hidden by notification settings. Open the source app for the full conversation.</p>}<MessageBody message={message} analysis={detail.analysis} user={user} />{!!message.body_truncated && <p className="inbox-muted">Showing the first 100,000 characters. Open Outlook for the full message.</p>}</CardContent></Card>
+          <Card className="inbox-message-card"><CardHeader><CardTitle role="heading" aria-level={2}>{message.subject || "(No subject)"}</CardTitle>{!readonly && window.AxisChat && <CardAction><Button variant="outline" size="sm" className="inbox-ask-axis" onClick={() => askAxis(message)}><Bot aria-hidden="true" />Ask Axis</Button></CardAction>}<CardDescription>{sourceLabel(message)} · {message.sender_name}{message.sender_address ? " <" + message.sender_address + ">" : ""} · {date(message.received_at)}</CardDescription></CardHeader><CardContent>{message.content_kind === "notification" && <p className="inbox-match-note">Notification preview from {message.app_name || (message.channel === "teams" ? "Teams" : "Outlook")}. Text may be incomplete or hidden by notification settings. Open the source app for the full conversation.</p>}<MessageBody message={message} analysis={detail.analysis} user={user} />{!!message.body_truncated && <p className="inbox-muted">Showing the first 100,000 characters. Open Outlook for the full message.</p>}</CardContent></Card>
           <Card className="inbox-person-card"><CardHeader><CardTitle role="heading" aria-level={2}><UserRound aria-hidden="true" />People</CardTitle><CardDescription>Sender · {matchLabels[match.kind]}{match.chosen ? " · selected for this view" : ""}</CardDescription></CardHeader><CardContent>
             {match.kind === "ambiguous" && <div className="inbox-candidates"><p>More than one person matches this {match.basis}. Choose the correct record to view machines.</p>{match.candidates.map(candidate => <Button key={candidate.id} size="sm" variant={chosen === candidate.id ? "secondary" : "outline"} onClick={() => setChosen(candidate.id)}>{candidate.name} · {candidate.email || candidate.user_name || candidate.id}</Button>)}</div>}
             {user ? <><h3>{user.full_name || user.name}</h3><p>{[user.user_name, user.email].filter(Boolean).join(" · ")}</p><p className="inbox-muted">{[user.department, user.location, user.job_role, deskText(user)].filter(Boolean).join(" · ") || "No additional directory details"}</p>{match.basis === "name" && <p className="inbox-match-note">{message.content_kind === "notification" ? "Matched the notification title. It may be a chat or group name; verify the sender in Teams or Outlook before taking action." : "Display names can be shared. Verify this person against the sender address before taking action."}</p>}</> : match.kind === "unmatched" && <p>No exact email or full-name match was found in the Atlas database.</p>}

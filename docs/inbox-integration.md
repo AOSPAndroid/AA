@@ -113,6 +113,11 @@ The package list is read from the repository at most every two minutes. If the
 package share or Knowledge Base is unavailable, the message still opens and the
 card says which suggestions are missing.
 
+**Ask Axis** (AA Admin only) opens the Axis chat with the message attached and a
+suggested triage question. The Admin backend reads the message by ID and gives
+it to Axis as untrusted evidence, never as your instructions; any change Axis
+proposes still needs your approval. The LAN Viewer has no Ask Axis.
+
 ## Read from screen
 
 For requests that arrive another way (a ServiceNow ticket, a Teams chat, a

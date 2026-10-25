@@ -29,6 +29,18 @@ If the model is missing, the map still opens and chat explains how to start it.
   the same configured package repository.
 - **Selected desk:** explicitly attach a desk to the chat when useful. Selection
   gives Axis context; changes still require approval.
+- **Chat on every page:** the **Axis** button opens the same chat on the console
+  pages. On Workspace, **Use current target** attaches the target PC.
+- **Clipboard page:** the Clipboard sits beside Workspace and Live Inbox. Each
+  capture lists the machines, people, desks, tickets and IP addresses Atlas
+  recognises, with their actions.
+- **Ask Axis about a request or capture:** **Ask Axis** on a Live Inbox message or
+  a clipboard capture attaches it to the chat. The Admin backend reads it by ID
+  and gives it to Axis as a tool result: private, untrusted evidence, never your
+  instructions. Axis can also list and read recent requests and captures itself.
+  Once such text is in a conversation, every web lookup (shown in full), shell
+  command, and PC or directory server outside Atlas needs your approval, so the
+  text cannot leave through a search or a DNS lookup.
 - **Desks from chat:** ask where someone sits or which desk a PC is at. Axis
   reads the floor-plan seating (stored plan, not who is in today), and each desk
   it finds has a **Show on map** button that selects it without leaving the chat.

@@ -202,10 +202,16 @@ def home():
     return HTMLResponse(html)
 
 
+def console_template():
+    # Axis chat runs only in the local Admin app: its script is neither served nor referenced here.
+    html = (ROOT / 'frontend/index.html').read_text(encoding='utf-8')
+    return re.sub(r'<script\b[^>]*src="/assets/axis-chat[^"]*"[^>]*></script>\s*', '', html)
+
+
 @app.get('/installer')
 @app.get('/installer/')
 def console():
-    html = (ROOT / 'frontend/index.html').read_text(encoding='utf-8')
+    html = console_template()
     html = html.replace('<head>', '<head><meta name="atlas-mode" content="viewer">')
     html = html.replace('<span class="atlas-admin-badge">Admin</span>', '<span class="atlas-demo-badge">Demo</span>')
     html = html.replace('Atlas Admin home', 'Atlas Demo home')
@@ -215,8 +221,7 @@ def console():
 @app.get('/assets/{filename}')
 def shared_asset(filename:str, request:Request):
     # Only assets referenced by the shared console template. No API registration.
-    template = (ROOT / 'frontend/index.html').read_text(encoding='utf-8')
-    allowed = set(re.findall(r'/assets/([\w.-]+)', template))
+    allowed = set(re.findall(r'/assets/([\w.-]+)', console_template()))
     if filename not in allowed:raise HTTPException(404,'Not available')
     return cached_file(request, ROOT/'frontend/assets'/filename)
 

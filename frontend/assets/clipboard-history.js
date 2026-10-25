@@ -1,15 +1,16 @@
-/* Clipboard history: everything copied into Atlas, with what Atlas knows about it.
+/* Clipboard page: everything copied into Atlas, with what Atlas knows about it.
    Capture with the button, Ctrl+V on any page (outside text boxes) or, when allowed, automatically
-   when you come back to Atlas. Each item lists its machines, people, desks, tickets and IPs, with
-   their actions (right-click a machine or person for the full menu) and bulk actions for lists. */
+   when you come back to Atlas. The list shows each capture; the selected one lists its machines,
+   people, desks, tickets and IPs, with their actions (right-click a machine or person for the full
+   menu) and bulk actions for lists. */
 (() => {
   const $ = (id) => document.getElementById(id);
-  if (!$("clipboardDrawer")) return;
+  if (!$("clipboard")) return;
   const esc = (value) => window.AtlasUI.esc(value ?? "");
   const AUTO = "atlas-clipboard-auto", SEEN = "atlas-clipboard-seen";
   const sources = { button: "Captured", paste: "Pasted", return: "Copied before returning", screenshot: "Screenshot", inbox: "Live Inbox", companion: "Copied (Companion)" };
   let companion = null, latest = null;
-  let items = [], loaded = false, busy = false, opened = null;
+  let items = [], loaded = false, busy = false, selected = null;
   const remember = (key, value) => { try { localStorage.setItem(key, value); } catch {} };
   const recall = (key) => { try { return localStorage.getItem(key); } catch { return null; } };
   const request = (url, options = {}) => window.AtlasClient.request(url, { atlasSilent: true, ...options });
@@ -67,32 +68,28 @@
     const plain = (title, list, tone) => list?.length ? `<section><h4>${title} <small>${list.length}</small></h4><div class="clipboard-tags">${list.map((value) => `<button type="button" class="clipboard-chip clipboard-chip-${tone}" data-copy="${esc(value)}" title="Copy">${esc(value)}</button>`).join("")}</div></section>` : "";
     sections.push(plain("Tickets", item.tickets, "ticket"), plain("IP addresses", item.ips, "ip"), plain("Not in Atlas", item.unknown_machines, "unknown"));
     return sections.join("") + `<details class="clipboard-text"><summary>Copied text</summary><pre>${esc(item.text)}</pre></details>` +
-      `<div class="clipboard-item-actions"><button type="button" data-copy-text>Copy text</button><button type="button" data-refresh>Refresh data</button><button type="button" data-delete>Delete</button></div>`;
+      `<div class="clipboard-item-actions">${window.AxisChat ? '<button type="button" data-ask-axis>Ask Axis</button>' : ""}<button type="button" data-copy-text>Copy text</button><button type="button" data-refresh>Refresh data</button><button type="button" data-delete>Delete</button></div>`;
   }
+  const heading = (item) => `${esc(when(item.at))} · ${esc(sources[item.source] || item.source)}${item.times > 1 ? ` · ×${item.times}` : ""}`;
   function render() {
     count();
     const words = $("clipboardFilter").value.toLowerCase().split(/\s+/).filter(Boolean);
     const shown = items.filter((item) => words.every((word) => (item.text + " " + (item.machines || []).map((m) => (m.user?.full_name || "") + " " + (m.model_id || "")).join(" ")).toLowerCase().includes(word)));
-    $("clipboardItems").innerHTML = shown.length ? shown.map((item) => `<article class="clipboard-item" data-item="${esc(item.id)}"><details ${item.id === opened ? "open" : ""}><summary><span class="clipboard-when">${esc(when(item.at))} · ${esc(sources[item.source] || item.source)}${item.times > 1 ? ` · ×${item.times}` : ""}</span><span class="clipboard-preview">${esc(item.text.split(/\r?\n/).filter(Boolean).slice(0, 2).join(" · ").slice(0, 140))}</span><span class="clipboard-chips">${chips(item)}</span></summary><div class="clipboard-detail">${item.id === opened ? detail(item) : ""}</div></details></article>`).join("")
+    // The newest capture is selected until another is chosen; a filtered-out selection moves to the first match.
+    if (!shown.some((item) => item.id === selected)) selected = shown[0]?.id ?? null;
+    $("clipboardItems").innerHTML = shown.length ? shown.map((item) => `<button type="button" class="clipboard-item" data-item="${esc(item.id)}" aria-pressed="${item.id === selected}"><span class="clipboard-when">${heading(item)}</span><span class="clipboard-preview">${esc(item.text.split(/\r?\n/).filter(Boolean).slice(0, 2).join(" · ").slice(0, 140))}</span><span class="clipboard-chips">${chips(item)}</span></button>`).join("")
       : `<p class="empty">${items.length ? "Nothing matches the filter." : "Nothing captured yet. Copy machines, people, desks or tickets anywhere, then press Ctrl+V here or click Capture clipboard."}</p>`;
-    $("clipboardItems").querySelectorAll(".clipboard-item").forEach((node) => {
-      const item = items.find((x) => x.id === node.dataset.item);
-      node.querySelector("details").addEventListener("toggle", (event) => {
-        if (!event.target.open) { if (opened === item.id) opened = null; return; }
-        opened = item.id;
-        const host = node.querySelector(".clipboard-detail");
-        if (!host.innerHTML) host.innerHTML = detail(item);
-        bind(node, item);
-      });
-      if (item.id === opened) bind(node, item);
-    });
+    const item = items.find((x) => x.id === selected);
+    $("clipboardDetail").innerHTML = item ? `<article class="clipboard-selected" data-item="${esc(item.id)}"><header><span class="clipboard-when">${heading(item)}</span><span class="clipboard-chips">${chips(item)}</span></header><div class="clipboard-detail">${detail(item)}</div></article>`
+      : `<p class="empty">${items.length ? "Select a capture to see its machines, people, desks and tickets." : "Captures appear here with what Atlas knows about them."}</p>`;
+    if (item) bind($("clipboardDetail"), item);
   }
   // Machine rows get the full right-click menu (health, groups, deploy...) like everywhere in Atlas:
   // the shared directory actions plus the Workspace tools, each selecting the machine first.
   function machineActions(m) {
     const windows = window.AtlasUI.supportsWindows(m);
     const tool = (id, label, section, run) => ({ id, label, section, disabled: !windows, reason: "Windows tools require a PC",
-      run: async () => { $("clipboardDrawer").classList.remove("open"); setTarget(m.name, m.operational_status, false); await run(); } });
+      run: async () => { setTarget(m.name, m.operational_status, false); await run(); } });
     return [
       tool("target", "Set as target", "Target & tools", () => page("workspace")),
       tool("health", "Refresh health", "Target & tools", () => { page("workspace"); return refreshTargetHealth(); }),
@@ -120,12 +117,13 @@
     return item;
   }
   function announce(item, quiet = false) {
-    opened = item.id;
+    selected = item.id;
     render();
     const found = [item.machines?.length && plural(item.machines.length, "machine"), item.users?.length && (item.users.length === 1 ? "1 person" : item.users.length + " people"),
       item.desks?.length && plural(item.desks.length, "desk")].filter(Boolean).join(", ");
     status(`Captured ${when(item.at)}${found ? ": " + found : ""}.`, "good");
-    if (quiet) notify("Clipboard captured" + (found ? ": " + found : ""));
+    // Leaving Remote Admin would stop a running slowness capture: stay, and say where the capture went.
+    if (quiet || window.AtlasDiagnostics?.isRunning?.()) notify("Clipboard captured" + (found ? ": " + found : "") + (quiet ? "" : ". Open Clipboard to see it."));
     else open();
   }
   async function screenshot(blob) {
@@ -166,10 +164,14 @@
       if (!quiet) status(error.name === "NotAllowedError" ? "The browser blocked the clipboard. Allow it from the address bar, or run Allow-Atlas-Clipboard.bat. Ctrl+V in Atlas always works." : error.message, "bad");
     } finally { busy = false; $("clipboardCapture").disabled = false; }
   }
-  function open() {
-    $("clipboardDrawer").classList.add("open");
+  /** Called by page() whenever the Clipboard page is shown. */
+  function shown() {
     if (!loaded) load();
     companionStatus();
+  }
+  function open() {
+    if (typeof page === "function") page("clipboard");
+    else shown();
   }
   const machinesOf = (item) => item.machines.filter((m) => window.AtlasUI.supportsWindows(m)).map((m) => m.name);
   async function copy(text, label) {
@@ -191,15 +193,26 @@
     await Promise.all(Array.from({ length: Math.min(6, queue.length) }, work));
   }
   $("clipboardItems").addEventListener("click", (event) => {
-    const node = event.target.closest(".clipboard-item");
+    const choice = event.target.closest("[data-item]");
+    if (!choice || choice.dataset.item === selected) return;
+    selected = choice.dataset.item;
+    render();
+    // Stacked on narrow screens: bring the chosen item's details into view.
+    if (window.matchMedia?.("(max-width: 1100px)").matches) $("clipboardDetail").scrollIntoView?.({ block: "start" });
+  });
+  $("clipboardDetail").addEventListener("click", (event) => {
+    const node = event.target.closest("[data-item]");
     const item = node && items.find((x) => x.id === node.dataset.item);
     if (!item) return;
     const target = event.target.closest("button");
     if (!target) return;
-    if (target.dataset.select) { page("workspace"); setTarget(target.dataset.select); $("clipboardDrawer").classList.remove("open"); }
-    else if (target.dataset.person) { window.dispatchEvent(new CustomEvent("atlas:inbox-person", { detail: { id: Number(target.dataset.person) } })); $("clipboardDrawer").classList.remove("open"); }
+    if (target.dataset.select) { page("workspace"); setTarget(target.dataset.select); }
+    else if (target.dataset.person) window.dispatchEvent(new CustomEvent("atlas:inbox-person", { detail: { id: Number(target.dataset.person) } }));
     else if (target.dataset.copy) copy(target.dataset.copy, target.dataset.copy);
     else if ("copyText" in target.dataset) copy(item.text, "Text");
+    // Axis reads the capture itself by ID, as untrusted evidence; no copied text goes in the request.
+    else if ("askAxis" in target.dataset)
+      window.AxisChat?.attach({ kind: "clipboard", id: item.id, label: item.text.trim().split("\n")[0].slice(0, 80) || "Clipboard capture", prompt: "What is this, and what should I do with it?" });
     else if (target.dataset.bulk === "copy-machines") copy(item.machines.map((m) => m.name).join("\n"), plural(item.machines.length, "machine name"));
     else if (target.dataset.bulk === "copy-users") copy(item.machines.map((m) => `${m.name}\t${m.user?.full_name || m.assigned_user || ""}\t${m.user?.email || ""}`).join("\n"), "Machines and users");
     else if (target.dataset.bulk === "copy-emails") copy(item.users.map((u) => u.email).filter(Boolean).join("; "), "Emails");
@@ -207,24 +220,23 @@
     else if (target.dataset.bulk === "deploy") {
       $("bulkTargets").value = machinesOf(item).join("\n");
       $("bulkTargets").dispatchEvent(new Event("input", { bubbles: true }));
-      page("bulk"); $("clipboardDrawer").classList.remove("open");
+      page("bulk");
     } else if (target.dataset.bulk === "script") {
       $("scriptTargets").value = machinesOf(item).join("\n");
       $("scriptTargets").dispatchEvent(new Event("input", { bubbles: true }));
-      page("scripts"); $("clipboardDrawer").classList.remove("open");
+      page("scripts");
     } else if ("refresh" in target.dataset) {
       request(`/api/clipboard/${item.id}/refresh`, { method: "POST" }).then((fresh) => { items = items.map((x) => (x.id === fresh.id ? fresh : x)); render(); status("Data refreshed from Atlas.", "good"); }, (error) => status(error.message, "bad"));
     } else if ("delete" in target.dataset) {
       request(`/api/clipboard/${item.id}`, { method: "DELETE" }).then(() => { items = items.filter((x) => x.id !== item.id); render(); }, (error) => status(error.message, "bad"));
     }
   });
-  $("clipboardToggle").onclick = () => ($("clipboardDrawer").classList.contains("open") ? $("clipboardDrawer").classList.remove("open") : open());
-  $("closeClipboard").onclick = () => $("clipboardDrawer").classList.remove("open");
+  $("clipboardToggle").onclick = open;
   $("clipboardCapture").onclick = () => capture("button");
   $("clipboardFilter").oninput = render;
   $("clipboardClear").onclick = () => {
     if (!items.length || !confirm(`Delete all ${items.length} clipboard items?`)) return;
-    request("/api/clipboard", { method: "DELETE" }).then(() => { items = []; opened = null; render(); status("History cleared."); }, (error) => status(error.message, "bad"));
+    request("/api/clipboard", { method: "DELETE" }).then(() => { items = []; selected = null; render(); status("History cleared."); }, (error) => status(error.message, "bad"));
   };
   $("clipboardAuto").checked = recall(AUTO) !== "off";
   $("clipboardAuto").onchange = () => remember(AUTO, $("clipboardAuto").checked ? "on" : "off");
@@ -239,7 +251,7 @@
     try {
       if (file) await screenshot(file);
       else announce(await store(text, "paste"));
-    } catch (error) { status(error.message, "bad"); open(); }
+    } catch (error) { status(error.message, "bad"); if (!window.AtlasDiagnostics?.isRunning?.()) open(); }
   });
   // Coming back to Atlas after copying something elsewhere: captured without a click, when the browser allows it.
   let last = 0;
@@ -280,10 +292,14 @@
         latest = summary.latest;
       } catch {}
     }
-    setTimeout(watch, $("clipboardDrawer").classList.contains("open") ? 5000 : 15000);
+    setTimeout(watch, $("clipboard").classList.contains("active") ? 5000 : 15000);
   }
-  if (window.AtlasReadOnly) { $("clipboardToggle").hidden = true; return; }
+  if (window.AtlasReadOnly) {
+    $("clipboardToggle").hidden = true;
+    document.querySelector('[data-page="clipboard"]')?.setAttribute("hidden", "");
+    return;
+  }
   load();
   watch();
-  window.AtlasClipboard = { open, capture, load };
+  window.AtlasClipboard = { open, shown, capture, load, item: (id) => items.find((x) => x.id === id) };
 })();

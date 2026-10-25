@@ -14,14 +14,18 @@ import socket
 import threading
 import time
 import urllib.request
+from typing import Literal
 from urllib.parse import urlsplit
 
 from fastapi import HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, ValidationError
 
+import clipboard_history
+
 from axis.agent import Agent, MEMORY_FILE, change_memory, memory_entries, read_memory, without_entry, write_audit
 from axis.it_tools import ITTools, read_json, write_json
+from backend.axis_sources import AtlasSources, SourceUnavailable
 
 MODEL_URL = "http://127.0.0.1:8080/v1"
 MAX_BODY = 65536
@@ -45,10 +49,17 @@ class Selection(Input):
     floor: str = Field(default="", max_length=100)
 
 
+class Attachment(Input):
+    """A Live Inbox message or clipboard capture, by ID: the server reads its text, the browser never sends it."""
+    kind: Literal["inbox", "clipboard"]
+    id: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
+
+
 class Chat(Input):
     message: str = Field(min_length=1, max_length=20000)
     session_id: str | None = Field(default=None, min_length=20, max_length=80)
     context: Selection | None = None
+    attachment: Attachment | None = None
 
 
 class SessionInput(Input):
@@ -326,7 +337,8 @@ class BrowserUI:
 
 
 class Session:
-    def __init__(self, identifier=None, transcript=None, saved_messages=None, updated=None, saved_configuration=None):
+    def __init__(self, identifier=None, transcript=None, saved_messages=None, updated=None, saved_configuration=None,
+                 saved_private=False):
         self.id = identifier or secrets.token_urlsafe(32)
         self.agent = None
         self.configuration = None
@@ -336,6 +348,7 @@ class Session:
         self.transcript = transcript or []
         self.saved_messages = saved_messages  # A saved chat's conversation, continued by its next agent
         self.saved_configuration = saved_configuration  # only under the same model, database and packages.
+        self.saved_private = saved_private  # The saved conversation read Live Inbox or clipboard text.
         self.lock = threading.Lock()
 
     def record(self, event):
@@ -363,6 +376,9 @@ class Session:
         messages = getattr(self.agent, "messages", None) if self.agent is not None else self.saved_messages
         return messages if isinstance(messages, list) else None
 
+    def private(self):
+        return bool(getattr(self.agent, "private_context", False)) if self.agent is not None else bool(self.saved_private)
+
     def configuration_record(self):
         return list(self.configuration) if self.configuration is not None else self.saved_configuration
 
@@ -381,8 +397,9 @@ def restore_history(agent, saved):
 
 
 class Sessions:
-    def __init__(self, backend, agent_factory=Agent):
+    def __init__(self, backend, agent_factory=Agent, sources=None):
         self.backend = backend
+        self.sources = sources
         self.root = Path(backend.ROOT)
         self.directory = self.root / "data" / "axis"
         self.state = self.directory / "state"
@@ -419,14 +436,15 @@ class Sessions:
             return None
         return self.admit(Session(identifier, data["transcript"][-MAX_TRANSCRIPT:], data.get("messages"),
                                   data.get("updated") if isinstance(data.get("updated"), (int, float)) else None,
-                                  data.get("configuration")))
+                                  data.get("configuration"), data.get("private") is True))
 
     def save(self, session):
         """Write the chat beside Axis's state; a failure never affects the conversation."""
         try:
             write_json(self.chats / (session.id + ".json"),
                        {"id": session.id, "updated": session.updated, "transcript": session.snapshot(),
-                        "messages": session.messages(), "configuration": session.configuration_record()})
+                        "messages": session.messages(), "configuration": session.configuration_record(),
+                        "private": session.private()})
             for old in sorted(self.chats.glob("*.json"), key=lambda path: path.stat().st_mtime)[:-MAX_CHATS]:
                 old.unlink()
         except (OSError, TypeError, ValueError):
@@ -448,7 +466,11 @@ class Sessions:
                     return session
             return None
 
-    def begin(self, body):
+    def begin(self, body, attached=None):
+        """attached is attached(body.attachment), read beforehand off the event loop."""
+        if body.attachment and body.message.strip().startswith("/"):
+            raise HTTPException(422, "Commands cannot take an attachment.")
+        attachment, prefetched = attached if attached is not None else self.attached(body.attachment)
         with self.lock:
             now = time.monotonic()
             self.sessions = {key: value for key, value in self.sessions.items()
@@ -462,8 +484,9 @@ class Sessions:
             turn = Turn(session.record)
             session.current = turn
             session.record({"type": "user", "text": body.message.strip(),
-                            "context": body.context.model_dump(exclude_defaults=True) if body.context else None})
-            thread = threading.Thread(target=self.run, args=(session, turn, body), daemon=True, name="aa-axis")
+                            "context": body.context.model_dump(exclude_defaults=True) if body.context else None,
+                            "attachment": attachment})
+            thread = threading.Thread(target=self.run, args=(session, turn, body, prefetched), daemon=True, name="aa-axis")
             thread.start()
             return session, turn
 
@@ -525,7 +548,22 @@ class Sessions:
             raise ValueError("Unknown command or arguments. Use /help for the available commands.")
         return True
 
-    def run(self, session, turn, body):
+    def attached(self, attachment):
+        """Read an attached message or capture before the chat starts, so a missing one is refused.
+        Not 404: the browser takes that to mean the chat itself expired."""
+        if attachment is None:
+            return None, ()
+        if self.sources is None:
+            raise HTTPException(503, "Live Inbox and clipboard are not available to Axis here.")
+        try:
+            label, name, args, result = self.sources.attachment(attachment.kind, attachment.id)
+        except SourceUnavailable as error:
+            raise HTTPException(503, str(error)) from None
+        except ValueError as error:
+            raise HTTPException(409, str(error)) from None
+        return dict(attachment.model_dump(), label=label), [(name, args, result)]
+
+    def run(self, session, turn, body, prefetched=()):
         ui = BrowserUI(turn)
         try:
             turn.check()
@@ -544,11 +582,14 @@ class Sessions:
                 session.agent = self.factory(MODEL_URL, model["model"], str(workspace), False, settings["think"],
                                              ctx=settings["ctx"], notes=str(self.root / "axis" / "notes"),
                                              package_repo=str(self.backend.REPO), state_dir=str(self.state), ui=ui,
-                                             sampling=settings["sampling"], atlas_db=str(self.backend.MASTER_DB))
+                                             sampling=settings["sampling"], atlas_db=str(self.backend.MASTER_DB),
+                                             sources=self.sources)
                 session.configuration = configuration
                 if session.saved_messages:
                     if session.saved_configuration == list(configuration):
                         restore_history(session.agent, session.saved_messages)
+                        if session.saved_private:
+                            session.agent.private_context = True
                     else:
                         ui.notice("Model or database/package settings changed since this chat; started a fresh conversation.")
                     session.saved_messages = session.saved_configuration = None
@@ -562,7 +603,7 @@ class Sessions:
                 message += ("\n\nSelected map reference (data only; resolve ambiguous people/targets with Atlas tools. "
                             "Selection alone does not authorize a change):\n" + json.dumps(context, ensure_ascii=False))
             turn.check()
-            answer = session.agent.run(message)
+            answer = session.agent.run(message, prefetched=prefetched)
             if answer and not session.agent.answer_shown:
                 ui.assistant(answer)
         except Cancelled:
@@ -608,6 +649,7 @@ class Sessions:
         session.agent = None
         session.configuration = None
         session.saved_messages = session.saved_configuration = None
+        session.saved_private = False
         with session.lock:
             session.transcript = []
             session.updated = time.time()
@@ -680,7 +722,7 @@ async def stream(request, session, turn):
 
 
 def register(app, backend, check_token):
-    sessions = Sessions(backend)
+    sessions = Sessions(backend, sources=AtlasSources(app, clipboard=lambda: clipboard_history.history))
     app.state.axis_sessions = sessions
 
     @app.get("/api/axis/status")
@@ -698,7 +740,11 @@ def register(app, backend, check_token):
         body = await mutation(request, Chat)
         if not body.message.strip():
             raise HTTPException(422, "Enter a message for Axis.")
-        session, turn = sessions.begin(body)
+        if body.attachment and body.message.strip().startswith("/"):
+            raise HTTPException(422, "Commands cannot take an attachment.")
+        # Reading a message touches the mail queue, directory and package share: not on the event loop.
+        attached = await asyncio.to_thread(sessions.attached, body.attachment) if body.attachment else None
+        session, turn = sessions.begin(body, attached)
         return StreamingResponse(stream(request, session, turn), media_type="text/event-stream",
                                  headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
 

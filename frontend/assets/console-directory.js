@@ -383,8 +383,14 @@ function installSelectionSidebar() {
   const observer = new MutationObserver(schedule);
   observer.observe($("#healthLine"), {childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["disabled", "class"]});
   window.addEventListener("pagehide", () => observer.disconnect(), {once: true});
-  window.AtlasSelection = {refresh};
+  window.AtlasSelection = {refresh: () => { refresh(); window.dispatchEvent(new Event("atlas:selection")); }};
+  // Axis chat on these pages can attach the current target PC, only when the operator asks. The PC
+  // alone: the person last looked up may not be its user, and Axis reads who is from Atlas.
+  window.AtlasAxisSelection = Object.assign(
+    () => (S.target ? {hostname: S.target} : null),
+    {button: "Use current target", empty: "Select a target PC in Workspace"});
   refresh();
+  window.dispatchEvent(new Event("atlas:selection"));
 }
 function targetPrefs() {
   return JSON.parse(localStorage.getItem("wmiTargetPrefs") || '{"recent":[]}');

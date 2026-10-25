@@ -1135,10 +1135,10 @@ body:is(.atlas-console, .atlas-map, .atlas-database)
   line-height: 1.4;
   border-radius: var(--atlas-control-radius);
 }
-/* Center action content in every first-party surface. Record tables and map
-   labels keep their own reading alignment; Desktop keeps its dock geometry. */
+/* Center action content in every first-party surface. Record tables, map labels
+   and clipboard captures keep their own reading alignment; Desktop keeps its dock geometry. */
 body:is(.atlas-console, .atlas-map, .atlas-database)
-  button:not(.map-name):not(.room-label):not(.dock-item):not(.window-activate):not([data-page]),
+  button:not(.map-name):not(.room-label):not(.dock-item):not(.window-activate):not(.clipboard-item):not([data-page]),
 body :is(.atlas-return, .primary-button, .ops-header-link),
 body .atlas-primary-nav a,
 body .atlas-header-more > summary {
@@ -2586,6 +2586,7 @@ body.atlas-console .inbox-request-target { display:flex; flex-direction:row; ali
 body.atlas-console #liveInbox [data-slot="card-header"] { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:2px 8px; }
 body.atlas-console #liveInbox [data-slot="card-header"] > [data-slot="card-title"] { flex:1 1 auto; min-width:min(12em,100%); }
 body.atlas-console #liveInbox [data-slot="card-header"] > [data-slot="card-description"] { flex:0 1 auto; min-width:0; }
+body.atlas-console #liveInbox [data-slot="card-header"] > [data-slot="card-action"] { flex:0 0 auto; align-self:center; }
 body.atlas-console #liveInbox :is(.inbox-request-card, .screen-reader-text, .inbox-message-card) [data-slot="card-header"] > [data-slot="card-description"] { flex-basis:100%; }
 
 /* Read from screen (Live Inbox). */
@@ -3177,7 +3178,12 @@ body.atlas-console td.history-actions { white-space:nowrap; }
 body.atlas-console td.history-actions button { min-height:22px; height:22px; padding:0 7px; margin-right:3px; font-size:11px; }
 body.atlas-console tr[data-state="failed"] td.history-actions [data-history-retry] { color:var(--atlas-danger-text); border-color:var(--atlas-danger-line); }
 /* Clipboard history drawer: compact cards with coloured entity chips and tables per item. */
-body.atlas-console .clipboard-drawer { width:min(720px, 100vw); }
+body.atlas-console .clipboard-layout { display:grid; grid-template-columns:minmax(260px, 380px) minmax(0, 1fr); gap:12px; align-items:start; }
+body.atlas-console .clipboard-layout .clipboard-items { max-height:calc(100vh - 250px); overflow:auto; padding-right:2px; }
+body.atlas-console .clipboard-detail-pane { min-width:0; border:1px solid var(--atlas-line); border-radius:8px; background:var(--atlas-surface); }
+body.atlas-console .clipboard-detail-pane > .empty { margin:0; padding:16px; }
+body.atlas-console .clipboard-selected > header { display:grid; gap:4px; padding:8px 10px; border-bottom:1px solid var(--atlas-line); }
+@media (max-width: 1100px) { body.atlas-console .clipboard-layout { grid-template-columns:minmax(0, 1fr); } body.atlas-console .clipboard-layout .clipboard-items { max-height:40vh; } }
 body.atlas-console .clipboard-tools { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:4px 0; font-size:12px; }
 body.atlas-console .clipboard-tools input[type="search"] { flex:1 1 140px; min-width:100px; }
 body.atlas-console .clipboard-tools label { display:inline-flex; align-items:center; gap:4px; white-space:nowrap; }
@@ -3185,10 +3191,9 @@ body.atlas-console #clipboardStatus { margin:2px 0 6px; font-size:12px; color:va
 body.atlas-console #clipboardStatus[data-tone="good"] { color:var(--atlas-success); }
 body.atlas-console #clipboardStatus[data-tone="bad"] { color:var(--atlas-danger-text); }
 body.atlas-console .clipboard-items { display:grid; gap:6px; }
-body.atlas-console .clipboard-item { border:1px solid var(--atlas-line); border-radius:7px; background:var(--atlas-surface); }
-body.atlas-console .clipboard-item > details > summary { display:grid; grid-template-columns:1fr; gap:3px; padding:6px 8px; cursor:pointer; list-style:none; }
-body.atlas-console .clipboard-item > details > summary::-webkit-details-marker { display:none; }
-body.atlas-console .clipboard-item > details[open] > summary { border-bottom:1px solid var(--atlas-line); }
+body.atlas-console .clipboard-item { display:grid; grid-template-columns:minmax(0, 1fr); gap:3px; width:100%; height:auto; min-height:0; padding:6px 8px; border:1px solid var(--atlas-line); border-radius:7px; background:var(--atlas-surface); color:var(--atlas-text); font:inherit; font-weight:400; text-align:left; cursor:pointer; }
+body.atlas-console .clipboard-item:hover { border-color:var(--atlas-accent); }
+body.atlas-console .clipboard-item[aria-pressed="true"] { border-color:var(--atlas-accent); box-shadow:inset 3px 0 0 var(--atlas-accent); background:var(--atlas-surface-subtle); }
 body.atlas-console .clipboard-when { font-size:11px; color:var(--atlas-muted); }
 body.atlas-console .clipboard-preview { font:12px/1.35 "Cascadia Mono", Consolas, monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 body.atlas-console :is(.clipboard-chips,.clipboard-tags,.clipboard-bulk,.clipboard-item-actions) { display:flex; flex-wrap:wrap; gap:4px; }
@@ -3199,19 +3204,19 @@ body.atlas-console .clipboard-chip-person { color:var(--atlas-success); backgrou
 body.atlas-console .clipboard-chip-desk { color:var(--atlas-indigo, #4338ca); background:var(--atlas-indigo-bg, #e0e7ff); border-color:transparent; }
 body.atlas-console .clipboard-chip-ticket, body.atlas-console .clipboard-chip-ip { color:var(--atlas-text); }
 body.atlas-console .clipboard-chip-unknown { color:var(--atlas-warning); background:var(--atlas-warning-bg); border-color:var(--atlas-warning-line); }
-body.atlas-console .clipboard-detail { padding:6px 8px; display:grid; gap:8px; }
+body.atlas-console .clipboard-detail { padding:8px 10px; display:grid; gap:10px; }
 body.atlas-console .clipboard-detail h4 { margin:0 0 4px; font-size:12px; }
 body.atlas-console .clipboard-detail h4 small { color:var(--atlas-muted); font-weight:500; }
 body.atlas-console .clipboard-bulk { margin:0 0 4px; }
 body.atlas-console :is(.clipboard-bulk,.clipboard-item-actions,.clipboard-row-actions) button { min-height:24px; height:24px; padding:0 8px; font-size:11px; }
-body.atlas-console .clipboard-table { max-height:300px; overflow:auto; border:1px solid var(--atlas-line); border-radius:6px; }
+body.atlas-console .clipboard-table { max-height:420px; overflow:auto; border:1px solid var(--atlas-line); border-radius:6px; }
 body.atlas-console .clipboard-table table { width:100%; border-collapse:collapse; font-size:12px; }
 body.atlas-console .clipboard-table :is(th,td) { padding:3px 6px; text-align:left; border-bottom:1px solid var(--atlas-line); white-space:nowrap; }
 body.atlas-console .clipboard-table th { position:sticky; top:0; background:var(--atlas-surface-subtle); font-weight:600; z-index:1; }
 body.atlas-console .clipboard-table td.clipboard-row-actions { text-align:right; }
 body.atlas-console .clipboard-muted { color:var(--atlas-muted); font-weight:400; }
 body.atlas-console .clipboard-person { color:var(--atlas-accent); cursor:context-menu; }
-body.atlas-console .clipboard-text pre { max-height:160px; overflow:auto; margin:4px 0 0; padding:6px; font-size:11px; white-space:pre-wrap; background:var(--atlas-surface-subtle); border-radius:5px; }
+body.atlas-console .clipboard-text pre { max-height:320px; overflow:auto; margin:4px 0 0; padding:6px; font-size:11px; white-space:pre-wrap; background:var(--atlas-surface-subtle); border-radius:5px; }
 body.atlas-console .clipboard-companion { display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; margin:0 0 4px; padding:5px 8px; border:1px solid var(--atlas-line); border-radius:6px; background:var(--atlas-surface-subtle); font-size:12px; }
 body.atlas-console .clipboard-companion:empty { display:none; }
 body.atlas-console .clipboard-companion label { display:inline-flex; align-items:center; gap:4px; margin-left:auto; }
@@ -3417,8 +3422,13 @@ body.axis-chat-open #detail { visibility: hidden; }
 .axis-chat-attached { justify-content: space-between; margin-bottom: 8px; padding: 3px 8px; background: var(--atlas-surface-subtle); border: 1px solid var(--atlas-line); border-radius: var(--atlas-control-radius); font-size: 11px; }
 .axis-chat-attached span { min-width: 0; overflow-wrap: anywhere; }
 .axis-chat-attached button { border: 0; background: transparent; padding: 0 3px; flex: 0 0 auto; }
-body.atlas-map #axis-chat-toggle[aria-expanded="true"] { color: var(--atlas-accent); border-color: var(--atlas-accent); }
-body.atlas-map #axis-chat-toggle { min-height: 28px; padding: 4px 7px; font-size: 12px; white-space: nowrap; }
+body:is(.atlas-map, .atlas-console) #axis-chat-toggle[aria-expanded="true"] { color: var(--atlas-accent); border-color: var(--atlas-accent); }
+body:is(.atlas-map, .atlas-console) #axis-chat-toggle { min-height: 28px; padding: 4px 7px; font-size: 12px; white-space: nowrap; }
+/* Console pages make room for Axis on wide screens; narrower ones show it over the page. */
+@media (min-width: 1151px) { body.atlas-console.axis-chat-open > main { width: auto; margin-right: 380px; } }
+/* Beside the open chat, Live Inbox takes the layouts it uses on a screen 380px narrower (its rules at 1280px and 950px). */
+@media (min-width: 1151px) and (max-width: 1660px) { body.atlas-console.axis-chat-open .inbox-grid:has(> .inbox-work:not([hidden])) { grid-template-columns:minmax(300px,.9fr) minmax(380px,1.1fr); } body.atlas-console.axis-chat-open .inbox-grid:has(> .inbox-work:not([hidden])) > .inbox-mail-list { display:none; } }
+@media (min-width: 1151px) and (max-width: 1330px) { body.atlas-console.axis-chat-open .inbox-grid, body.atlas-console.axis-chat-open .inbox-grid:has(> .inbox-work:not([hidden])) { grid-template-columns:minmax(0,1fr); } body.atlas-console.axis-chat-open :is(.inbox-context, .inbox-work) { position:static; max-height:none; overflow:visible; } body.atlas-console.axis-chat-open .inbox-mail-list > ul { max-height:300px; } }
 body .axis-chat-header .atlas-primary-nav { flex-wrap: wrap; }
 html[data-theme="dark"] .axis-chat { --axis-user: #c9a4f0; --axis-answer: #6bcedb; }
 @media (max-width: 1150px) { .axis-chat { box-shadow: -12px 0 28px rgb(0 0 0 / .14); } }
