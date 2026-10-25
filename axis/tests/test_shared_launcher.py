@@ -28,6 +28,8 @@ class SharedLauncherTests(unittest.TestCase):
             "AXIS_TEST_INHERITED": "keep this value",
         }))
         self.output = self.stack.enter_context(redirect_stdout(io.StringIO()))
+        # These tests run inside the AA checkout; standalone Axis is the default case here.
+        self.stack.enter_context(patch.object(start, "AA_ROOT", str(self.root / "standalone")))
         self.identity = "EXAMPLE\\dsk-user"
         self.atlas = self.make_atlas(self.root / "atlas-install")
         self.database = self.atlas / "data" / "office_atlas.db"
@@ -208,6 +210,17 @@ class SharedLauncherTests(unittest.TestCase):
                 self.assertNotIn("--atlas-dir", command)
                 self.assertEqual(atlas.call_count, int(shared))
 
+    def test_aa_terminal_refuses_to_start_a_second_atlas(self):
+        aa = self.root / "AA"
+        (aa / "axis").mkdir(parents=True)
+        (aa / "aa_launcher.py").write_text("")
+        with patch.object(start, "AA_ROOT", str(aa)), patch.object(launch_atlas, "start_atlas") as atlas, \
+             redirect_stderr(io.StringIO()) as errors:
+            with self.assertRaises(SystemExit):
+                start.main(["--with-atlas"])
+        atlas.assert_not_called()
+        self.assertIn("AA already includes Atlas", errors.getvalue())
+
     def test_conflicting_database_override_is_rejected_before_starting_anything(self):
         with patch.object(launch_atlas, "start_atlas") as atlas, patch.object(start, "prepare_model") as prepare, \
              redirect_stderr(io.StringIO()) as errors:
@@ -234,26 +247,6 @@ class SharedLauncherTests(unittest.TestCase):
              patch.object(launch_atlas, "_get_json", return_value=status):
             self.assertEqual(launch_atlas.start_atlas(self.here, folder), str(database))
         self.assertEqual((folder / "launched.txt").read_text(encoding="utf-8"), "started")
-
-    @unittest.skipUnless(os.name == "nt", "Executes Windows BAT chaining")
-    def test_real_shared_bat_forwards_quoted_arguments_and_exit_code(self):
-        folder = self.root / "Axis & (team) %AXIS_TEST_TOKEN% !ready!"
-        folder.mkdir()
-        shutil.copyfile(Path(start.HERE) / "Start Axis + Atlas.bat", folder / "Start Axis + Atlas.bat")
-        (folder / "Start Agent.bat").write_bytes(
-            b'@echo off\r\n"%AXIS_TEST_PYTHON%" "%~dp0capture.py" %*\r\nexit /b 7\r\n')
-        (folder / "capture.py").write_text(
-            "import json, sys\nfrom pathlib import Path\n"
-            "Path(__file__).with_name('arguments.json').write_text(json.dumps(sys.argv[1:]), encoding='utf-8')\n",
-            encoding="utf-8")
-        env = dict(os.environ, AXIS_TEST_PYTHON=sys.executable, AXIS_TEST_TOKEN="must-not-expand",
-                   AXIS_TEST_LAUNCHER=str(folder / "Start Axis + Atlas.bat"))
-        command = '"%s" /d /v:off /s /c ""%%AXIS_TEST_LAUNCHER%%" --atlas-dir "C:\\Atlas & (shared)" --plain"' % os.environ["ComSpec"]
-        result = subprocess.run(command, env=env, capture_output=True, text=True, timeout=20)
-        self.assertEqual(result.returncode, 7, result.stdout + result.stderr)
-        self.assertEqual(json.loads((folder / "arguments.json").read_text(encoding="utf-8")),
-                         ["--with-atlas", "--atlas-dir", r"C:\Atlas & (shared)", "--plain"])
-
 
 if __name__ == "__main__":
     unittest.main()

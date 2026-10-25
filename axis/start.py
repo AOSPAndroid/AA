@@ -22,8 +22,13 @@ else:
     from terminal_ui import TerminalUI
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+AA_ROOT = os.path.dirname(HERE)
 PART_SIZE = 1900000000
 RELEASES = "https://github.com/AOSPAndroid/Axis/releases/tag/"
+def in_aa():
+    return os.path.isfile(os.path.join(AA_ROOT, "aa_launcher.py"))
+
+
 def load_models():
     """Models in menu order. "parts" are the SHA-256 of each 1.9 GB release part. A model in several
     files lists them under "files"; llama-server is given the first and finds the rest next to it."""
@@ -397,6 +402,8 @@ def main(argv=None):
         from web_tools import configure_firecrawl
         return configure_firecrawl()
 
+    if in_aa() and (a.with_atlas or a.atlas_dir):
+        p.error("AA already includes Atlas. Start AA.bat opens the map; this terminal shares its database, jobs and memory")
     if a.with_atlas or a.atlas_dir:
         if a.atlas_db:
             p.error("--atlas-db is for standalone Axis; shared startup selects Atlas's active database automatically")
@@ -408,6 +415,7 @@ def main(argv=None):
             return 1
     if a.atlas_db:
         agent_args += ["--atlas-db", a.atlas_db]
+    # Inside AA, agent.py itself uses AA's jobs, locks, memory, database and packages.
 
     ui = TerminalUI(plain=a.plain)
     if a.plain:

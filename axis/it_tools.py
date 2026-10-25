@@ -1,7 +1,8 @@
 """Standalone Windows administration for the local agent. Python 3.8+, no packages.
 
 The model selects named operations; this module owns validation, approval, Windows
-calls and durable deployment jobs. It does not import or connect to Atlas.
+calls and durable deployment jobs. It does not import Atlas; with an Atlas database
+it only reads Atlas's unresolved-target guard so both apps refuse the same PC.
 """
 import argparse
 import base64
@@ -12,6 +13,7 @@ import json
 import os
 from pathlib import Path, PureWindowsPath
 import re
+import sqlite3
 import subprocess
 import sys
 import time
@@ -58,12 +60,55 @@ SUFFIXES = {"Install": ("_i", "_install", "_installs"),
             "Uninstall": ("_u", "_uninstall", "_uninstalls"),
             "Repair": ("_r", "_repair", "_repairs")}
 ACTIVE = {"queued", "running"}
+RETAINED_JOBS = 200          # finished jobs kept for /jobs; active and unresolved jobs are never pruned
+SNAPSHOT_SECONDS = 3600      # snapshots expire after 15 minutes; keep a margin for in-flight approvals
+OUTPUT_SECONDS = 30 * 86400  # saved full tool results
 REMOTE_ROOT = r"C:\Temp\LocalAgent"
 DEFAULT_PACKAGE_REPO = r"C:\Users\x01426046\OneDrive - Barclays Bank PLC\Shortcuts\EPP_PACKAGE_REPO_BetaPackages - BetaPackages"
 
 
 class UnknownOutcome(RuntimeError):
     pass
+
+
+def windows_account():
+    """The Windows account running this process, as Atlas records it."""
+    import getpass
+    domain = os.environ.get("USERDOMAIN", "") if os.name == "nt" else ""
+    return ((domain + "\\") if domain else "") + getpass.getuser()
+
+
+# Atlas's deployment history. AA's Axis adds its own deployments so one history shows both apps.
+HISTORY_TABLE = ("CREATE TABLE IF NOT EXISTS deployments(id text primary key,started text,finished text,operator text,"
+                 "target text,package text,action text,script text,mode text,state text,robocopy_code text,pid text,"
+                 "exit_code text,details text,payload text)")
+
+
+def record_history(database, row_id, fields, create=False):
+    # mode=rw: an absent database is an error, never a new empty file.
+    con = sqlite3.connect(Path(database).resolve().as_uri() + "?mode=rw", uri=True, timeout=10)
+    try:
+        with con:
+            if create:
+                con.execute(HISTORY_TABLE)
+                if "payload" not in {row[1] for row in con.execute("PRAGMA table_info(deployments)")}:
+                    con.execute("ALTER TABLE deployments ADD COLUMN payload text")
+                con.execute("INSERT OR REPLACE INTO deployments(id, %s) VALUES (?%s)" % (", ".join(fields), ", ?" * len(fields)),
+                            [row_id] + list(fields.values()))
+            else:
+                con.execute("UPDATE deployments SET %s WHERE id=?" % ", ".join(key + "=?" for key in fields),
+                            list(fields.values()) + [row_id])
+    finally:
+        con.close()
+
+
+def history_outcome(result):
+    """Atlas's convention: an executed installer is 'launched' with its exit code, never 'installed'."""
+    if result["state"] == "unknown":
+        return "unknown"  # Even after an exit code was read, a later failure leaves the outcome open.
+    if "exit_code" in result:
+        return "launched"
+    return {"copied": "complete", "unknown": "unknown", "running": "running"}.get(result["state"], "failed")
 
 
 def now():
@@ -81,6 +126,12 @@ def computer(value):
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}", value) or ".." in value or value.endswith((".", "-")):
         raise ValueError("Use one explicit computer hostname or IPv4 address, without wildcards or paths")
     return value.upper()
+
+
+def target_key(value):
+    """One lock and guard name per PC, whether it is given short or fully qualified."""
+    name = str(value or "").strip().upper().rstrip(".")
+    return name if re.fullmatch(r"\d{1,3}(\.\d{1,3}){3}", name) else name.split(".", 1)[0]
 
 
 def integer(value, label, low, high):
@@ -104,7 +155,16 @@ def write_json(path, data):
             json.dump(data, out, ensure_ascii=False, indent=2)
             out.flush()
             os.fsync(out.fileno())
-        os.replace(str(temporary), str(path))
+        for attempt in range(20):
+            try:
+                os.replace(str(temporary), str(path))
+                break
+            except PermissionError:
+                # Windows refuses to replace a file another process is reading,
+                # such as Atlas's activity panel or a chat checking this job.
+                if attempt == 19:
+                    raise
+                time.sleep(0.05)
     finally:
         if temporary.exists():
             temporary.unlink()
@@ -176,7 +236,7 @@ def process_alive(pid):
 @contextmanager
 def target_lock(state_dir, pc):
     """OS-owned locks release on worker exit, including crashes; no stale lock files."""
-    path = Path(state_dir) / "locks" / (computer(pc) + ".lock")
+    path = Path(state_dir) / "locks" / (target_key(computer(pc)) + ".lock")
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a+b") as handle:
         handle.seek(0, 2)
@@ -192,7 +252,7 @@ def target_lock(state_dir, pc):
                 import fcntl
                 fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError:
-            raise RuntimeError("Another local-agent operation is active on " + pc)
+            raise RuntimeError("Another operation is active on " + pc)
         try:
             yield
         finally:
@@ -203,9 +263,42 @@ def target_lock(state_dir, pc):
                 fcntl.flock(handle, fcntl.LOCK_UN)
 
 
+# Atlas's job_service.TERMINAL; any other saved state means the work may still be running.
+ATLAS_TERMINAL = {"launched", "complete", "failed", "cancelled", "interrupted", "unknown"}
+
+
+def atlas_blocking(database, pc):
+    """Why Atlas's records forbid work on this PC, or None. Unreadable records never read as clear."""
+    key = target_key(pc)
+    try:
+        con = sqlite3.connect(Path(database).resolve().as_uri() + "?mode=ro", uri=True, timeout=5)
+        try:
+            tables = {row[0] for row in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            if "operation_guard" in tables and any(target_key(row[0]) == key for row in con.execute("SELECT target FROM operation_guard")):
+                return ("%s has an unresolved Atlas operation. Inspect the PC, then acknowledge it in Atlas's "
+                        "Operation recovery." % pc)
+            # A job that was running when Atlas stopped is marked interrupted only at Atlas's next start.
+            for (body,) in con.execute("SELECT body FROM operation_state WHERE kind='job'") if "operation_state" in tables else ():
+                job = json.loads(body)
+                if job.get("state") in ATLAS_TERMINAL:
+                    continue
+                targets = [job.get("target")] + [row.get("target") or row.get("machine")
+                                                 for row in job.get("items", job.get("results", [])) if isinstance(row, dict)]
+                if any(isinstance(name, str) and target_key(name) == key for name in targets):
+                    return ("%s has an Atlas operation that is running, or was running when Atlas stopped. Wait for it, "
+                            "or open AA so an interrupted operation is listed in Operation recovery." % pc)
+            return None
+        finally:
+            con.close()
+    except (sqlite3.Error, OSError, ValueError, TypeError, AttributeError) as error:
+        raise RuntimeError("Cannot read Atlas's operation records (%s); no change was started" % error) from None
+
+
 class ITTools:
-    def __init__(self, state_dir, package_repo=None, confirm=None, timeout=3600):
+    def __init__(self, state_dir, package_repo=None, confirm=None, timeout=3600, atlas_db=None, atlas_history=False):
         self.state = Path(state_dir).expanduser().resolve()
+        self.atlas_db = str(atlas_db) if atlas_db else None
+        self.atlas_history = bool(atlas_history and self.atlas_db)
         package_repo = package_repo or os.environ.get("AGENT_PACKAGE_REPO") or os.environ.get("WMI_PACKAGE_REPO") or DEFAULT_PACKAGE_REPO
         self.repository = Path(os.path.expandvars(package_repo)).expanduser().resolve()
         self.confirm = confirm or (lambda action: False)
@@ -329,17 +422,59 @@ class ITTools:
             return []
         return sorted((read_json(p) for p in folder.glob("*.json")), key=lambda j: j["created"], reverse=True)
 
-    def ensure_available(self, pc, exclude=None):
+    def blocking_job(self, pc, exclude=None):
+        """The job that is active on this PC or left it with an unacknowledged unknown outcome."""
+        key = target_key(pc)
         for job in self.jobs():
-            if job["id"] == exclude or pc not in job["computers"]:
+            if job["id"] == exclude or key not in {target_key(name) for name in job["computers"]}:
                 continue
             if job["state"] in ACTIVE or (job["state"] == "unknown" and not job.get("acknowledged")):
-                raise RuntimeError("%s has an active or unresolved job %s. Inspect it with it_job_status first." % (pc, job["id"]))
+                return job
+        return None
+
+    def prune(self):
+        """Bound saved state. Never removes a job that is active or has an unacknowledged unknown outcome."""
+        finished = [job for job in self.jobs() if job["state"] not in ACTIVE
+                    and not (job["state"] == "unknown" and not job.get("acknowledged"))]
+        removed = 0
+        for job in finished[RETAINED_JOBS:]:
+            base = self.state / "jobs" / identifier(job["id"])
+            for path in (base.with_suffix(".json"), base.with_suffix(".worker.log")):
+                try:
+                    path.unlink()
+                    removed += 1
+                except FileNotFoundError:
+                    pass
+        now = time.time()
+        for folder, age in (("snapshots", SNAPSHOT_SECONDS), ("outputs", OUTPUT_SECONDS)):
+            for path in (self.state / folder).glob("*") if (self.state / folder).is_dir() else ():
+                try:
+                    if path.is_file() and now - path.stat().st_mtime > age:
+                        path.unlink()
+                        removed += 1
+                except OSError:
+                    pass  # In use or already gone; the next prune retries.
+        return removed
+
+    def ensure_available(self, pc, exclude=None):
+        job = self.blocking_job(pc, exclude)
+        if job:
+            raise RuntimeError("%s has an active or unresolved job %s. Inspect it with it_job_status first." % (pc, job["id"]))
+        reason = atlas_blocking(self.atlas_db, pc) if self.atlas_db else None
+        if reason:
+            raise RuntimeError(reason)
 
     def spawn(self, plan):
+        try:
+            self.prune()
+        except (OSError, ValueError, KeyError) as error:
+            sys.stderr.write("Axis state was not pruned: %s\n" % error)  # Never blocks new work.
         job_id = uuid.uuid4().hex
         job = dict(plan, id=job_id, state="queued", created=now(), created_epoch=time.time(),
                    results=[], events=[], worker_pid=None)
+        if self.atlas_db:
+            job["atlas_db"] = self.atlas_db  # The detached worker rechecks the same guard.
+            job["atlas_history"] = self.atlas_history
         path = self.state / "jobs" / (job_id + ".json")
         write_json(path, job)
         try:
@@ -587,7 +722,7 @@ def run_worker(path):
     job = read_json(path)
     if job["state"] != "queued" or path.name != identifier(job["id"]) + ".json":
         raise ValueError("Job is not queued")
-    backend = ITTools(path.parent.parent, job.get("repository"), timeout=job["timeout"])
+    backend = ITTools(path.parent.parent, job.get("repository"), timeout=job["timeout"], atlas_db=job.get("atlas_db"))
     job.update(state="running", worker_pid=os.getpid())
     write_json(path, job)
 
@@ -595,10 +730,32 @@ def run_worker(path):
         job["events"].append({"at": now(), "computer": pc, "message": message})
         write_json(path, job)
 
+    history = {"failed": False, "open": None}
+
+    def recorded(index, fields, create=False):
+        # History is a record of the work, never a reason to stop or fail it.
+        if not job.get("atlas_history") or history["failed"]:
+            return
+        try:
+            record_history(job["atlas_db"], "axis-%s-%d" % (job["id"], index), fields, create)
+            history["open"] = index if create else None
+        except (sqlite3.Error, OSError) as error:
+            history["failed"] = True
+            event("", "Atlas deployment history was not updated: %s" % error)
+
     try:
-        for pc in job["computers"]:
+        for index, pc in enumerate(job["computers"]):
             if job["kind"] == "deploy":
+                recorded(index, {"started": time.strftime("%Y-%m-%d %H:%M:%S"), "operator": windows_account() + " (Axis)",
+                                 "target": pc, "package": job["package"], "action": job["action"], "script": job["script"],
+                                 "mode": job["mode"], "state": "running", "payload": json.dumps({
+                                     "computer": pc, "folder": str(Path(job["repository"]) / job["package"]),
+                                     "script": job["script"], "action": job["action"], "mode": job["mode"]})}, create=True)
                 result = backend.deploy_one(job, pc, event)
+                recorded(index, {"finished": time.strftime("%Y-%m-%d %H:%M:%S"), "state": history_outcome(result),
+                                 "exit_code": str(result.get("exit_code", "")), "pid": str(result.get("pid", "")),
+                                 "robocopy_code": str(result.get("robocopy_code", "")),
+                                 "details": ((result.get("message") or "") + "\n" + (result.get("log_tail") or "")).strip()[-4000:]})
             elif job["kind"] == "reboot":
                 result = {"computer": pc, "state": "unknown", "verified": False}
                 try:
@@ -628,6 +785,9 @@ def run_worker(path):
         job["state"] = "unknown" if "unknown" in states else "failed" if "failed" in states else "complete"
     except BaseException as error:
         job.update(state="unknown", error=str(error) + "; inspect target state before retrying")
+        if history["open"] is not None:
+            recorded(history["open"], {"finished": time.strftime("%Y-%m-%d %H:%M:%S"), "state": "unknown",
+                                       "details": job["error"]})
     finally:
         job["finished"] = now()
         write_json(path, job)

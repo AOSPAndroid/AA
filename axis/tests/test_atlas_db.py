@@ -250,5 +250,43 @@ class AtlasDatabaseTests(unittest.TestCase):
             writer.close()
 
 
+    def desks(self, table="official_records"):
+        import json
+        con = sqlite3.connect(str(self.path))
+        con.execute("CREATE TABLE " + table + "(id TEXT PRIMARY KEY, body TEXT NOT NULL)")
+        for desk, body in (("02A000101", {"name": "Marie Éclair", "team": "Support", "hostname": "PC-001", "floor": 2,
+                                           "occupancy": "assigned", "kind": "desk", "verified": True}),
+                           ("02A000102", {"name": "Vacant desk", "team": "Support", "floor": 2, "occupancy": "vacant"}),
+                           ("03B000200", {"name": "Annemarie Smith", "team": "Trading_Desk", "asset": "A-77", "floor": 3,
+                                           "occupancy": "assigned", "x": 0.5, "notes": "Private note"}),
+                           ("bad", "not json")):
+            con.execute("INSERT INTO " + table + " VALUES(?,?)", (desk, body if isinstance(body, str) else json.dumps(body)))
+        con.commit()
+        con.close()
+
+    def test_find_desk_returns_floor_plan_seating_with_exact_matches_first(self):
+        self.desks()
+        result = self.db.call("find_desk", {"query": "marie"})
+        self.assertNotIn("error", result)
+        self.assertEqual([item["desk_id"] for item in result["items"]], ["02A000101", "03B000200"])
+        first = result["items"][0]
+        self.assertEqual((first["floor"], first["occupancy"], first["hostname"], first["verified"], result["layout"]),
+                         (2, "assigned", "PC-001", True, "official"))
+        self.assertIn("not who is in the office", result["warning"])
+        self.assertNotIn("notes", result["items"][1])  # Only seating fields reach the model.
+        exact = self.db.call("find_desk", {"query": "Annemarie Smith"})["items"]
+        self.assertEqual(exact[0]["desk_id"], "03B000200")
+        self.assertEqual([i["desk_id"] for i in self.db.call("find_desk", {"query": "pc-001"})["items"]], ["02A000101"])
+        self.assertEqual([i["desk_id"] for i in self.db.call("find_desk", {"query": "02a000102"})["items"]], ["02A000102"])
+        self.assertEqual(self.db.call("find_desk", {"query": "_"})["items"][0]["desk_id"], "03B000200")  # LIKE wildcards are literal
+        page = self.db.call("find_desk", {"query": "support", "limit": 1})
+        self.assertEqual((len(page["items"]), page["next_offset"]), (1, 1))
+        self.assertIn("Unsupported", self.db.call("find_desk", {"query": "marie", "kind": "people"})["error"])
+
+    def test_find_desk_uses_the_previous_layout_or_reports_no_plan(self):
+        self.assertIn("no floor-plan desks", self.db.call("find_desk", {"query": "marie"})["error"])
+        self.desks("records")
+        self.assertEqual(self.db.call("find_desk", {"query": "marie"})["layout"], "previous")
+
 if __name__ == "__main__":
     unittest.main()

@@ -314,6 +314,239 @@ test("split UTF-8 and CRLF events preserve full visible thinking, tool output an
   );
 });
 
+test("the latest saved chat is shown again on load with decisions as history", async (t) => {
+  const unsafe = '<img src=x onerror="window.attacked=true">';
+  const f = fixture(t, {
+    route(call) {
+      if (call.url === "/api/axis/resume")
+        return json({
+          session_id: "saved-session-0123456789",
+          transcript: [
+            {
+              type: "user",
+              text: "Restart " + unsafe,
+              context: { desk_id: "D-1", hostname: "PC1" },
+            },
+            { type: "thinking", text: "Checking" },
+            {
+              type: "tool_start",
+              name: "inspect_computer",
+              args: { computer: "PC1" },
+            },
+            {
+              type: "tool_result",
+              name: "inspect_computer",
+              result: '{"ok":true}',
+            },
+            { type: "approval", action: "restart PC1", decision: "approved" },
+            { type: "approval", action: "restart PC2" },
+            { type: "assistant", text: "Restart queued." },
+            { type: "error", text: "Later failure" },
+          ],
+        });
+    },
+  });
+  await until(() => f.$(".axis-message-error"), "saved chat to render");
+  const kinds = [...f.w.document.querySelectorAll(".axis-message")].map(
+    (node) => node.className.replace("axis-message axis-message-", ""),
+  );
+  assert.deepEqual(kinds, [
+    "user",
+    "thinking",
+    "tool",
+    "approval",
+    "approval",
+    "assistant",
+    "error",
+  ]);
+  assert.equal(
+    f.$(".axis-message-user .axis-message-content").textContent,
+    "Restart " + unsafe,
+  );
+  assert.match(f.$(".axis-attached-record").textContent, /D-1 · PC1/);
+  assert.deepEqual(
+    [...f.w.document.querySelectorAll(".axis-approval-note")].map(
+      (node) => node.textContent,
+    ),
+    ["Approved.", "No approval submitted."],
+  );
+  assert.equal(
+    f.$(".axis-approval-actions"),
+    null,
+    "Saved approvals have no controls",
+  );
+  assert.equal(f.$("#axis-chat-messages img"), null);
+  assert.equal(f.w.attacked, undefined);
+  assert.equal(f.w.localStorage.getItem("aa-axis-chat-open") !== null, true);
+  assert.equal(
+    Object.keys(f.w.localStorage).some((key) =>
+      /session|message|transcript/i.test(key),
+    ),
+    false,
+    "Nothing about the chat is kept in the browser",
+  );
+  f.submit("And PC2?");
+  await f.idle();
+  assert.equal(
+    f.requests("/api/axis/chat")[0].payload.session_id,
+    "saved-session-0123456789",
+  );
+});
+
+test("a chat started before the saved chat arrives is never replaced", async (t) => {
+  let release;
+  const f = fixture(t, {
+    route(call) {
+      if (call.url === "/api/axis/resume")
+        return new Promise((resolve) => {
+          release = () =>
+            resolve(
+              json({
+                session_id: "saved-session-0123456789",
+                transcript: [{ type: "assistant", text: "Old" }],
+              }),
+            );
+        });
+    },
+  });
+  await until(() => release, "resume request");
+  f.submit("New question");
+  await f.idle();
+  release();
+  await tick();
+  await tick();
+  assert.equal(
+    f.$(".axis-message-assistant .axis-message-content").textContent,
+    "Done.",
+  );
+  f.submit("Follow-up");
+  await f.idle();
+  assert.equal(
+    f.requests("/api/axis/chat")[1].payload.session_id,
+    "session-one",
+  );
+});
+
+test("the memory panel lists facts and forgets one only after confirmation", async (t) => {
+  const unsafe = '<img src=x onerror="window.attacked=true">';
+  const path = "C:\\AA\\data\\axis\\state\\MEMORY.md";
+  const f = fixture(t, {
+    route(call) {
+      if (call.url === "/api/axis/memory")
+        return json({ path, entries: ["Keep this", unsafe] });
+      if (call.url === "/api/axis/memory/forget")
+        return json({
+          path,
+          entries: ["Keep this"],
+          message: "Forgot: " + call.payload.entry,
+        });
+    },
+  });
+  assert.equal(f.$("#axis-chat-memory").hidden, true);
+  f.$("#axis-chat-memory-toggle").click();
+  await until(
+    () =>
+      f.w.document.querySelectorAll("#axis-chat-memory-list li").length === 2,
+    "memory list",
+  );
+  assert.equal(
+    f.$("#axis-chat-memory-toggle").getAttribute("aria-expanded"),
+    "true",
+  );
+  assert.equal(f.$("#axis-chat-memory-status").textContent, path);
+  const forget = () =>
+    f.w.document.querySelectorAll("#axis-chat-memory-list button")[1];
+  f.w.confirm = () => false;
+  forget().click();
+  await tick();
+  assert.equal(
+    f.requests("/api/axis/memory/forget").length,
+    0,
+    "Cancelling the confirmation changes nothing",
+  );
+  f.w.confirm = () => true;
+  forget().click();
+  await until(
+    () =>
+      f.w.document.querySelectorAll("#axis-chat-memory-list li").length === 1,
+    "updated list",
+  );
+  assert.deepEqual(f.requests("/api/axis/memory/forget")[0].payload, {
+    entry: unsafe,
+  });
+  assert.equal(
+    f.requests("/api/axis/memory/forget")[0].headers["X-Atlas-Token"],
+    "local-admin-token",
+  );
+  assert.equal(f.$("#axis-chat-memory img"), null);
+  assert.equal(f.w.attacked, undefined);
+});
+
+test("desks found by Axis open on the map without reloading the chat", async (t) => {
+  const unsafe = '<img src=x onerror="window.attacked=true">';
+  const f = fixture(t, {
+    route(call, api) {
+      if (call.url !== "/api/axis/chat") return;
+      const stream = api.stream();
+      stream.event({ type: "session", session_id: "session-one" });
+      stream.event({
+        type: "tool_start",
+        name: "find_desk",
+        args: { query: "marie" },
+      });
+      stream.event({
+        type: "tool_result",
+        name: "find_desk",
+        result: JSON.stringify({
+          items: [
+            { desk_id: "02A000101" },
+            { desk_id: "02A000101" },
+            { desk_id: unsafe },
+            { desk_id: 7 },
+          ],
+        }),
+      });
+      stream.event({
+        type: "tool_start",
+        name: "search_atlas",
+        args: { query: "marie" },
+      });
+      stream.event({
+        type: "tool_result",
+        name: "search_atlas",
+        result: JSON.stringify({ items: [{ desk_id: "X" }] }),
+      });
+      stream.event({ type: "answer", text: "Marie sits at 02A000101." });
+      stream.finish();
+      return stream.response;
+    },
+  });
+  const opened = [];
+  f.w.AtlasSelectDesk = (id) => {
+    opened.push(id);
+    return id === "02A000101";
+  };
+  f.submit("Where does Marie sit?");
+  await f.idle();
+  const buttons = [...f.w.document.querySelectorAll(".axis-desk-links button")];
+  assert.deepEqual(
+    buttons.map((button) => button.textContent),
+    ["Show 02A000101 on map", "Show " + unsafe + " on map"],
+    "One button per distinct desk, only for desk lookups, as plain text",
+  );
+  buttons[0].click();
+  buttons[1].click();
+  assert.deepEqual(opened, ["02A000101", unsafe]);
+  assert.equal(buttons[1].textContent, unsafe + " is not on the current map");
+  assert.equal(f.$("#axis-chat-messages img"), null);
+  assert.equal(f.w.attacked, undefined);
+  assert.equal(
+    f.requests("/api/axis/chat").length,
+    1,
+    "Opening a desk sends nothing to Axis",
+  );
+});
+
 test("desk context requires explicit attachment, captures that desk, and excludes extra record data", async (t) => {
   const original = {
     desk_id: "D-101",

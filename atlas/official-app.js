@@ -257,6 +257,12 @@ window.AtlasAxisSelection = () =>
         floor: selected.floor,
       }
     : null;
+// Chat results can open a desk without reloading the page (and the chat with it).
+window.AtlasSelectDesk = (id) => {
+  if (!records.some((r) => r.id === id)) return false;
+  selectRecord(id);
+  return true;
+};
 const motionPreference = {
   get matches() {
     return AtlasUI.motion.isReduced();

@@ -9,7 +9,9 @@ they are missing. CPU and Vulkan llama.cpp runtimes are included.
 
 The local Admin map includes Axis chat with visible thinking, tool activity and
 action approvals. Axis shares Atlas's active directory database and configured
-package repository. The LAN Viewer remains read-only.
+package repository. Atlas and Axis share one per-PC operations lock and
+unknown-outcome guard, and Axis jobs appear in Atlas's activity panel. The LAN
+Viewer remains read-only.
 
 The download includes the upstream Atlas seed data. Configure `ATLAS_DB_PATH` or
 `database_folder` in `config.json` to use your current Atlas database instead.

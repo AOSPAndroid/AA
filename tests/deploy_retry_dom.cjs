@@ -18,7 +18,7 @@ const payload = id => ({ computer: 'PC-' + id, folder: 'Example App', script: 's
     if (path === '/api/health') return response({ identity: 'FIXTURE', version: 'test', database: true, users: 1, machines: 1, repository: true });
     if (path === '/api/packages') return response({ packages: ['Example App'], available: true, total: 1 });
     if (path === '/api/history') return response([
-      { id: 'h1', started: '2026-10-20 15:00', target: 'PC-H1', package: 'Example App', action: 'Install', mode: 'full', state: 'failed', exit_code: '1603' },
+      { id: 'h1', started: '2026-10-20 15:00', target: 'PC-H1', package: 'Example App', action: 'Install', mode: 'full', state: 'failed', exit_code: '1603', operator: 'CORP\\op (Axis)' },
       { id: 'h2', started: '2026-10-20 14:00', target: 'PC-H2', package: 'Example App', action: 'Install', mode: 'full', state: 'complete', exit_code: '0' }]);
     let match = path.match(/^\/api\/deploy\/([^/]+)\/(retry|payload)$/);
     if (match) return match[2] === 'retry' ? response({ job: 'new-' + match[1], target: 'PC-OTHER', package: 'Example App', action: 'Install' }) : response(payload(match[1]));
@@ -37,6 +37,9 @@ const payload = id => ({ computer: 'PC-' + id, folder: 'Example App', script: 's
   // History: failed rows can be retried; any row can go back in the queue with its saved options.
   await w.eval('loadDeploymentHistory()');
   const rows = [...d.querySelectorAll('#historyBody tr')];
+  // Axis chat deployments share this history and are marked.
+  assert.equal(rows[0].querySelector('.history-source')?.textContent, 'Axis');
+  assert.equal(rows[1].querySelector('.history-source'), null);
   assert.deepEqual(rows.map(r => [...r.querySelectorAll('.history-actions button')].map(b => b.textContent)), [['Retry', 'Queue'], ['Queue']]);
   rows[0].querySelector('[data-history-retry]').click();
   await until(() => calls.includes('POST /api/deploy/h1/retry'));

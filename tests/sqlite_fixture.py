@@ -12,6 +12,8 @@ def isolate_backend_database():
     global _runtime_fixture
     # The Companion connection file never goes to the shared ProgramData or the checkout in tests.
     os.environ.setdefault('ATLAS_COMPANION_DIR', tempfile.mkdtemp(prefix='atlas-companion-test-'))
+    # Atlas checks Axis jobs and takes the shared PC locks; never use the checkout's real Axis state.
+    os.environ.setdefault('AA_AXIS_STATE', tempfile.mkdtemp(prefix='aa-axis-state-test-'))
     if os.environ.get('ATLAS_DB_PATH'):
         return Path(os.environ['ATLAS_DB_PATH'])
     _runtime_fixture = tempfile.TemporaryDirectory(prefix='atlas-backend-test-', ignore_cleanup_errors=True)

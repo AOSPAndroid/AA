@@ -293,7 +293,8 @@ class LauncherIntegrationTests(unittest.TestCase):
             with self.subTest(options=options):
                 ui = MagicMock()
                 ui.prompt.return_value = "/exit"
-                with patch.object(agent, "Agent") as factory, \
+                # Standalone Axis: inside the AA checkout, main() would prepare AA's runtime database.
+                with patch.object(agent, "Agent") as factory, patch.object(agent, "IN_AA", False), \
                      patch.object(agent, "TerminalUI", return_value=ui), \
                      patch.object(agent.threading, "Thread"):
                     self.assertEqual(agent.main(options), 0)

@@ -118,6 +118,8 @@ def register(app, backend):
                          log=job.get('output','')[-6000:],view='terminal',controls=[])
                 if row['state'] in ACTIVE: row['controls']=[dict(label='Stop local command',url=f'/api/terminal/runs/{key}/stop')]
                 if visible(row,now): rows.append(row)
+        from shared_operations import axis_activity
+        rows.extend(row for row in axis_activity() if visible(row,now))
         with guard: rows=[r for r in rows if r['id'] not in dismissed]
         rows.sort(key=lambda r:(r['state'] not in ACTIVE,-r.get('updated',0)))
         return {'actions':rows,'count':sum(r['state'] in ACTIVE for r in rows)}

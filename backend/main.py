@@ -27,12 +27,19 @@ CONFIG=json.loads((ROOT/'config.json').read_text(encoding='utf-8')) if (ROOT/'co
 from package_paths import package_repository
 REPO=package_repository(CONFIG,ROOT)
 REMOTE_ROOT=r'C:\Temp\Packages'; NW=0x08000000 if os.name=='nt' else 0
+# Axis stages under its own root; one cleanup clears both. Axis job logs beside it are kept.
+STAGING_ROOTS=(REMOTE_ROOT,r'C:\Temp\LocalAgent\Packages')
+def staging_linked(root):
+ """A link anywhere on the staging path could redirect deletion; C:\\Temp is writable by standard users."""
+ from axis.it_tools import linked
+ return any(item.exists() and linked(item) for item in [root,*root.parents])
 logging.basicConfig(filename=LOGS/'application.log',level=logging.INFO,format='%(asctime)s %(levelname)s %(message)s')
 app=FastAPI(title='Office Atlas',version=__version__,docs_url='/api/docs',redoc_url=None)
 from response_compression import compress_responses
 compress_responses(app)
 from job_service import JobService, TERMINAL
-job_service=JobService(lambda:HISTORY_DB)
+from shared_operations import TargetLock, axis_ready
+job_service=JobService(lambda:HISTORY_DB,guard=axis_ready)
 jobs=job_service.jobs;lock=job_service.lock
 @app.on_event('startup')
 def recover_operations():job_service.recover()
@@ -169,7 +176,7 @@ def start_job(fn,j,*args):
   emit(j,str(error),'failed');history_update(j,state='failed',details=str(error));raise
 
 def target_lock(pc):
- with lock:return target_locks.setdefault(pc,threading.Lock())
+ with lock:return target_locks.setdefault(pc,TargetLock(pc))
 
 def outcome(ec):
  # Deployment status confirms launch, never installation success.
@@ -474,15 +481,17 @@ def open_target_tool(tool:str,pc:str):
 
 @app.get('/api/package-folder/{pc}')
 def package_folder_info(pc:str):
-    root=Path(unc(validate_pc(pc),REMOTE_ROOT))
-    if not root.exists():return {'exists':False,'folders':0,'files':0,'bytes':0}
-    folders=files=size=0
-    for item in root.rglob('*'):
-        try:
-            if item.is_dir():folders+=1
-            elif item.is_file():files+=1;size+=item.stat().st_size
-        except OSError:pass
-    return {'exists':True,'folders':folders,'files':files,'bytes':size}
+    pc=validate_pc(pc);folders=files=size=0;locations=[]
+    for staging in STAGING_ROOTS:
+        root=Path(unc(pc,staging))
+        if not root.exists() or staging_linked(root):continue
+        locations.append(staging)
+        for item in root.rglob('*'):
+            try:
+                if item.is_dir():folders+=1
+                elif item.is_file():files+=1;size+=item.stat().st_size
+            except OSError:pass
+    return {'exists':bool(locations),'folders':folders,'files':files,'bytes':size,'locations':locations}
 
 @app.post('/api/cleanup-packages/{pc}')
 def cleanup_package_folder(pc:str):
@@ -494,16 +503,20 @@ def cleanup_package_folder(pc:str):
     finally:guard.release()
 
 def _cleanup_package_folder(pc:str):
-    pc=validate_pc(pc);root=Path(unc(pc,REMOTE_ROOT))
-    deleted=[];failed=[]
-    if not root.exists():return {'deleted':0,'failed':0,'items':[],'message':'Package folder does not exist'}
-    # Hard safety boundary: only children of the fixed C:\\Temp\\Packages root are removed.
-    for item in list(root.iterdir()):
-        try:
-            if item.is_dir():shutil.rmtree(item)
-            else:item.unlink()
-            deleted.append(item.name)
-        except Exception as exc:failed.append({'item':item.name,'error':str(exc)})
+    pc=validate_pc(pc);deleted=[];failed=[]
+    roots=[(staging,Path(unc(pc,staging))) for staging in STAGING_ROOTS]
+    if not any(root.exists() for _,root in roots):return {'deleted':0,'failed':0,'items':[],'message':'Package folder does not exist'}
+    # Hard safety boundary: only children of the fixed staging roots are removed, never through a link.
+    for staging,root in roots:
+        label='' if staging==REMOTE_ROOT else 'Axis: '
+        if staging_linked(root):
+            failed.append({'item':staging,'error':'Staging path contains a link; not followed'});continue
+        for item in list(root.iterdir()) if root.is_dir() else ():
+            try:
+                if item.is_dir():shutil.rmtree(item)
+                else:item.unlink()
+                deleted.append(label+item.name)
+            except Exception as exc:failed.append({'item':label+item.name,'error':str(exc)})
     logging.warning('Package cleanup target=%s deleted=%s failed=%s operator=%s',pc,len(deleted),len(failed),identity())
     return {'deleted':len(deleted),'failed':len(failed),'items':deleted,'errors':failed}
 

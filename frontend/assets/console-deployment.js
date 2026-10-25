@@ -543,7 +543,7 @@ async function loadDeploymentHistory() {
     if (!Array.isArray(records)) throw Error("Invalid history response");
     // State badges and a machine link: open the target in Workspace from its history row.
     body.innerHTML = records.length ? records.map((x) =>
-      `<tr data-state="${esc(x.state)}"><td>${esc(x.started)}</td><td><button type="button" class="history-target" data-history-target="${esc(x.target)}" title="Select in Workspace">${esc(x.target)}</button></td><td>${esc(x.package)}</td><td>${esc(x.action)}</td><td>${esc(x.mode)}</td><td><span class="history-state" data-state="${esc(x.state)}">${esc(x.state)}</span></td><td><span class="${exitTone(x.exit_code)}">${esc(x.exit_code)}</span></td><td class="history-actions">${["failed", "interrupted", "unknown"].includes(x.state) ? `<button type="button" data-history-retry="${esc(x.id)}">Retry</button>` : ""}<button type="button" data-history-queue="${esc(x.id)}">Queue</button></td></tr>`
+      `<tr data-state="${esc(x.state)}"><td>${esc(x.started)}</td><td><button type="button" class="history-target" data-history-target="${esc(x.target)}" title="Select in Workspace">${esc(x.target)}</button></td><td>${esc(x.package)}</td><td>${esc(x.action)}</td><td>${esc(x.mode)}${/\(Axis\)$/.test(x.operator || "") ? ' <small class="history-source" title="Started from Axis chat">Axis</small>' : ""}</td><td><span class="history-state" data-state="${esc(x.state)}">${esc(x.state)}</span></td><td><span class="${exitTone(x.exit_code)}">${esc(x.exit_code)}</span></td><td class="history-actions">${["failed", "interrupted", "unknown"].includes(x.state) ? `<button type="button" data-history-retry="${esc(x.id)}">Retry</button>` : ""}<button type="button" data-history-queue="${esc(x.id)}">Queue</button></td></tr>`
     ).join("") : empty("No recent operations", "Deployment operations will appear here when they are recorded. Use Refresh to check again.");
     const failures = records.filter((x) => x.state === "failed").length;
     status.textContent = records.length ? `${records.length} recorded operation${records.length === 1 ? "" : "s"}${failures ? ` · ${failures} failed` : ""}` : "No recorded deployment operations returned.";
@@ -623,7 +623,7 @@ async function cleanPackages() {
     return toast("The package folder does not exist on " + context.computer);
   if (
     !confirm(
-      `Delete ALL contents of ${context.computer} C:\\Temp\\Packages?\n${info.folders} folders, ${info.files} files, ${(info.bytes / 1048576).toFixed(1)} MB`,
+      `Delete ALL contents of ${context.computer} ${(info.locations || ["C:\\Temp\\Packages"]).join(" and ")}?\n${info.folders} folders, ${info.files} files, ${(info.bytes / 1048576).toFixed(1)} MB`,
     )
   )
     return;

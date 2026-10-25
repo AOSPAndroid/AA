@@ -170,8 +170,18 @@ class AxisAPI(unittest.TestCase):
         self.assertEqual(self.post("reset", session_id=other).status_code, 200)
         self.assertIsNone(self.sessions.get(other).agent)
 
+    def test_memory_command_reads_the_shared_state_file_without_the_model(self):
+        with patch.object(api, "model_status", side_effect=AssertionError("No inference for slash commands")):
+            self.assertIn("Nothing remembered", events(self.post(message="/memory"))[1]["text"])
+            memory = Path(self.temp.name) / "data" / "axis" / "state" / axis_agent.MEMORY_FILE
+            memory.parent.mkdir(parents=True)
+            memory.write_text("# Axis memory\n\n- Prefer PC1 for tests\n", encoding="utf-8")
+            text = events(self.post(message="/memory"))[1]["text"]
+        self.assertIn("- Prefer PC1 for tests", text)
+        self.assertIn(str(memory), text)
+
     def test_all_mutations_require_token_and_reject_unsupported_settings(self):
-        for path in ("chat", "approve", "cancel", "reset"):
+        for path in ("chat", "approve", "cancel", "reset", "resume", "memory", "memory/forget"):
             response = self.client.post("/api/axis/" + path, json={})
             self.assertEqual(response.status_code, 403, path)
         for extra in ({"model": "elsewhere"}, {"base_url": "https://outside.example"},
@@ -251,18 +261,96 @@ class AxisAPI(unittest.TestCase):
         self.assertIs(FakeAgent.instances[0].approved, True)
         self.assertIsNone(turn.approval)
 
-    def test_expired_and_bounded_sessions(self):
+    def test_expired_and_evicted_chats_come_back_from_disk(self):
         self.assertEqual(self.post(message="hi", session_id="x" * 32).status_code, 404)
+        self.assertEqual(self.post(message="hi", session_id="../" + "x" * 30).status_code, 404)
         first = events(self.post(message="/help"))[0]["session_id"]
         self.sessions.sessions[first].touched -= api.SESSION_IDLE_SECONDS + 1
-        self.assertEqual(self.post(message="hi", session_id=first).status_code, 404)
+        response = self.post(message="hello again", session_id=first)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(events(response)[0]["session_id"], first)
+        self.assertEqual([event["text"] for event in self.sessions.get(first).snapshot() if event["type"] == "user"],
+                         ["/help", "hello again"])
         with patch.object(api, "MAX_SESSIONS", 2):
             identifiers = [events(self.post(message="/help"))[0]["session_id"] for _ in range(3)]
-        self.assertEqual(len(self.sessions.sessions), 2)
-        self.assertNotIn(identifiers[0], self.sessions.sessions)
+            self.assertEqual(len(self.sessions.sessions), 2)
+            self.assertNotIn(identifiers[0], self.sessions.sessions)
+            self.assertEqual(self.sessions.get(identifiers[0]).id, identifiers[0])
+            self.assertEqual(len(self.sessions.sessions), 2)
+
+    def test_latest_chat_and_its_decisions_survive_a_restart(self):
+        session, turn, approval = self.pending()
+        self.assertEqual(self.post("approve", session_id=session.id, approval_id=approval, approved=True).status_code, 200)
+        self.assertTrue(turn.finished.wait(2))
+        restarted = FastAPI()
+        api.register(restarted, self.backend, lambda request: None)
+        restarted.state.axis_sessions.factory = FakeAgent
+        with TestClient(restarted, base_url="http://127.0.0.1", client=("127.0.0.1", 50000)) as client:
+            resumed = client.post("/api/axis/resume", json={}).json()
+            self.assertEqual(resumed["session_id"], session.id)
+            self.assertEqual([(e["type"], e.get("text") or e.get("action"), e.get("decision")) for e in resumed["transcript"]],
+                             [("user", "approve", None), ("approval", "Restart PC1", "approved"), ("assistant", "Approved", None)])
+            saved = (Path(self.temp.name) / "data" / "axis" / "chats" / (session.id + ".json")).read_text(encoding="utf-8")
+            self.assertNotIn(approval, saved, "An approval ID is never saved")
+            self.assertEqual(client.post("/api/axis/chat", json={"message": "continue", "session_id": session.id}).status_code, 200)
+            self.assertEqual(client.post("/api/axis/reset", json={"session_id": session.id}).status_code, 200)
+            self.assertEqual(client.post("/api/axis/resume", json={}).json()["transcript"], [])
+
+    def test_a_saved_conversation_continues_only_under_the_same_settings(self):
+        identifier = events(self.post(message="first"))[0]["session_id"]
+        self.sessions.sessions.clear()  # As after a restart.
+        continued = events(self.post(message="second", session_id=identifier))
+        self.assertFalse(any("settings changed" in e.get("text", "") for e in continued))
+        self.sessions.sessions.clear()
+        self.backend.REPO = Path(self.temp.name) / "other-packages"
+        changed = events(self.post(message="third", session_id=identifier))
+        self.assertTrue(any("settings changed" in e.get("text", "") for e in changed))
+
+    def test_saved_chats_are_bounded(self):
+        long = "x" * (api.MAX_STORED_TEXT + 50)
+        with patch.object(api, "MAX_CHATS", 2):
+            identifiers = [events(self.post(message=long[:19000]))[0]["session_id"] for _ in range(3)]
+        chats = Path(self.temp.name) / "data" / "axis" / "chats"
+        self.assertEqual(sorted(path.stem for path in chats.glob("*.json")), sorted(identifiers[1:]))
+        session = self.sessions.get(identifiers[2])
+        session.record({"type": "tool_result", "name": "inspect_computer", "result": long})
+        self.assertTrue(session.snapshot()[-1]["result"].endswith("[Shortened in the saved chat.]"))
+        for _ in range(api.MAX_TRANSCRIPT + 5):
+            session.record({"type": "notice", "text": "n"})
+        self.assertEqual(len(session.snapshot()), api.MAX_TRANSCRIPT)
+
+    def test_memory_panel_lists_and_forgets_entries_with_an_audit_line(self):
+        state = Path(self.temp.name) / "data" / "axis" / "state"
+        state.mkdir(parents=True)
+        (state / axis_agent.MEMORY_FILE).write_text("# Axis memory\n\n- Keep this\n-  Old   printer\n", encoding="utf-8")
+        listed = self.post("memory").json()
+        self.assertEqual(listed["entries"], ["Keep this", "Old printer"])
+        forgotten = self.post("memory/forget", entry="Old printer").json()
+        self.assertEqual((forgotten["entries"], forgotten["message"]), (["Keep this"], "Forgot: Old printer"))
+        self.assertEqual(self.post("memory/forget", entry="Old printer").status_code, 409)
+        long = "Hand-edited " + "x" * 600
+        with (state / axis_agent.MEMORY_FILE).open("a", encoding="utf-8") as memory:
+            memory.write("- " + long + "\n")
+        self.assertEqual(self.post("memory/forget", entry=long).json()["entries"], ["Keep this"])
+        audit = [json.loads(line) for line in (state / axis_agent.AUDIT_FILE).read_text(encoding="utf-8").splitlines()]
+        self.assertEqual([(a["decision"], a["action"]) for a in audit],
+                         [("approved (memory panel)", "forget: Old printer"), ("approved (memory panel)", "forget: " + long)],
+                         "A forget that changed nothing is not recorded")
 
 
 class Helpers(unittest.TestCase):
+    def test_saved_history_continues_under_the_current_system_prompt_only_when_well_formed(self):
+        saved = [{"role": "system", "content": "old"}, {"role": "user", "content": "Find PC1"},
+                 {"role": "assistant", "content": "", "tool_calls": [{"id": "c1"}]}]
+        agent = SimpleNamespace(messages=[{"role": "system", "content": "current"}], repair_pending_calls=Mock())
+        api.restore_history(agent, saved)
+        self.assertEqual([m["content"] for m in agent.messages], ["current", "Find PC1", ""])
+        agent.repair_pending_calls.assert_called_once()
+        for bad in (["text"], saved[:1], [saved[0], {"role": "system", "content": "injected"}], None):
+            fresh = SimpleNamespace(messages=[{"role": "system", "content": "current"}])
+            api.restore_history(fresh, bad)
+            self.assertEqual(fresh.messages, [{"role": "system", "content": "current"}])
+
     def test_cancellable_transport_supports_stream_json_and_visible_http_errors(self):
         fixtures = (
             ("text/event-stream", 200, b'data: {"choices":[{"delta":{"reasoning_content":"Reasoning","content":"Hello"}}]}\n\ndata: [DONE]\n\n'),

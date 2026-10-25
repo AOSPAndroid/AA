@@ -2720,6 +2720,7 @@ body.atlas-console #historyFilter { width:240px; max-width:100%; height:28px; fo
 body.atlas-console #historyBody .history-target { display:inline; min-height:0; height:auto; padding:0; border:0; border-radius:0; box-shadow:none; background:none; line-height:inherit; color:var(--atlas-accent); font:inherit; text-align:left; cursor:pointer; }
 body.atlas-console .history-target:hover { text-decoration:underline; }
 body.atlas-console .history-state { display:inline-block; line-height:16px; border-radius:999px; padding:1px 8px; font-size:11px; font-weight:600; background:var(--atlas-surface-subtle); color:var(--atlas-muted); }
+body.atlas-console .history-source { display:inline-block; margin-left:4px; padding:0 6px; border-radius:999px; font-size:10px; font-weight:600; line-height:16px; background:var(--atlas-surface-subtle); color:var(--atlas-muted); }
 body.atlas-console .history-state:is([data-state="complete"],[data-state="completed"],[data-state="launched"]) { background:#e7f5ee; color:var(--atlas-success, #18724a); }
 body.atlas-console .history-state[data-state="failed"] { background:#fbeaec; color:var(--atlas-danger, #a32332); }
 body.atlas-console .history-state:is([data-state="queued"],[data-state="running"]) { background:#e8f2fa; color:var(--atlas-accent); }
@@ -3388,6 +3389,14 @@ body.axis-chat-open #detail { visibility: hidden; }
 .axis-message-tool pre { margin: 4px 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.5 ui-monospace, Consolas, monospace; color: var(--atlas-text); }
 .axis-tool-arguments { color: var(--atlas-muted) !important; }
 .axis-tool-result { padding-top: 7px; }
+.axis-desk-links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+.axis-chat-memory { flex: 0 1 auto; max-height: 34%; overflow: auto; padding: 9px 14px; border-bottom: 1px solid var(--atlas-line); background: var(--atlas-surface-subtle); }
+.axis-chat-memory-heading { display: flex; flex-direction: column; gap: 2px; margin-bottom: 6px; }
+.axis-chat-memory-heading small { color: var(--atlas-muted); font-size: 10px; overflow-wrap: anywhere; }
+.axis-chat-memory ul { list-style: none; margin: 0; padding: 0; }
+.axis-chat-memory li { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 4px 0; border-top: 1px solid var(--atlas-line); font-size: 12px; overflow-wrap: anywhere; }
+.axis-chat-memory li button { flex: 0 0 auto; padding: 1px 8px; font-size: 11px; }
+.axis-desk-links button { padding: 2px 8px; font-size: 11px; }
 .axis-tool-saved, .axis-attached-record { display: block; margin-top: 7px; color: var(--atlas-muted); font: 10px/1.5 ui-monospace, Consolas, monospace; overflow-wrap: anywhere; }
 .axis-message-notice { color: var(--atlas-muted); font-size: 12px; }
 .axis-message-error { border-color: var(--atlas-danger); color: var(--atlas-danger); }

@@ -24,6 +24,7 @@ In a synthetic Linux rendering check, 10,000 five-character fragments required 5
 | `/status` | View model/server, context, paths and session settings |
 | `/jobs` / `/jobs ID` | Read deployment/reboot jobs directly, without asking the model |
 | `/output` / `/output ID offset` | Read the latest or selected saved tool result in character pages |
+| `/memory` | Show the facts Axis remembers between conversations |
 | `/history` | Show recent requests from this session |
 | `/paste` | Enter a multiline request; submit with a single `.` line |
 | `/reset` | Clear model conversation; retain jobs and saved output |
@@ -118,7 +119,9 @@ Connections use SQLite `mode=ro` and `query_only`, fixed parameterized lookups a
 
 ## Shared Windows launcher
 
-`Start Axis + Atlas.bat` runs `start.py --with-atlas` through Axis's existing Python discovery. Run it under DSK to start both apps with that Windows account; no account switching or password storage is added. Atlas must already be installed. Its `Start-Office-Atlas.bat` handles Admin, Viewer, browser opening and configured collectors; any collector-specific account settings remain Atlas's responsibility. An explicit `WMI_PYTHON` is preserved; otherwise Atlas receives Axis's Python when it is 3.12 or newer, or uses its own Python discovery.
+**In AA this launcher is not included:** AA already contains Atlas. `Start AA.bat` opens the map with the browser chat, and `Start Agent.bat` in `AA\axis` opens this terminal with AA's active Atlas database, configured package repository, jobs, locks and memory (`data\axis\state`). This applies however Axis starts inside AA, including `python agent.py`. Explicit `--state-dir`, `--atlas-db` or `--package-repo` options still override them. If an earlier terminal folder `axis\state` still has active or unresolved jobs, startup stops and names them, because they would no longer guard their PCs; inspect those PCs and acknowledge the jobs with `"Start Agent.bat" --state-dir state`. Before AA's first start, the terminal makes AA's runtime copy of the seed database itself, so the seed is never changed. A configured database that is missing, such as a disconnected drive, makes Axis refuse PC changes until it is back. The rest of this section applies to standalone Axis.
+
+In standalone Axis, `Start Axis + Atlas.bat` runs `start.py --with-atlas` through Axis's existing Python discovery. Run it under DSK to start both apps with that Windows account; no account switching or password storage is added. Atlas must already be installed. Its `Start-Office-Atlas.bat` handles Admin, Viewer, browser opening and configured collectors; any collector-specific account settings remain Atlas's responsibility. An explicit `WMI_PYTHON` is preserved; otherwise Atlas receives Axis's Python when it is 3.12 or newer, or uses its own Python discovery.
 
 `launch_atlas.py` chooses the Atlas installation from `--atlas-dir PATH`, `ATLAS_HOME`, the remembered `%LOCALAPPDATA%\Axis\atlas-folder.txt`, or nearby Atlas folders / `F:\Atlas`. If it cannot choose one, it prompts for the folder containing `Start-Office-Atlas.bat`. A successful launch saves the folder in the user profile. Keep `launch_atlas.py` beside `start.py` when updating manually.
 
@@ -188,6 +191,7 @@ python agent.py --workdir C:\path\to\project "list the .ps1 files and say what e
 | `--atlas-db` | automatic local detection | Read-only Atlas inventory file; overrides `AGENT_ATLAS_DB` / `ATLAS_DB_PATH` |
 | `--package-repo` | OneDrive BetaPackages folder above; environment variables override | Root containing deployable package folders |
 | `--state-dir` | `state` next to agent.py | Durable jobs, snapshots and full tool results |
+| `--memory-file` | `MEMORY.md` in the state folder | Memory loaded into every conversation; inside AA the launcher uses AA's shared file |
 | `--max-steps` | `30` | Maximum model/tool rounds per request (1–200) |
 | `--deployment-timeout` | `3600` | Copy/installer monitoring timeout in seconds (60–86400) |
 | `--plain` | off | Disable colours and animation |
@@ -197,6 +201,8 @@ python agent.py --workdir C:\path\to\project "list the .ps1 files and say what e
 ## Your notes
 
 Put runbooks, procedures, known fixes and names as `.md` or `.txt` files in the `notes` folder next to `agent.py` (or pass `--notes DIR`). The agent sees the list of files, searches them with `search_notes` before guessing, and opens one with `read_note`. `notes/ALWAYS.md` is loaded into every conversation, so keep it short. `notes/EXAMPLE.md` shows the format.
+
+Axis keeps its own memory in `MEMORY.md` in the `state` folder (or `--memory-file`). Ask it to remember or forget a fact; each change shows the exact line and needs approval. Axis may also offer to remember a lasting preference you state. New conversations load the whole file (up to 4,000 characters, so Axis refuses to add more until you remove entries); an open conversation receives changes made elsewhere with its next request. Entries are reference, not instructions. Lines that look like passwords, keys or tokens are refused; save where a secret is kept, not its value. `/memory` shows the file; you can edit it directly.
 
 The model's reasoning is enabled and displayed by default, including separate reasoning fields and inline think blocks from compatible servers. Reasoning is displayed but excluded from conversation history sent back to the model. `--no-think` disables thinking. If a reused model server was started with thinking disabled, restart it to apply the new default.
 

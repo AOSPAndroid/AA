@@ -1,4 +1,5 @@
-/* AA's local Axis panel. No browser storage of messages, records or approvals. */
+/* AA's local Axis panel. No browser storage of messages, records or approvals:
+   the local Admin backend keeps recent chats and returns the latest on load. */
 (() => {
   "use strict";
   if (document.querySelector('meta[name="atlas-mode"]')?.content === "viewer")
@@ -24,11 +25,13 @@
     <div class="axis-chat-heading">
       <div><strong id="axis-chat-title">AXIS</strong><span class="axis-chat-subtitle">Chat</span></div>
       <div class="axis-chat-heading-actions">
+        <button type="button" id="axis-chat-memory-toggle" aria-controls="axis-chat-memory" aria-expanded="false" title="Facts Axis remembers between chats">Memory</button>
         <button type="button" id="axis-chat-reset" title="Start a new conversation">New chat</button>
         <button type="button" id="axis-chat-close" aria-label="Close Axis chat and return to Atlas" title="Close Axis and show the desk inspector">Inspector <span aria-hidden="true">×</span></button>
       </div>
     </div>
     <div class="axis-chat-connection"><span id="axis-chat-model">Checking model…</span><button id="axis-chat-refresh" type="button" title="Refresh model connection" aria-label="Refresh model connection">↻</button></div>
+    <section id="axis-chat-memory" class="axis-chat-memory" aria-label="Axis memory" hidden><div class="axis-chat-memory-heading"><strong>Remembered between chats</strong><small id="axis-chat-memory-status"></small></div><ul id="axis-chat-memory-list"></ul></section>
     <div class="axis-chat-context-row"><button id="axis-chat-use-desk" type="button" disabled>Use selected desk</button><span id="axis-chat-selection">Select a desk on the map</span></div>
     <div id="axis-chat-messages" class="axis-chat-messages" role="log" aria-label="Conversation with Axis" aria-live="off" tabindex="0">
       <div id="axis-chat-empty" class="axis-chat-empty"><strong>What do you need?</strong><p>Find a person or PC, check a machine, or start an IT task.</p><small>Thinking and tool activity appear here. Changes ask for approval.</small></div>
@@ -151,6 +154,32 @@
     } catch {
       return value;
     }
+  }
+  // Desks found by Axis open on this map; selecting one gives no permission.
+  function deskLinks(container, result) {
+    let items = [];
+    try {
+      items = JSON.parse(result).items || [];
+    } catch {}
+    const ids = [
+      ...new Set(
+        items
+          .map((item) => item && item.desk_id)
+          .filter((id) => typeof id === "string" && id),
+      ),
+    ].slice(0, 10);
+    if (!ids.length || typeof window.AtlasSelectDesk !== "function") return;
+    const row = element("div", "axis-desk-links");
+    for (const id of ids) {
+      const link = element("button", "", "Show " + id + " on map");
+      link.type = "button";
+      link.addEventListener("click", () => {
+        if (!window.AtlasSelectDesk(id))
+          link.textContent = id + " is not on the current map";
+      });
+      row.append(link);
+    }
+    container.append(row);
   }
   function updateSelection() {
     const selected = window.AtlasAxisSelection?.();
@@ -369,6 +398,7 @@
         tool.content.append(
           element("pre", "axis-tool-result", print(event.result)),
         );
+        if (event.name === "find_desk") deskLinks(tool.content, event.result);
         if (event.output_id)
           tool.content.append(
             element("small", "axis-tool-saved", "/output " + event.output_id),
@@ -536,6 +566,114 @@
       setBusy(false);
     }
   });
+  // Show the latest chat again after a reload or restart; nothing is kept in the browser.
+  function replay(transcript) {
+    for (const event of transcript) {
+      if (event.type === "user") {
+        const user = entry("user", "You", event.text);
+        if (event.context?.desk_id)
+          user.article.append(
+            element(
+              "small",
+              "axis-attached-record",
+              "Attached desk: " +
+                event.context.desk_id +
+                (event.context.hostname ? " · " + event.context.hostname : ""),
+            ),
+          );
+      } else if (event.type === "approval") {
+        // A saved approval is history: it shows the decision and has no controls.
+        entry("approval", "Approval required", event.action).article.append(
+          element(
+            "span",
+            "axis-approval-note",
+            { approved: "Approved.", declined: "Declined." }[event.decision] ||
+              "No approval submitted.",
+          ),
+        );
+      } else receive(event);
+    }
+    pendingTools.length = 0;
+    activeText = null;
+    activeKind = null;
+    scrollToTail(true);
+  }
+  async function resume() {
+    try {
+      const saved = await (
+        await checked(await request("/api/axis/resume", {}))
+      ).json();
+      if (busy || sessionId || typeof saved.session_id !== "string") return;
+      sessionId = saved.session_id;
+      if (Array.isArray(saved.transcript) && saved.transcript.length) {
+        messages.replaceChildren();
+        replay(saved.transcript);
+      }
+      if (saved.busy)
+        entry(
+          "notice",
+          "Axis",
+          "This chat is still working in another window. Reopen the panel later to see its result.",
+        );
+    } catch {}
+  }
+  resume();
+
+  const memoryPanel = $("#axis-chat-memory"),
+    memoryStatus = $("#axis-chat-memory-status");
+  function showMemory(data) {
+    const list = $("#axis-chat-memory-list");
+    list.replaceChildren();
+    for (const fact of data.entries || []) {
+      const item = element("li", "", "");
+      const forget = element("button", "", "Forget");
+      forget.type = "button";
+      forget.title = "Remove this fact from Axis's memory";
+      forget.addEventListener("click", async () => {
+        if (
+          !window.confirm(
+            'Forget "' + fact + '"? New chats will no longer see it.',
+          )
+        )
+          return;
+        forget.disabled = true;
+        try {
+          showMemory(
+            await (
+              await checked(
+                await request("/api/axis/memory/forget", { entry: fact }),
+              )
+            ).json(),
+          );
+        } catch (error) {
+          memoryStatus.textContent = error.message;
+          forget.disabled = false;
+        }
+      });
+      item.append(element("span", "", fact), forget);
+      list.append(item);
+    }
+    memoryStatus.textContent = (data.entries || []).length
+      ? data.path || ""
+      : "Nothing remembered yet. Ask Axis to remember a fact.";
+  }
+  $("#axis-chat-memory-toggle").addEventListener("click", async () => {
+    memoryPanel.hidden = !memoryPanel.hidden;
+    $("#axis-chat-memory-toggle").setAttribute(
+      "aria-expanded",
+      String(!memoryPanel.hidden),
+    );
+    if (memoryPanel.hidden) return;
+    memoryStatus.textContent = "Loading…";
+    try {
+      showMemory(
+        await (await checked(await request("/api/axis/memory", {}))).json(),
+      );
+    } catch (error) {
+      memoryStatus.textContent = error.message;
+    }
+  });
+
   window.addEventListener("pagehide", () => {
     clearInterval(spinner);
     stream?.abort();

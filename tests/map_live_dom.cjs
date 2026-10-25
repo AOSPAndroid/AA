@@ -59,6 +59,10 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   admin.w.cancelAnimationFrame = () => {};
   const map = await admin.map("\nexport { selectRecord };");
   await admin.w.AtlasLivePlan.check();
+  // Axis chat opens a desk it found without reloading the page.
+  assert.equal(admin.w.AtlasSelectDesk("missing-desk"), false);
+  assert.equal(admin.w.AtlasSelectDesk(desk.id), true);
+  assert.equal(admin.w.AtlasAxisSelection().desk_id, desk.id);
   map.selectRecord(desk.id);
   const field = admin.w.document.querySelector('#record-form [name="notes"]');
   field.value = "Unsaved desk notes";

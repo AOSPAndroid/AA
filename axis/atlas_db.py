@@ -1,5 +1,6 @@
 """Small, read-only lookups in an Atlas directory database; Python 3.8+ stdlib."""
 from contextlib import contextmanager
+import json
 import os
 from pathlib import Path
 import re
@@ -8,6 +9,8 @@ import time
 
 
 WARNING = "Stored inventory, not live PC status or a current logged-on session."
+DESK_WARNING = "Stored floor-plan seating, not who is in the office now."
+_DESK_FIELDS = ("name", "team", "hostname", "asset", "occupancy", "kind")
 MAX_QUERY_SECONDS = 3.0
 _KINDS = ("people", "computers")
 _TABLES = {"people": "users", "computers": "machines"}
@@ -41,6 +44,8 @@ TOOLS = [
           dict({"query": {"type": "string"}, "kind": {"type": "string", "enum": ["all", "people", "computers"]}}, **_PAGE), ["query"]),
     _tool("read_atlas_record", "Read an exact Atlas record and its stored person-PC links using a kind/id returned by search_atlas. Assigned and last-logged-on inventory links have different meanings. Never choose between ambiguous people or PCs without the user.",
           dict({"kind": {"type": "string", "enum": list(_KINDS)}, "id": {"type": "string"}}, **_PAGE), ["kind", "id"]),
+    _tool("find_desk", "Find desks on the Atlas floor plan by person name, desk ID, PC hostname, asset tag or team. Exact matches come first. Returns stored seating (floor, desk_id, occupancy), not who is in the office now. Quote desk_id exactly; the user can open it on the map.",
+          dict({"query": {"type": "string"}}, **_PAGE), ["query"]),
 ]
 TOOL_NAMES = {tool["function"]["name"] for tool in TOOLS}
 
@@ -279,23 +284,56 @@ class AtlasDatabase:
         return {"kind": kind, "id": record_id, "record": record, "links": items, "offset": offset,
                 "next_offset": offset + limit if len(links) > limit else None}
 
+    @staticmethod
+    def _desks(con, tables, query, offset, limit):
+        """Seating from the floor plan the map shows (official layout, else the previous one)."""
+        table = "official_records" if "official_records" in tables else "records" if "records" in tables else None
+        if table is None:
+            raise ValueError("This Atlas database has no floor-plan desks")
+        # One malformed row must not fail the whole search.
+        field = "lower(coalesce(CASE WHEN json_valid(body) THEN json_extract(body,'$.%s') END,''))"
+        exact = "lower(id)=? OR " + " OR ".join(field % key + "=?" for key in ("name", "hostname", "asset"))
+        contains = " OR ".join(field % key + " LIKE ? ESCAPE '\\'" for key in ("name", "hostname", "asset", "team"))
+        rows = con.execute("SELECT id, body FROM " + table + " WHERE " + exact + " OR lower(id) LIKE ? ESCAPE '\\' OR " + contains +
+                           " ORDER BY (" + exact + ") DESC, id LIMIT ? OFFSET ?",
+                           [query] * 4 + [_like(query)] * 5 + [query] * 4 + [limit + 1, offset]).fetchall()
+        items = []
+        for row in rows:
+            try:
+                body = json.loads(row["body"])
+            except ValueError:
+                continue
+            if len(str(row["id"])) > 256:
+                continue
+            item = {"desk_id": str(row["id"]), "floor": body.get("floor") if type(body.get("floor")) is int else None,
+                    "verified": body.get("verified") is True, "updated": str(body.get("updatedAt") or "")[:64]}
+            item.update({key: str(body.get(key) or "")[:256] for key in _DESK_FIELDS})
+            items.append(item)
+        return {"layout": "official" if table == "official_records" else "previous", "items": items[:limit],
+                "offset": offset, "next_offset": offset + limit if len(rows) > limit else None}
+
     def call(self, name, args):
         result = {"source": {"path": str(self.path) if self.path is not None else None}, "warning": WARNING}
         try:
             if not isinstance(args, dict) or name not in TOOL_NAMES:
                 raise ValueError("Unknown Atlas tool or invalid arguments")
-            allowed = {"query", "kind", "offset", "limit"} if name == "search_atlas" else {"kind", "id", "offset", "limit"}
+            allowed = ({"query", "kind", "offset", "limit"} if name == "search_atlas" else
+                       {"query", "offset", "limit"} if name == "find_desk" else {"kind", "id", "offset", "limit"})
             if set(args) - allowed:
                 raise ValueError("Unsupported Atlas arguments; use the named lookup fields")
             offset, limit = _page(args, 10 if name == "search_atlas" else 25)
             kind = args.get("kind", "all")
-            if kind not in (_KINDS + ("all",) if name == "search_atlas" else _KINDS):
+            if name != "find_desk" and kind not in (_KINDS + ("all",) if name == "search_atlas" else _KINDS):
                 raise ValueError("Invalid Atlas record kind")
             with self._connect() as (con, tables, columns):
                 result["source"] = self._source(con, tables)
                 if any(table.startswith("vdi_") for table in tables):
                     result["warning"] += " Separate Atlas VDI inventory is not included in this lookup."
-                if name == "search_atlas":
+                if name == "find_desk":
+                    query = _text(args.get("query"), "query")
+                    result["warning"] = DESK_WARNING
+                    result.update(query=query, **self._desks(con, tables, query.lower(), offset, limit))
+                elif name == "search_atlas":
                     query = _text(args.get("query"), "query")
                     rows = self._search(con, columns, query.lower(), kind, offset, limit, True)
                     exact = bool(rows)
