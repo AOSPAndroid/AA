@@ -566,6 +566,15 @@ test("console pages attach the current target, a Live Inbox message or a clipboa
     f.$("#axis-chat-attached span").textContent,
     "Clipboard · LAPTOP-0001",
   );
+  // An unedited suggestion follows the newest attachment.
+  f.$("#axis-chat-input").value = "";
+  f.w.AxisChat.attach({
+    kind: "clipboard",
+    id: "abc",
+    prompt: "What is this?",
+  });
+  f.w.AxisChat.attach({ kind: "inbox", id: 7, prompt: "Triage this request." });
+  assert.equal(f.$("#axis-chat-input").value, "Triage this request.");
   assert.equal(f.w.AxisChat.attach({ kind: "file", id: "x" }), false);
 });
 

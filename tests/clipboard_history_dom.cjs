@@ -57,6 +57,11 @@ const enrich = (text, source, id) => ({ id, at: '2026-10-20T15:40:00', source, t
   assert.equal(d.querySelector('nav [data-page="clipboard"]').getAttribute('aria-current'), 'page');
   assert.equal($('pageTitle').textContent, 'Clipboard');
   run("page('workspace')");
+  // Layout jsdom cannot compute: list items stack their date, text and chips (the shared button rule once
+  // made them one squeezed row), and an open Axis chat narrows the page instead of covering it.
+  const css = fs.readFileSync('frontend/assets/design-system.css', 'utf8');
+  assert.match(css, /button:not\(\.map-name\)[^{]*:not\(\.clipboard-item\)/);
+  assert.match(css, /body\.atlas-console\.axis-chat-open > main \{ width: auto; margin-right: 380px; \}/);
 
   // Capture: stored with its source; the page opens with the new capture selected and coloured chips.
   $('clipboardCapture').click();

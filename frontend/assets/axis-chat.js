@@ -223,6 +223,8 @@
     setAttached({ context, label: contextLabel(context) });
     input.focus();
   });
+  // A suggested question replaces only an empty box or the previous suggestion, never your own text.
+  let suggested = "";
   /** Open the chat with a Live Inbox message or clipboard capture attached. */
   function attach({ kind, id, label, prompt } = {}) {
     if (!["inbox", "clipboard"].includes(kind) || !id) return false;
@@ -233,7 +235,8 @@
         (kind === "inbox" ? "Live Inbox · " : "Clipboard · ") +
         String(label || id).slice(0, 120),
     });
-    if (!input.value.trim() && prompt) input.value = prompt;
+    if (prompt && (!input.value.trim() || input.value === suggested))
+      input.value = suggested = prompt;
     input.focus();
     return true;
   }
