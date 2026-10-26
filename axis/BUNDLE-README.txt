@@ -16,8 +16,8 @@ which runs inside AA on Atlas's own operations; the terminal starts nothing.
 
 Axis includes ten Atlas-based skills. /skills lists them; /skills pc-health
 reads a guide without the model. Ask Axis to use a skill for a concrete task.
-Custom guides go in AA\data\axis\skills\NAME\SKILL.md (standalone: state\skills),
-or use --skills DIR for a custom terminal folder. /reset refreshes the catalogue.
+Custom guides go in AA\data\axis\skills\NAME\SKILL.md (standalone: state\skills,
+or --skills DIR). /reset refreshes the catalogue.
 Keep custom guides when updating. See AA\docs\axis-skills.md for the format.
 Skills use the existing approvals, tools and per-PC guards.
 

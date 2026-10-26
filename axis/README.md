@@ -183,7 +183,7 @@ python agent.py --workdir C:\path\to\project "list the .ps1 files and say what e
 | `--url` | `http://127.0.0.1:8080/v1` | Server address (`AGENT_URL` env var) |
 | `--model` | `Qwen3.8-9B-Q4_K_M` | Model name sent to the server (`AGENT_MODEL`) |
 | `--workdir` | current folder | The only folder the file tools may use |
-| `--skills` | `AA/data/axis/skills` inside AA; otherwise `state/skills` | Custom workflow guides alongside bundled skills |
+| `--skills` | `state/skills` (inside AA, always `AA/data/axis/skills`) | Custom workflow guides alongside bundled skills |
 | `--ctx` | `16384` | Must match the server's `-c`; older history is compacted to fit |
 | `--yes` | off | Approve writes and commands without asking |
 | `--think` | on | Enable and display model thinking; slower and uses more context |
@@ -208,9 +208,9 @@ guide before following it. `/skills` lists the guides and `/skills NAME` reads
 one without inference; reading a guide does not run it. Ask "Use package-deployment
 to copy this package to the selected PC" to apply a workflow to a concrete task.
 
-Add your own guides in `AA/data/axis/skills/<name>/SKILL.md` for the shared browser
-and terminal, or select a custom root with `--skills DIR` in the terminal.
-Standalone Axis defaults to `state/skills` for custom guides. Bundled guides are
+Add your own guides in `AA/data/axis/skills/<name>/SKILL.md`; the browser chat and
+the AA terminal use the same Axis, so both see them. Standalone Axis defaults to
+`state/skills` for custom guides, or `--skills DIR`. Bundled guides are
 always available; custom names must be distinct. `/reset` refreshes the model's
 catalogue after adding or changing a description. Reads always use the current
 file. See [the format and bundled workflows](../docs/axis-skills.md).

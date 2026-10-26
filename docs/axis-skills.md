@@ -12,7 +12,8 @@ In browser chat or the terminal:
   is missing or ambiguous, Axis asks which PC you mean.
 
 Reading a skill never runs code or starts an operation. Windows actions still use
-Axis's existing tools and approvals, with Atlas's shared per-PC guard. Skills
+Axis's tools and approvals; inside AA those tools run Atlas's own operations, with
+Atlas's per-PC guard. Skills
 cannot grant extra access, bypass a blocked operation or expose execution to the
 LAN Viewer. Applying a guide requires a running model; slash-command listing and
 reading work without one.
@@ -41,13 +42,15 @@ AD changes or automated UI interaction.
 ## Add a custom skill
 
 For AA, create `data/axis/skills/<name>/SKILL.md` under your AA installation. This
-folder is shared by browser chat and the Axis terminal and stays out of Git.
+folder is used by the one Axis that the browser chat and the AA terminal both talk
+to, and it stays out of Git.
 Copy it when updating AA. Do not edit the bundled `axis/skills` files for local
 customizations; give your custom skill a distinct name.
 
-Standalone Axis uses `<state-dir>/skills`. `--skills DIR` selects another custom
-root for the terminal, alongside the bundled guides. The browser always uses
-AA's `data/axis/skills`.
+Standalone Axis uses `<state-dir>/skills`, or another custom root given with
+`--skills DIR`, alongside the bundled guides. Inside AA, Axis runs in the Admin
+backend and always uses `data/axis/skills`; the terminal's `--skills` does not
+apply there.
 
 For example, create `data/axis/skills/printer-check/SKILL.md`:
 

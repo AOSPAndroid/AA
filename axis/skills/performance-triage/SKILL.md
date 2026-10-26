@@ -7,7 +7,7 @@ description: Triage a slow PC or application and hand detailed CPU, RAM and sess
 Use when a PC freezes, an application is slow, or the operator needs evidence for a performance incident.
 
 1. Resolve the exact affected PC. Establish whether the symptom concerns the whole PC, one application or a Citrix/remote-display session, and when it happens. Ask only for information that changes the next diagnostic step.
-2. Use `inspect_computer` with `view=overview` for OS/memory facts or `view=disks` when storage is relevant. Inspect `view=processes` with a narrow `query` when a particular process is implicated. Reuse observations already obtained for the current decision.
+2. Use `inspect_computer` with `view=overview` for OS/memory facts or `view=disks` when storage is relevant. `view=processes` lists the 30 processes using the most CPU; narrow it with `query` when one is implicated. Reuse observations already obtained for the current decision.
 3. Treat one process snapshot as one observation. Do not invent CPU percentages, a trend, GPU/session latency, a causal diagnosis or current usage from cumulative counters. Do not stop the largest process just because it is large.
 4. For detailed time-series evidence, direct the operator to **Workspace → Remote Admin → Performance**, select the exact PC and start a manual capture while reproducing the issue. Ask them to provide the resulting evidence if needed. Axis cannot start or stop Atlas's performance capture through its current tools.
 5. Distinguish remote-display symptoms from the target's resource state. Atlas's Citrix mode reduces UI animation; it does not diagnose or repair the remote session. Never claim it changed the target's performance.

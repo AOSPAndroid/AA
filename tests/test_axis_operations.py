@@ -7,7 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from backend import main as app
-from backend.axis_operations import SNAPSHOT_SECONDS, AtlasOperations
+from backend.axis_operations import MAX_TARGETS, SNAPSHOT_SECONDS, TOOLS_OPENED, AtlasOperations
 from axis import agent as axis_agent
 from axis import it_tools
 
@@ -299,6 +299,18 @@ class AtlasOperationTests(unittest.TestCase):
         os.utime(old, (stale, stale))
         AtlasOperations(app, self.confirm, outputs=outputs).prune()
         self.assertEqual(sorted(p.name for p in outputs.iterdir()), [new.name])
+
+    def test_bundled_skills_describe_the_operations_axis_runs_in_aa(self):
+        from axis.skill_library import SkillLibrary
+        skills, errors = SkillLibrary().scan()
+        self.assertEqual(errors, [])
+        deployment = skills['package-deployment'].body
+        self.assertIn('At most %d explicit PCs' % MAX_TARGETS, deployment)
+        for old in ('script_succeeded', 'processed in order', '200'):
+            self.assertNotIn(old, deployment)
+        for tool in TOOLS_OPENED:
+            self.assertIn('`%s`' % tool, skills['pc-health'].body)
+        self.assertIn('ping only', skills['job-recovery'].body)
 
     def test_the_agent_runs_these_operations_in_place_of_its_own_engine(self):
         ui = MagicMock(); ui.confirm.return_value = True
