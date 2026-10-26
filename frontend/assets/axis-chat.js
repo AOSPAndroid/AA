@@ -188,14 +188,22 @@
   }
   // Work Axis starts is Atlas's own work: open it in Atlas's views. Selecting a PC gives no permission.
   const PC = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;
+  const FINISHED = new Set([
+    "launched",
+    "complete",
+    "failed",
+    "cancelled",
+    "interrupted",
+    "unknown",
+  ]);
   function atlasView(command) {
     const onConsole = document.body.classList.contains("atlas-console");
     if (
       onConsole &&
-      command === "active" &&
+      (command === "active" || command === "recent") &&
       typeof window.openDeploymentMonitor === "function"
     )
-      return window.openDeploymentMonitor("active");
+      return window.openDeploymentMonitor(command);
     if (
       onConsole &&
       command === "queue" &&
@@ -228,11 +236,13 @@
     if (!data || typeof data !== "object") return;
     const links = [];
     const started = name === "deploy_package" ? data.jobs || [] : [];
-    if (
-      started.some((job) => job && job.job_id) ||
-      (name === "it_job_status" && data.kind === "deployment")
-    )
+    if (started.some((job) => job && job.job_id))
       links.push(["Show in Deployments", () => atlasView("active")]);
+    else if (name === "it_job_status" && data.kind === "deployment")
+      links.push([
+        "Show in Deployments",
+        () => atlasView(FINISHED.has(data.state) ? "recent" : "active"),
+      ]);
     if (
       (name === "computer_action" &&
         data.job_id &&

@@ -3,6 +3,7 @@
 A real local HTTP server runs the chat API with a stand-in agent; no model, PC or source database is used.
 """
 import json
+import json
 import socket
 import sys
 import tempfile
@@ -144,6 +145,42 @@ class TerminalClientTests(unittest.TestCase):
                 patch.dict(sys.modules, {"aa_client": aa_client}):
             self.assertEqual(axis_start.main(["--resume"]), 0)
             client.assert_called_with(["--resume"])
+
+    def test_a_refused_or_dropped_message_does_not_end_the_terminal(self):
+        ui = MagicMock()
+        ui.prompt.side_effect = ["first", "second", "/exit"]
+        chat = MagicMock(base="http://127.0.0.1:1")
+        chat.status.return_value = {"model": "test-model"}
+        chat.send.side_effect = [aa_client.Unavailable("AA refused the request (409): This chat is already working."), None]
+        with patch.object(aa_client, "earlier_terminal_jobs", return_value=[]):
+            self.assertEqual(aa_client.main([], ui=ui, chat=chat), 0)
+        self.assertEqual([c.args[0] for c in chat.send.call_args_list], ["first", "second"])
+        self.assertIn("already working", ui.error.call_args[0][0])
+
+        class Dropped:
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def __iter__(self):
+                yield b'data: {"type": "session", "session_id": "s"}\n'
+                raise ConnectionResetError("reset by peer")
+        broken, _ = self.chat()
+        with patch.object(broken, "request", return_value=Dropped()):
+            with self.assertRaisesRegex(aa_client.Unavailable, "ended during the answer"):
+                broken.send("hello")
+
+    def test_atlas_job_lists_fill_the_terminal_table(self):
+        import io
+        from axis.terminal_ui import TerminalUI
+        stream = io.StringIO()
+        ui = TerminalUI(stream=stream, plain=True, verbose=True, width=100)
+        ui.tool_result("it_job_status", json.dumps({"jobs": [
+            {"job_id": "f" * 32, "kind": "deployment", "state": "launched", "target": "PC7"},
+            {"job_id": "e" * 32, "computer": "PC8", "state": "queued"}]}), 0.1)
+        text = stream.getvalue()
+        for value in ("ffffffffffff", "PC7", "eeeeeeeeeeee", "PC8", "deployment"):
+            self.assertIn(value, text)
 
     def test_one_message_from_the_command_line(self):
         chat, ui = self.chat()

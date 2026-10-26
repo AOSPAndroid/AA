@@ -5,6 +5,7 @@ conversation, approvals, memory and tools, on Atlas's own operations. This windo
 conversation as it streams and answers approval prompts. It changes nothing by itself.
 """
 import argparse
+import http.client
 import json
 import os
 from pathlib import Path
@@ -97,6 +98,9 @@ class AAChat:
         except KeyboardInterrupt:
             self.cancel()
             self.ui.notice("Request cancelled. Accepted background jobs continue.", "warning")
+        except (OSError, http.client.HTTPException) as error:
+            raise Unavailable("The connection to AA ended during the answer (%s). Accepted jobs continue; "
+                              "/jobs shows them." % error) from None
         finally:
             self.ui.end_thinking()
             self.ui.end_response()
@@ -234,7 +238,10 @@ def main(argv=None, ui=None, chat=None):
             if command == "/clear":
                 ui.clear()
                 continue
-            chat.send(message)
+            try:
+                chat.send(message)
+            except Unavailable as error:
+                ui.error(str(error))  # One refused or interrupted message; the chat goes on.
     except Unavailable as error:
         ui.error(str(error))
         return 1

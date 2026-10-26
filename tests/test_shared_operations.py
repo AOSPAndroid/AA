@@ -75,6 +75,18 @@ class SharedOperationTests(unittest.TestCase):
         self.axis_job('a', 'complete')
         service.target_ready('PC1')
 
+    def test_jobs_an_earlier_axis_terminal_left_still_block_atlas(self):
+        terminal = Path(self.temp.name) / 'terminal-state'
+        job = self.axis_job('t', 'unknown')
+        (self.state / 'jobs' / (job['id'] + '.json')).rename(self.state.parent / 'moved.json')
+        it_tools.write_json(terminal / 'jobs' / (job['id'] + '.json'), job)  # Only the earlier terminal folder has it.
+        shared.axis_ready('PC1')  # Not read until that folder is Atlas's terminal folder.
+        with patch.object(shared, 'TERMINAL_STATE', terminal):
+            with self.assertRaises(HTTPException) as caught:
+                shared.axis_ready('pc1.corp.example')
+            self.assertIn(job['id'], caught.exception.detail)
+            shared.axis_ready('PC2')
+
     def test_axis_jobs_appear_in_atlas_activity_without_writes(self):
         backend = SimpleNamespace(lock=threading.RLock(), jobs={}, queue_jobs={})
         app = FastAPI()

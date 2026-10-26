@@ -8,20 +8,25 @@ Axis asks for approval first, as it always has; Atlas's own checks then apply as
 Axis job files from earlier versions stay readable, and an unknown one can still be acknowledged,
 so no PC they protect is released silently.
 """
+from contextlib import contextmanager
 import copy
 import hashlib
+import os
 import threading
 import time
 import uuid
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 from fastapi import HTTPException
+
+from axis.it_tools import OUTPUT_SECONDS, linked, target_key
 
 STRING = {"type": "string"}
 ACTIONS = ["Install", "Uninstall", "Repair"]
 VIEWS = ["preflight", "overview", "disks", "services", "processes", "software"]
 SNAPSHOT_SECONDS = 900  # how long a services/processes listing may back a change
 WAIT_SECONDS = 10
+MAX_TARGETS = 25        # well inside Atlas's 32 admitted operations, so the operator's own work still starts
 TERMINAL = {"launched", "complete", "failed", "cancelled", "interrupted", "unknown"}
 REBOOT_ACTIVE = {"requesting", "waiting_offline", "waiting_online"}  # reboot_monitor.ACTIVE
 SOFTWARE_FIELDS = ("Name", "Version", "Publisher", "Kind", "Scope", "Architecture")
@@ -43,15 +48,15 @@ TOOLS = [
     _tool("find_packages", "Search Atlas's package repository. A single match includes its action-specific scripts; reuse them without another lookup. Multiple matches require choosing an exact package. Supply package and offset for more script pages. Never guess a package or script.", {
         "query": STRING, "package": STRING, "action": {"type": "string", "enum": ACTIONS},
         "offset": {"type": "integer", "minimum": 0}}),
-    _tool("deploy_package", "After approval, start Atlas deployments to explicit PCs: one Atlas job per PC, shown in Atlas's Deployments and history. Atlas checks the target, copies the package with Robocopy, launches the script and records its exit code. Returns queued job IDs, NOT installation success. Never retry an unknown or interrupted outcome automatically.", {
-        "computers": {"type": "array", "items": STRING, "minItems": 1, "maxItems": 50},
+    _tool("deploy_package", "After approval, start Atlas deployments to explicit PCs: one Atlas job per PC, shown in Atlas's Deployments and history. Atlas checks the target, copies the package with Robocopy, checks the staged script is the approved one, launches it and records its exit code. Returns queued job IDs, NOT installation success. Never retry an unknown outcome automatically.", {
+        "computers": {"type": "array", "items": STRING, "minItems": 1, "maxItems": MAX_TARGETS},
         "package": STRING, "script": STRING, "action": {"type": "string", "enum": ACTIONS},
         "mode": {"type": "string", "enum": ["full", "copy", "execute"]}},
         ["computers", "package", "script", "action"]),
     _tool("it_job_status", "List recent Atlas deployments and reboots, or read one job's events, exit code and log. When the user asks to wait, use wait_seconds=10 for a bounded wait. acknowledge_unknown releases a PC whose outcome is unknown, after the operator confirms they inspected it; it never retries or stops remote work.", {
         "job_id": STRING, "wait_seconds": {"type": "integer", "minimum": 0, "maximum": WAIT_SECONDS},
         "acknowledge_unknown": {"type": "boolean"}}),
-    _tool("computer_action", "Change a Windows PC through Atlas after approval. service_start/stop/restart need name and the services snapshot ID; process_stop needs pid and the processes snapshot ID. Atlas rechecks identity and verifies the result. reboot returns a job watched by Atlas's reboot monitor. cleanup_packages deletes the package staging folders Atlas deploys into.", {
+    _tool("computer_action", "Change a Windows PC through Atlas after approval. service_start/stop/restart need name and the services snapshot ID; process_stop needs pid and the processes snapshot ID. Atlas rechecks identity and verifies the result. reboot returns a job watched by Atlas's reboot monitor, which follows ping only. cleanup_packages deletes the package staging folders Atlas deploys into.", {
         "computer": STRING, "action": {"type": "string", "enum": ["service_start", "service_stop", "service_restart", "process_stop",
                                                                   "enable_remote_registry", "reboot", "cleanup_packages"]},
         "name": STRING, "pid": {"type": "integer", "minimum": 5}, "snapshot": STRING}, ["computer", "action"]),
@@ -70,7 +75,8 @@ GUIDANCE = """- inspect_computer, find_packages, deploy_package, computer_action
 - Read only state needed for the decision. Atlas's deployment checks the target itself, and computer_action verifies its own result: do not add duplicate preflight or post-change inspections unless a needed check is missing, failed, uncertain or requested. For raw commands, inspect current state before a change and verify its result before claiming success.
 - Service/process changes require a recent inspect_computer snapshot. If identity changed or the snapshot expired, inspect again. A tool result must explicitly support a success claim; distinguish accepted, verified, failed and unknown.
 - A deployment or reboot job ID means queued, not complete; it appears in Atlas's Deployments or reboot monitor. Report the job ID, then return unless the user asked to wait or verify. When waiting, use it_job_status with wait_seconds=10 instead of rapid polls.
-- Atlas records "launched" with the installer's exit code: exit 0 means the script ran, not that the application works; 3010 or 1641 means a restart is required. "complete" is a finished copy-only run. "unknown" or "interrupted" means the outcome is open: never retry it automatically; inspect the target first, and only acknowledging it releases the PC.
+- Report a deployment from it_job_status's outcome field. "launched" with an exit code means the script ran: exit 0 is not proof the application works; 3010 or 1641 means a restart is required; other codes are failures. "launched" with recovery_required or without an exit code, and "interrupted", mean the outcome is unknown: never retry automatically; inspect the target first, and only acknowledging it releases the PC. "complete" is a finished copy-only run.
+- Atlas's reboot monitor follows ping only: "complete" means the PC stopped answering and answered again, not that it restarted. Before saying it restarted, compare the boot time from inspect_computer overview. "timeout" or "failed" means the restart is not confirmed.
 - Full tool results are saved. Read omitted sections only when needed, using read_tool_output with the returned output_id and character offset."""
 
 
@@ -92,15 +98,33 @@ def _page(items, query, offset, limit, fields):
             "next_offset": offset + limit if len(rows) > offset + limit else None}
 
 
+def outcome(result):
+    """What an Atlas deployment's state and exit code mean, in the words Axis should report."""
+    state, code = result.get("state"), str(result.get("exit_code") or "").strip()
+    if state in ("queued", "running", "monitoring", "paused"):
+        return "in progress"
+    if state == "complete":
+        return "copied; nothing was run"
+    if state == "launched" and code.lstrip("-").isdigit() and not result.get("recovery_required"):
+        meaning = {"0": "the script ran and returned 0; the application itself is not verified",
+                   "3010": "a restart is required", "1641": "a restart was started by the installer"}
+        return "launched, exit code %s: %s" % (code, meaning.get(code, "the script reported a failure"))
+    if state in ("launched", "unknown", "interrupted"):
+        return ("unknown: the script may have run but its result was not read. Inspect the PC before any retry; "
+                "acknowledging releases the PC")
+    return "failed before the script ran" if state == "failed" else str(state)
+
+
 class AtlasOperations:
     """The IT tools of an Agent running inside AA. confirm is the Agent's approval and audit."""
     TOOLS = TOOLS
     NAMES = NAMES
     guidance = GUIDANCE
 
-    def __init__(self, wmi, confirm, legacy_state=None):
+    def __init__(self, wmi, confirm, legacy_state=None, outputs=None):
         self.wmi = wmi
         self.confirm = confirm
+        self.outputs = Path(outputs) if outputs else None  # Axis's saved tool output, which can hold private text
         folders = legacy_state if isinstance(legacy_state, (list, tuple)) else [legacy_state] if legacy_state else []
         self.legacy_states = [Path(folder) for folder in folders]
         self.snapshots = {}
@@ -117,7 +141,15 @@ class AtlasOperations:
             old = [key for key, value in self.snapshots.items() if value["created"] < cutoff]
             for key in old:
                 del self.snapshots[key]
-        return len(old)
+        removed = len(old)
+        for path in self.outputs.glob("*") if self.outputs is not None and self.outputs.is_dir() else ():
+            try:
+                if path.is_file() and time.time() - path.stat().st_mtime > OUTPUT_SECONDS:
+                    path.unlink()
+                    removed += 1
+            except OSError:
+                pass  # In use or already gone; the next prune retries.
+        return removed
 
     def call(self, name, args):
         if name not in NAMES or not isinstance(args, dict):
@@ -137,6 +169,45 @@ class AtlasOperations:
         if not isinstance(value, str) or not value.strip() or len(value) > 255:
             raise ValueError("Use one explicit computer name")
         return self.wmi.validate_pc(value.strip())
+
+    def ready(self, pc):
+        """Refuse a PC that Atlas, its reboot monitor or an earlier Axis job is working on or left unresolved,
+        however the name is written (short or fully qualified)."""
+        wmi, key = self.wmi, target_key(pc)
+        wmi.job_service.target_ready(pc)
+        if any(target_key(name) == key for name in list(wmi.job_service.unresolved)):
+            raise ValueError("%s has an earlier operation with an unknown outcome. Inspect it, then acknowledge it "
+                             "in Atlas's Operation recovery or with it_job_status." % pc)
+        with wmi.lock:
+            pools = [dict(wmi.jobs), dict(getattr(wmi, "queue_jobs", {}))]
+        for pool in pools:
+            for job_id, job in pool.items():
+                names = [job.get("target")] + list(job.get("targets") or [])
+                names += [row.get("target") or row.get("machine") for row in job.get("items", job.get("results", []))
+                          if isinstance(row, dict)]
+                if job.get("state") not in TERMINAL and any(isinstance(n, str) and target_key(n) == key for n in names):
+                    raise ValueError("Atlas is working on %s (operation %s, %s). Wait for it to finish." %
+                                     (pc, job_id, job.get("state")))
+        for row in wmi.reboot_monitor.snapshot()["reboots"]:
+            if row.get("state") in REBOOT_ACTIVE and target_key(row.get("target")) == key:
+                raise ValueError("%s is rebooting under Atlas's reboot monitor (%s)." % (pc, row.get("id")))
+        for legacy in self.legacy():
+            job = legacy.blocking_job(pc)
+            if job:
+                raise ValueError("%s has an active or unresolved earlier Axis job %s. Review it with it_job_status "
+                                 "before changing this PC." % (pc, job["id"]))
+
+    @contextmanager
+    def held(self, pc):
+        """Atlas's per-PC lock for a direct change, and the same checks again now that approval is given."""
+        guard = self.wmi.target_lock(pc)
+        if not guard.acquire(blocking=False):
+            raise ValueError("Another Atlas operation is active on %s; wait for it to finish." % pc)
+        try:
+            self.ready(pc)
+            yield
+        finally:
+            guard.release()
 
     def snapshot(self, pc, view, items):
         self.prune()
@@ -182,24 +253,35 @@ class AtlasOperations:
         page = _page(items, query, offset, limit, ("Name", "Publisher", "Version"))
         return dict(page, computer=pc, view=view, warnings=data.get("warnings") or [])
 
+    @staticmethod
+    def package_name(name):
+        """A package is a folder name in the repository, never a path: a path could reach another host."""
+        if (not isinstance(name, str) or not name.strip() or len(name) > 200 or PureWindowsPath(name).name != name
+                or "/" in name or ":" in name or name in (".", "..") or any(ord(c) < 32 for c in name)):
+            raise ValueError("Choose an exact package folder name returned by find_packages")
+        return name
+
     def find_packages(self, query="", package=None, action="Install", offset=0):
         if action not in ACTIONS:
             raise ValueError("Choose Install, Uninstall or Repair")
         if type(offset) is not int or offset < 0:
             raise ValueError("Offset must be 0 or more")
         if package is not None:
+            package = self.package_name(package)
             scripts = self.wmi.scripts(package, action)["scripts"]
             name = self.wmi.package_root(package).name
             return {"package": name, "action": action, "scripts": scripts[offset:offset + 50], "total": len(scripts),
                     "next_offset": offset + 50 if len(scripts) > offset + 50 else None}
         if not isinstance(query, str) or len(query) > 256:
             raise ValueError("Invalid query")
-        found = self.wmi.packages(query)
-        if not found.get("available", True):
-            raise RuntimeError(found.get("error") or "Package repository is unavailable")
-        names = found.get("packages", [])
-        result = {"repository": found.get("repository"), "packages": names[offset:offset + 50],
-                  "total": found.get("total", len(names)), "next_offset": offset + 50 if len(names) > offset + 50 else None}
+        repository = self.repository
+        try:
+            names = sorted((p.name for p in repository.iterdir()
+                            if p.is_dir() and not linked(p) and query.casefold() in p.name.casefold()), key=str.casefold)
+        except OSError as error:
+            raise RuntimeError("Package repository is unavailable (%s). Check Settings and OneDrive sync." % error) from None
+        result = {"repository": str(repository), "packages": names[offset:offset + 50],
+                  "total": len(names), "next_offset": offset + 50 if len(names) > offset + 50 else None}
         if len(names) == 1 and offset == 0:
             scripts = self.wmi.scripts(names[0], action)["scripts"]
             result.update(package=names[0], action=action, scripts=scripts[:50], script_total=len(scripts),
@@ -207,6 +289,17 @@ class AtlasOperations:
         return result
 
     # ---- changes -------------------------------------------------------
+
+    def unlinked(self, folder, limit=100000):
+        """Refuse a package holding a link or junction: Robocopy would copy whatever it points at."""
+        count = 0
+        for base, dirs, files in os.walk(str(folder), followlinks=False):
+            for entry in dirs + files:
+                count += 1
+                if count > limit:
+                    raise ValueError("Package exceeds 100,000 entries; split it into smaller packages")
+                if linked(Path(base) / entry):
+                    raise ValueError("Package contains a link or junction: %s" % (Path(base) / entry))
 
     def digest(self, package, script):
         h = hashlib.sha256()
@@ -216,18 +309,20 @@ class AtlasOperations:
         return h.hexdigest()
 
     def deploy_package(self, computers, package, script, action, mode="full"):
-        if not isinstance(computers, list) or not 1 <= len(computers) <= 50:
-            raise ValueError("Supply 1 to 50 explicit computer names")
+        if not isinstance(computers, list) or not 1 <= len(computers) <= MAX_TARGETS:
+            raise ValueError("Supply 1 to %d explicit computer names" % MAX_TARGETS)
         if action not in ACTIONS or mode not in ("full", "copy", "execute"):
             raise ValueError("Choose a supported action and mode")
         wmi = self.wmi
+        package = self.package_name(package)
         targets = list(dict.fromkeys(self.pc(name) for name in computers))
         requests = []
         for pc in targets:
             request = wmi.validate_deployment(wmi.Deploy(computer=pc, folder=package, script=script, action=action, mode=mode))
-            wmi.job_service.target_ready(request.computer)  # Refuse before asking, as Atlas would after.
+            self.ready(request.computer)  # Refuse before asking, as Atlas would after.
             requests.append(request)
         folder = Path(requests[0].folder)
+        self.unlinked(folder)
         sha = self.digest(folder.name, script)
         detail = "%s %s using %s on %s (mode=%s; Atlas deployment; script SHA256=%s)" % (
             action, folder.name, script, ", ".join(targets), mode, sha)
@@ -237,10 +332,14 @@ class AtlasOperations:
             raise RuntimeError("Installer changed during approval. Find the package and approve it again.")
         jobs = []
         for request in requests:
+            # Atlas runs exactly the approved script: it checks this digest before copying and before launching.
+            request.sha256 = sha
             try:
+                self.ready(request.computer)  # The PC may have changed while approval was pending.
                 started = wmi.deploy(request)
-            except HTTPException as error:
-                jobs.append({"computer": request.computer, "state": "not started", "message": str(error.detail)})
+            except (HTTPException, ValueError) as error:
+                jobs.append({"computer": request.computer, "state": "not started",
+                             "message": str(getattr(error, "detail", error))})
                 continue
             job = started["job"]
             with wmi.lock:
@@ -281,41 +380,47 @@ class AtlasOperations:
             reason = item.get(verbs[action] + "_reason")
             if item.get("can_" + verbs[action]) is False:
                 raise ValueError("Atlas will not %s %s: %s" % (verbs[action], item["name"], reason or "not allowed"))
-            wmi.job_service.target_ready(pc)
+            self.ready(pc)
             if not self.confirm("%s service %s (%s) on %s" % (verbs[action], item["name"], item.get("display_name", ""), pc)):
                 return {"state": "declined"}
             import service_actions
             request = wmi.ServiceControl(computer=pc, name=item["name"], expected_identity=item["identity"])
-            return getattr(service_actions, verbs[action] + "_service")(wmi, request)
+            with self.held(pc):
+                return getattr(service_actions, verbs[action] + "_service")(wmi, request)
         if action == "process_stop":
             if type(pid) is not int:
                 raise ValueError("Give the PID from the processes snapshot")
             item = self.services_item(pc, snapshot, pid=pid, view="processes")
             if item.get("CanTerminate") is False:
                 raise ValueError("Atlas will not stop %s: %s" % (item.get("Process"), item.get("BlockReason") or "protected"))
-            wmi.job_service.target_ready(pc)
+            self.ready(pc)
             if not self.confirm("stop process %s (PID %s) on %s" % (item.get("Process"), pid, pc)):
                 return {"state": "declined"}
             import remote_processes
-            return remote_processes.terminate(wmi, wmi.Kill(computer=pc, value=str(pid), created=item.get("CreatedAt"),
-                                                            name=item.get("Process")))
+            with self.held(pc):
+                return remote_processes.terminate(wmi, wmi.Kill(computer=pc, value=str(pid), created=item.get("CreatedAt"),
+                                                                name=item.get("Process")))
         if action not in ("enable_remote_registry", "reboot", "cleanup_packages"):
             raise ValueError("Unknown computer action")
-        wmi.job_service.target_ready(pc)
+        self.ready(pc)
         prompt = {"enable_remote_registry": "enable and start Remote Registry on %s",
                   "reboot": "restart %s; unsaved work may be lost",
                   "cleanup_packages": "delete the package staging folders on %s"}[action] % pc
         if not self.confirm(prompt):
             return {"state": "declined"}
-        if action == "enable_remote_registry":
-            import service_actions
-            return service_actions.enable_remote_registry(wmi, pc)
-        if action == "reboot":
+        if action == "cleanup_packages":
+            self.ready(pc)
+            return wmi.cleanup_package_folder(pc)  # Takes Atlas's per-PC lock itself.
+        with self.held(pc):
+            if action == "enable_remote_registry":
+                import service_actions
+                return service_actions.enable_remote_registry(wmi, pc)
             started = wmi.reboot(wmi.Machine(computer=pc))
-            return dict(started, state="requested", message="Reboot requested; Atlas's reboot monitor verifies the "
-                                                            "new boot. Progress: it_job_status with this job_id.",
-                        job_id=started["job"])
-        return wmi.cleanup_package_folder(pc)
+        with self.lock:
+            self.reboots[started["job"]] = {"id": started["job"], "target": pc, "state": "requesting"}
+        return dict(started, state="requested", job_id=started["job"], message=(
+            "Reboot requested. Atlas's reboot monitor follows ping only; before saying the PC restarted, compare its "
+            "boot time with inspect_computer overview. Progress: it_job_status with this job_id."))
 
     def directory_lookup(self, kind, identity, server=""):
         import active_directory
@@ -371,6 +476,7 @@ class AtlasOperations:
                   "requested_by": job.get("requested_by", "Atlas")}
         if job.get("recovery_required") or job.get("state") in ("unknown", "interrupted"):
             result["recovery_required"] = not job.get("recovery_acknowledged")
+        result["outcome"] = outcome(result)
         return result
 
     def reboot_row(self, job_id):

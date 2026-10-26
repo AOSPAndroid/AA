@@ -502,7 +502,8 @@ class Sessions:
     def operations(self, confirm):
         """Axis's Windows tools on this Atlas's operations; earlier Axis job files stay readable."""
         # Earlier terminal jobs may also remain in axis\state from before the terminal used AA's chat.
-        return AtlasOperations(self.backend, confirm, legacy_state=(self.state, self.root / "axis" / "state"))
+        return AtlasOperations(self.backend, confirm, legacy_state=(self.state, self.root / "axis" / "state"),
+                               outputs=self.state / "outputs")
 
     def _saved_id(self, folder, prefix):
         if not re.fullmatch(r"[a-f0-9]{1,32}", prefix or ""):

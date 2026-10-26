@@ -1,7 +1,7 @@
 """Axis's Windows tools run Atlas's own operations. Simulated Windows: no PC, share or process is touched."""
 from sqlite_fixture import isolate_backend_database
 isolate_backend_database()
-import json, tempfile, time, unittest
+import hashlib, json, os, tempfile, time, unittest
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -194,6 +194,106 @@ class AtlasOperationTests(unittest.TestCase):
         self.assertIn(('e' * 32, 'earlier Axis job'), [(r['job_id'], r.get('source')) for r in listed['jobs']])
         self.ops.call('it_job_status', {'job_id': 'e' * 32, 'acknowledge_unknown': True})
         self.assertTrue(it_tools.read_json(self.legacy / 'jobs' / (job['id'] + '.json')).get('acknowledged'))
+
+    def deploy(self, **extra):
+        return self.ops.call('deploy_package', dict({'computers': ['TESTPC'], 'package': 'Example App',
+                                                     'script': 'setup_i.ps1', 'action': 'Install'}, **extra))
+
+    def test_the_approved_script_digest_travels_with_the_atlas_job(self):
+        job = self.deploy()['jobs'][0]['job_id']
+        approved = hashlib.sha256(b'exit 0').hexdigest()
+        self.assertIn('script SHA256=' + approved, self.confirm.call_args[0][0])
+        self.assertEqual(self.started[-1][1]['sha256'], approved)
+        self.assertNotIn('sha256', app.deployment_payload(job), "Atlas's own Retry and Queue are approved anew in Atlas")
+
+    def test_package_names_are_folder_names_never_paths(self):
+        for name in ('\\\\secret.attacker.example\\s\\p', 'C:\\Windows', '..', 'a/b'):
+            with self.subTest(name=name):
+                with self.assertRaisesRegex(ValueError, 'exact package folder name'):
+                    self.ops.call('find_packages', {'package': name})
+                with self.assertRaisesRegex(ValueError, 'exact package folder name'):
+                    self.deploy(package=name)
+        self.confirm.assert_not_called()
+
+    def test_every_package_is_reachable_and_linked_packages_are_refused(self):
+        for index in range(520):
+            (app.REPO / ('Pkg%03d' % index)).mkdir()
+        self.assertEqual(self.ops.call('find_packages', {'query': 'pkg', 'offset': 500})['packages'][-1], 'Pkg519')
+        (app.REPO / 'Example App' / 'elsewhere').symlink_to(Path(self.tmp.name), target_is_directory=True)
+        with self.assertRaisesRegex(ValueError, 'link or junction'):
+            self.deploy()
+        self.confirm.assert_not_called()
+
+    def test_atlas_work_in_progress_and_any_name_form_block_axis(self):
+        app.jobs['f' * 32] = {'state': 'running', 'target': 'TESTPC', 'events': []}
+        for args in ({'action': 'reboot'}, {'action': 'enable_remote_registry'}):
+            with self.subTest(args=args), self.assertRaisesRegex(ValueError, 'Atlas is working on TESTPC'):
+                self.ops.call('computer_action', dict({'computer': 'testpc.corp.example'}, **args))
+        with self.assertRaisesRegex(ValueError, 'Atlas is working on'):
+            self.deploy(computers=['TESTPC.corp.example'])
+        app.jobs['f' * 32]['state'] = 'failed'
+        app.job_service.unresolved.add('TESTPC')
+        with self.assertRaisesRegex(ValueError, 'unknown outcome'):
+            self.deploy(computers=['testpc.corp.example'])
+        self.confirm.assert_not_called()
+
+    def test_a_change_approved_while_the_pc_became_busy_does_not_run(self):
+        listed = self.ops.call('inspect_computer', {'computer': 'TESTPC', 'view': 'services'})
+        calls = len(self.windows.calls)
+        def busy(action):
+            app.job_service.unresolved.add('TESTPC')  # Something went wrong on the PC during the approval.
+            return True
+        self.confirm.side_effect = busy
+        with self.assertRaisesRegex(ValueError, 'unknown outcome'):
+            self.ops.call('computer_action', {'computer': 'TESTPC', 'action': 'service_restart', 'name': 'Spooler',
+                                              'snapshot': listed['snapshot']})
+        self.assertEqual(len(self.windows.calls), calls, 'Nothing was sent to the PC')
+        app.job_service.unresolved.discard('TESTPC')
+        self.confirm.side_effect = None
+        guard = app.target_lock('TESTPC')
+        self.assertTrue(guard.acquire(blocking=False))  # An Atlas operation holds the PC.
+        try:
+            with self.assertRaisesRegex(ValueError, 'Another Atlas operation'):
+                self.ops.call('computer_action', {'computer': 'TESTPC', 'action': 'reboot'})
+        finally:
+            guard.release()
+        self.assertEqual(self.reboots.rows, {})
+
+    def test_jobs_left_in_either_earlier_axis_folder_keep_blocking(self):
+        terminal = Path(self.tmp.name) / 'terminal-state'
+        job = {'id': '9' * 32, 'kind': 'deploy', 'computers': ['TESTPC'], 'state': 'unknown', 'created': it_tools.now(),
+               'created_epoch': time.time() - 100, 'results': [], 'events': [], 'worker_pid': None}
+        it_tools.write_json(terminal / 'jobs' / (job['id'] + '.json'), job)
+        ops = AtlasOperations(app, self.confirm, legacy_state=(self.legacy, terminal))
+        with self.assertRaisesRegex(ValueError, 'earlier Axis job ' + job['id']):
+            ops.call('deploy_package', {'computers': ['testpc'], 'package': 'Example App', 'script': 'setup_i.ps1',
+                                        'action': 'Install'})
+        self.confirm.assert_not_called()
+
+    def test_too_many_targets_are_refused_before_atlas_admits_any(self):
+        with self.assertRaisesRegex(ValueError, '1 to 25'):
+            self.deploy(computers=['PC%02d' % i for i in range(26)])
+        self.assertEqual(self.started, [])
+
+    def test_outcomes_say_what_atlas_states_mean(self):
+        job = self.deploy()['jobs'][0]['job_id']
+        app.jobs[job].update(state='launched', events=[{'message': 'Launched', 'exit_code': '0'}])
+        self.assertIn('exit code 0', self.ops.call('it_job_status', {'job_id': job})['outcome'])
+        app.jobs[job].update(recovery_required=True, events=[{'message': 'Launched', 'log': ['Monitoring timed out']}])
+        self.assertTrue(self.ops.call('it_job_status', {'job_id': job})['outcome'].startswith('unknown'))
+        app.jobs[job].update(state='launched', recovery_required=False, events=[{'message': 'x', 'exit_code': 'not written'}])
+        self.assertTrue(self.ops.call('it_job_status', {'job_id': job})['outcome'].startswith('unknown'))
+        self.assertIn('ping only', self.ops.call('computer_action', {'computer': 'TESTPC', 'action': 'reboot'})['message'])
+
+    def test_saved_tool_output_is_pruned_after_thirty_days(self):
+        outputs = Path(self.tmp.name) / 'outputs'
+        outputs.mkdir()
+        old, new = outputs / ('a' * 32 + '.txt'), outputs / ('b' * 32 + '.txt')
+        old.write_text('private inbox text'); new.write_text('recent')
+        stale = time.time() - it_tools.OUTPUT_SECONDS - 60
+        os.utime(old, (stale, stale))
+        AtlasOperations(app, self.confirm, outputs=outputs).prune()
+        self.assertEqual(sorted(p.name for p in outputs.iterdir()), [new.name])
 
     def test_the_agent_runs_these_operations_in_place_of_its_own_engine(self):
         ui = MagicMock(); ui.confirm.return_value = True

@@ -686,6 +686,36 @@ test("work Axis starts opens in Atlas's own views, and its PCs can be selected",
   }
 });
 
+test("a finished deployment opens Atlas's recent list, a running one its live list", async (t) => {
+  for (const [state, mode] of [
+    ["launched", "recent"],
+    ["running", "active"],
+  ]) {
+    const f = fixture(t, {
+      page: "atlas-console",
+      route(call, api) {
+        if (call.url !== "/api/axis/chat") return;
+        const s = api.stream();
+        s.event({ type: "session", session_id: "session-one" });
+        s.event({ type: "tool_start", name: "it_job_status", args: {} });
+        s.event({
+          type: "tool_result",
+          name: "it_job_status",
+          result: JSON.stringify({ kind: "deployment", state, target: "PC1" }),
+        });
+        s.finish();
+        return s.response;
+      },
+    });
+    const opened = [];
+    f.w.openDeploymentMonitor = (value) => opened.push(value);
+    f.submit("How did it go?");
+    await f.idle();
+    f.w.document.querySelector(".axis-atlas-links button").click();
+    assert.deepEqual(opened, [mode], state);
+  }
+});
+
 test("desks found by Axis open on the map without reloading the chat", async (t) => {
   const unsafe = '<img src=x onerror="window.attacked=true">';
   const f = fixture(t, {

@@ -15,6 +15,8 @@ from axis import it_tools
 
 # AA_AXIS_STATE lets tests use a disposable folder, as ATLAS_DB_PATH does for the database.
 AXIS_STATE = Path(os.environ.get('AA_AXIS_STATE') or Path(__file__).resolve().parent / 'data' / 'axis' / 'state')
+# Jobs an earlier Axis terminal left in its own folder keep guarding their PCs until acknowledged.
+TERMINAL_STATE = Path(os.environ.get('AA_AXIS_TERMINAL_STATE') or Path(__file__).resolve().parent / 'axis' / 'state')
 _cache, _cache_lock = {}, threading.Lock()
 
 
@@ -55,10 +57,11 @@ class TargetLock:
 
 def axis_ready(pc):
     """Atlas's target check: refuse a PC with an active or unresolved Axis job."""
-    job = it_tools.ITTools(AXIS_STATE).blocking_job(pc)
-    if job:
-        raise HTTPException(409, f"{pc} has an active or unresolved Axis job {job['id']}. "
-                                 f"Check it with /jobs {job['id']} in Axis chat before starting Atlas work.")
+    for folder in (AXIS_STATE, TERMINAL_STATE):
+        job = it_tools.ITTools(folder).blocking_job(pc)
+        if job:
+            raise HTTPException(409, f"{pc} has an active or unresolved Axis job {job['id']}. "
+                                     f"Check it with /jobs {job['id']} in Axis chat before starting Atlas work.")
 
 
 def _jobs():

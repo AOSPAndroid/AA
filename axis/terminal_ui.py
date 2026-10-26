@@ -789,8 +789,11 @@ class TerminalUI:
     def _jobs_body(self, data):
         if "jobs" in data:
             rows = data.get("jobs") or []
+            # Axis's own jobs list computers; Atlas's (inside AA) give job_id and one computer or target.
             self._table(["JOB", "TARGETS", "TYPE", "STATE"], [
-                [str(j.get("id", ""))[:12], ", ".join(j.get("computers") or []), j.get("kind", ""), self._state(j.get("state", "unknown"))]
+                [str(j.get("id") or j.get("job_id") or "")[:12],
+                 ", ".join(j.get("computers") or [x for x in (j.get("computer") or j.get("target"),) if x]),
+                 j.get("kind", "deployment"), self._state(j.get("state", "unknown"))]
                 for j in rows])
             if rows:
                 self._line("/jobs <ID> shows per-PC outcomes. FINISHED is a job state, not application verification.", "dim", prefix="  ")
