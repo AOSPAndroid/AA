@@ -37,7 +37,7 @@ TOOLS = [
         "query": STRING, "package": STRING,
         "action": {"type": "string", "enum": ["Install", "Uninstall", "Repair"]},
         "offset": {"type": "integer", "minimum": 0}}, []),
-    tool("deploy_package", "Approve and start a durable deployment to explicit PC names. Discover package/script first. The worker checks WMI/admin-share access, copies with Robocopy, launches via WMI and records exit code/log. Returns a queued job, NOT installation success. Report the job and /jobs ID; wait or verify only when requested. Supports multiple PCs, processed in order. Never automatically retry an unknown outcome.", {
+    tool("deploy_package", "Approve and start a durable deployment to explicit PC names. Discover package/script first. The worker checks WMI/admin-share access, copies with Robocopy, launches via WMI, waits for the script and the installer processes it starts (and Windows Installer) to finish, then records exit code, log and registered-software changes. Returns a queued job, NOT installation success. Report the job and /jobs ID; wait or verify only when requested. Supports multiple PCs, processed in order. Never automatically retry an unknown outcome.", {
         "computers": {"type": "array", "items": STRING, "minItems": 1, "maxItems": 200},
         "package": STRING, "script": STRING,
         "action": {"type": "string", "enum": ["Install", "Uninstall", "Repair"]},
@@ -657,19 +657,28 @@ class ITTools:
                 job_folder.mkdir(parents=True, exist_ok=False)
                 log = remote_job + "\\output.log"
                 exit_file = remote_job + "\\exitcode.txt"
-                payload = remote_payload(remote_script, log, exit_file)
+                status_file, result_file = remote_job + "\\status.txt", remote_job + "\\activity.json"
+                # The target stops waiting for installer activity early enough to report before monitoring ends.
+                payload = remote_payload(remote_script, log, exit_file, max(60, job["timeout"] - 120), status_file, result_file)
                 (job_folder / "run.ps1").write_text(payload, encoding="utf-8-sig")
                 result.update(remote_log=log, remote_exit_file=exit_file)
                 # A transport error after invoking Create can still mean it launched.
                 launched = True
                 started = self.ps({"op": "launch", "computer": pc, "script": remote_job + "\\run.ps1"})
                 result["pid"] = started["pid"]
-                event(pc, "Remote installer launched (PID %s); waiting for its exit record" % started["pid"])
+                event(pc, "Remote installer launched (PID %s); waiting for it and the installers it starts to finish" % started["pid"])
                 deadline = time.monotonic() + job["timeout"]
-                exit_path = share(pc, exit_file)
+                exit_path, status_path, shown = share(pc, exit_file), share(pc, status_file), None
                 while not exit_path.is_file():
                     if time.monotonic() >= deadline:
                         raise UnknownOutcome("Monitoring timed out; remote installer may still be running")
+                    try:
+                        status = status_path.read_text(encoding="utf-8-sig").strip()[:300]
+                    except OSError:
+                        status = None
+                    if status and status != shown:
+                        event(pc, status)
+                        shown = status
                     time.sleep(2)
                 exit_code = int(exit_path.read_text(encoding="utf-8-sig").strip())
                 result["exit_code"] = exit_code
@@ -677,11 +686,28 @@ class ITTools:
                 if logfile.is_file():
                     result["log_tail"] = tail(logfile)
                 result["application_verified"] = False
+                activity = read_install_activity(share(pc, result_file))
+                if activity:
+                    result["installer_activity"] = {key: activity.get(key) for key in (
+                        "settled", "waited_seconds", "still_running", "left_running", "windows_installer_busy", "tracking")}
+                    if "software" in activity:
+                        result["software_changes"] = activity["software"]
+                summary = describe_install_activity(activity)
+                unfinished = install_unconfirmed(activity)
+                if unfinished:
+                    return dict(result, state="unknown", inspect_before_retry=True, message=(
+                        "Installer script exited with code %d, but %s; check the PC before retrying or verifying" % (exit_code, unfinished)))
                 if exit_code == 0:
-                    return dict(result, state="script_succeeded", message="Installer script returned 0; application health still needs verification")
-                if exit_code in (3010, 1641):
-                    return dict(result, state="reboot_required", message="Installer script returned a Windows Installer restart code; verify its log/application before restarting")
-                return dict(result, state="failed", message="Installer script failed with exit code %d" % exit_code)
+                    message = "Installer script returned 0"
+                    state = "script_succeeded"
+                elif exit_code in (3010, 1641):
+                    message = "Installer script returned a Windows Installer restart code"
+                    state = "reboot_required"
+                else:
+                    return dict(result, state="failed", message="Installer script failed with exit code %d" % exit_code + ("; " + summary if summary else ""))
+                return dict(result, state=state, message=message + ("; " + summary if summary else "") + (
+                    "; application health still needs verification" if state == "script_succeeded" else
+                    "; verify its log/application before restarting"))
         except Exception as error:
             return dict(result, state="unknown" if launched else "failed", message=str(error),
                         inspect_before_retry=launched)
@@ -694,12 +720,248 @@ def tail(path, size=16000):
         return source.read().decode("utf-8-sig", "replace")
 
 
-def remote_payload(installer, log, exit_file):
+# Machine-wide and the installing account's uninstall registrations; the ones the software view reads, plus per-user.
+UNINSTALL_KEYS = ((r"HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall", "Machine"),
+                  (r"HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall", "Machine32"),
+                  (r"HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall", "User"))
+
+# Runs on the target around the installer script. Many scripts return while the installer they started is still
+# working (a setup.exe that hands over to msiexec, an uninstaller that copies itself and exits), so the exit record
+# is written only once the processes the script started and Windows Installer have finished, or the time is up.
+INSTALL_ACTIVITY = r"""
+function Start-InstallTracking {
+    # Every process the script starts joins this job object, even after its parent exits.
+    try {
+        if (-not ('AxisInstallJob' -as [type])) {
+            Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class AxisInstallJob {
+    [StructLayout(LayoutKind.Sequential)] struct BasicLimit { public long PerProcessUserTimeLimit; public long PerJobUserTimeLimit; public uint LimitFlags; public UIntPtr MinimumWorkingSetSize; public UIntPtr MaximumWorkingSetSize; public uint ActiveProcessLimit; public UIntPtr Affinity; public uint PriorityClass; public uint SchedulingClass; }
+    [StructLayout(LayoutKind.Sequential)] struct IoCounters { public ulong ReadOperations, WriteOperations, OtherOperations, ReadBytes, WriteBytes, OtherBytes; }
+    [StructLayout(LayoutKind.Sequential)] struct ExtendedLimit { public BasicLimit Basic; public IoCounters Io; public UIntPtr ProcessMemoryLimit, JobMemoryLimit, PeakProcessMemoryUsed, PeakJobMemoryUsed; }
+    [DllImport("kernel32.dll", SetLastError = true)] static extern IntPtr CreateJobObject(IntPtr attributes, IntPtr name);
+    [DllImport("kernel32.dll", SetLastError = true)] static extern bool SetInformationJobObject(IntPtr job, int infoClass, ref ExtendedLimit info, int size);
+    [DllImport("kernel32.dll", SetLastError = true)] static extern bool AssignProcessToJobObject(IntPtr job, IntPtr process);
+    [DllImport("kernel32.dll", SetLastError = true)] static extern bool QueryInformationJobObject(IntPtr job, int infoClass, IntPtr info, int size, IntPtr returned);
+    [DllImport("kernel32.dll")] static extern IntPtr GetCurrentProcess();
+    public static IntPtr Track() {
+        IntPtr job = CreateJobObject(IntPtr.Zero, IntPtr.Zero);
+        if (job == IntPtr.Zero) return IntPtr.Zero;
+        ExtendedLimit info = new ExtendedLimit();
+        info.Basic.LimitFlags = 0x800;  // BREAKAWAY_OK: a child that asks to leave the job may; all others stay tracked
+        SetInformationJobObject(job, 9, ref info, Marshal.SizeOf(typeof(ExtendedLimit)));
+        return AssignProcessToJobObject(job, GetCurrentProcess()) ? job : IntPtr.Zero;
+    }
+    public static long[] Processes(IntPtr job) {
+        int size = 8 + IntPtr.Size * 4096;
+        IntPtr buffer = Marshal.AllocHGlobal(size);
+        try {
+            if (!QueryInformationJobObject(job, 3, buffer, size, IntPtr.Zero)) return new long[0];
+            int count = Marshal.ReadInt32(buffer, 4);
+            long[] ids = new long[count];
+            for (int i = 0; i < count; i++) ids[i] = Marshal.ReadIntPtr(buffer, 8 + i * IntPtr.Size).ToInt64();
+            return ids;
+        } finally { Marshal.FreeHGlobal(buffer); }
+    }
+}
+'@
+        }
+        $job = [AxisInstallJob]::Track()
+        if ($job -ne [IntPtr]::Zero) { return $job }
+    } catch {}
+    return $null
+}
+
+function Get-ProcessTable($filter) {
+    $options = @{ClassName='Win32_Process'; ErrorAction='Stop'}
+    if ($filter) { $options.Filter = $filter }
+    if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) { return @(Get-CimInstance @options) }
+    $options.Class = $options.ClassName; $options.Remove('ClassName')
+    @(Get-WmiObject @options)
+}
+
+function Test-WindowsInstallerBusy {
+    # The InProgress key exists while an installation runs. The msiexec service itself (/V) idles for minutes afterwards.
+    try { if (Test-Path -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Installer\InProgress') { return $true } } catch {}
+    try {
+        foreach ($p in (Get-ProcessTable "Name='msiexec.exe'")) { if ([string]$p.CommandLine -notmatch '\s/V\s*$') { return $true } }
+    } catch {}
+    $false
+}
+
+function Get-InstallActivity($tracker) {
+    $ids = @()
+    if ($tracker) {
+        try { $ids = @([AxisInstallJob]::Processes($tracker)) } catch {}
+    } else {
+        # Without a job object, follow the process tree from this script, remembering every descendant seen so a
+        # child is still connected after its parent exits. A hand-off that started and exited unseen is missed, so
+        # this tracking never confirms that installation finished.
+        try {
+            $table = Get-ProcessTable $null
+            $grew = $true
+            while ($grew) {
+                $grew = $false
+                foreach ($p in $table) {
+                    if (-not $AxisTree.ContainsKey([long]$p.ProcessId) -and $AxisTree.ContainsKey([long]$p.ParentProcessId)) { $AxisTree[[long]$p.ProcessId] = $true; $grew = $true }
+                }
+            }
+            $ids = @($table | Where-Object { $AxisTree.ContainsKey([long]$_.ProcessId) } | ForEach-Object { [long]$_.ProcessId })
+        } catch {}
+    }
+    $running = @()
+    foreach ($id in $ids) {
+        if ([long]$id -eq $PID) { continue }
+        $process = Get-Process -Id ([int]$id) -ErrorAction SilentlyContinue
+        if ($process -and $process.ProcessName -ne 'conhost') { $running += $process }
+    }
+    @{processes=$running; msi=(Test-WindowsInstallerBusy)}
+}
+
+function Get-RegisteredSoftware {
+    $items = @{}
+    foreach ($root in $AxisUninstallKeys) {
+        try {
+            if (-not (Test-Path -LiteralPath $root.Path)) { continue }
+            foreach ($key in @(Get-ChildItem -LiteralPath $root.Path -ErrorAction SilentlyContinue)) {
+                $name = [string]$key.GetValue('DisplayName')
+                if ($name) { $items[$root.Scope + '\' + $key.PSChildName] = @{name=$name; version=[string]$key.GetValue('DisplayVersion')} }
+            }
+        } catch {}
+    }
+    $items
+}
+
+function Compare-RegisteredSoftware($before, $after) {
+    $added = @(); $removed = @(); $changed = @()
+    foreach ($id in $after.Keys) {
+        $new = $after[$id]
+        if (-not $before.ContainsKey($id)) { $added += [ordered]@{name=$new.name; version=$new.version} }
+        elseif ($before[$id].version -ne $new.version -or $before[$id].name -ne $new.name) {
+            $changed += [ordered]@{name=$new.name; from=$before[$id].version; to=$new.version}
+        }
+    }
+    foreach ($id in $before.Keys) {
+        if (-not $after.ContainsKey($id)) { $removed += [ordered]@{name=$before[$id].name; version=$before[$id].version} }
+    }
+    [ordered]@{added=@($added | Sort-Object { $_.name } | Select-Object -First 20)
+               removed=@($removed | Sort-Object { $_.name } | Select-Object -First 20)
+               changed=@($changed | Sort-Object { $_.name } | Select-Object -First 20)}
+}
+
+function Complete-InstallActivity($tracker, $before, $deadline, $exitCode, $statusPath, $resultPath) {
+    $started = Get-Date; $quiet = 0; $shown = ''; $idleNames = ''; $idleCpu = $null; $idleSince = $null
+    $result = [ordered]@{settled=$false; waited_seconds=0; still_running=@(); left_running=@(); windows_installer_busy=$false
+                         tracking=$(if ($tracker) { 'job object' } else { 'process tree' })}
+    while ($true) {
+        $activity = Get-InstallActivity $tracker
+        $names = @($activity.processes | ForEach-Object { $_.ProcessName + '.exe' } | Sort-Object -Unique)
+        if ($names.Count -eq 0 -and -not $activity.msi) {
+            # Confirm once, in case the next step of a chained installer is just starting.
+            $quiet++
+            if ($quiet -ge 2) { $result.settled = $true; break }
+            Start-Sleep -Seconds 2; continue
+        }
+        $quiet = 0
+        # A finished installer can leave its application running. Accept that once Windows Installer is idle, the
+        # remaining processes have used under a second of CPU for a minute and the registered software has changed.
+        $cpu = 0.0; $measured = $true
+        foreach ($p in $activity.processes) { try { $cpu += $p.TotalProcessorTime.TotalSeconds } catch { $measured = $false } }
+        $key = $names -join ','
+        if (-not $activity.msi -and $measured -and $null -ne $before -and $key -eq $idleNames -and $null -ne $idleCpu -and ($cpu - $idleCpu) -lt 1) {
+            if (((Get-Date) - $idleSince).TotalSeconds -ge 60) {
+                $changes = Compare-RegisteredSoftware $before (Get-RegisteredSoftware)
+                if ($changes.added.Count + $changes.removed.Count + $changes.changed.Count -gt 0) { $result.settled = $true; $result.left_running = $names; break }
+            }
+        } else { $idleNames = $key; $idleCpu = $cpu; $idleSince = Get-Date }
+        if ((Get-Date) -ge $deadline) { $result.still_running = $names; $result.windows_installer_busy = [bool]$activity.msi; break }
+        $waiting = @($names)
+        if ($activity.msi) { $waiting += 'Windows Installer' }
+        $status = 'Script exited with code ' + $exitCode + '; waiting for ' + ($waiting -join ', ') + ' to finish'
+        if ($status -ne $shown) { try { Set-Content -LiteralPath $statusPath -Value $status -Encoding utf8 } catch {}; $shown = $status }
+        Start-Sleep -Seconds 5
+    }
+    $result.waited_seconds = [int]((Get-Date) - $started).TotalSeconds
+    if ($null -ne $before) { $result.software = Compare-RegisteredSoftware $before (Get-RegisteredSoftware) }
+    Set-Content -LiteralPath $resultPath -Value ($result | ConvertTo-Json -Depth 5 -Compress) -Encoding utf8
+}
+"""
+
+
+def install_activity_setup(limit):
+    """PowerShell that defines the wait and starts tracking; give the wait at most limit seconds from here."""
+    keys = ", ".join("@{Path=%s; Scope=%s}" % (quote(path), quote(scope)) for path, scope in UNINSTALL_KEYS)
+    return ("$AxisUninstallKeys = @(%s)\n$AxisTree = @{}; $AxisTree[[long]$PID] = $true\n$axisDeadline = (Get-Date).AddSeconds(%d)\n%s\n"
+            "$axisTracker = $null; $axisBefore = $null\n"
+            "try { $axisTracker = Start-InstallTracking; $axisBefore = Get-RegisteredSoftware } catch {}\n"
+            % (keys, int(limit), INSTALL_ACTIVITY.strip()))
+
+
+def install_activity_finish(exit_code, status_file, result_file, log):
+    """PowerShell for the finally block, before the exit record: wait, then record what changed. Never throws."""
+    return ("try { Complete-InstallActivity $axisTracker $axisBefore $axisDeadline %s %s %s } catch {\n"
+            "    ('Installer activity was not checked: ' + $_) | Out-File -LiteralPath %s -Append -Encoding utf8\n}"
+            % (exit_code, quote(status_file), quote(result_file), quote(log)))
+
+
+def read_install_activity(path):
+    """The target's record of the wait, or None when it is missing or unreadable (an older payload, a failed write)."""
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def describe_install_activity(activity):
+    """One plain sentence fragment for job messages: how long the wait took and what registered software changed."""
+    if not activity:
+        return ""
+    parts = []
+    waited = int(activity.get("waited_seconds") or 0)
+    if activity.get("settled") and waited >= 10:
+        parts.append("installer activity finished after %s" % duration(waited))
+    if activity.get("left_running"):
+        parts.append("left running: " + ", ".join(activity["left_running"]))
+    software = activity.get("software") or {}
+    def names(items, form):
+        return ", ".join(form(item) for item in items if isinstance(item, dict))
+    for label, key, form in (("newly registered", "added", lambda i: ("%s %s" % (i.get("name"), i.get("version") or "")).strip()),
+                             ("no longer registered", "removed", lambda i: str(i.get("name"))),
+                             ("version changed", "changed", lambda i: "%s %s -> %s" % (i.get("name"), i.get("from") or "?", i.get("to") or "?"))):
+        if software.get(key):
+            parts.append("%s: %s" % (label, names(software[key], form)))
+    if activity.get("settled") and not any(software.get(key) for key in ("added", "removed", "changed")) and "software" in activity:
+        parts.append("no change in registered software")
+    return "; ".join(parts)
+
+
+def install_unconfirmed(activity):
+    """Why the target's record does not confirm that the installers the script started have finished, or None."""
+    if not activity:
+        return "no installer-activity record was written, so installer completion was not checked"
+    if not activity.get("settled"):
+        running = list(activity.get("still_running") or []) + (["Windows Installer"] if activity.get("windows_installer_busy") else [])
+        return "installer activity was still running when monitoring stopped (%s)" % (", ".join(running) or "unknown")
+    if activity.get("tracking") != "job object":
+        return "this PC could not track every process the script started, so installer completion is not confirmed"
+    return None
+
+
+def duration(seconds):
+    return "%d min %d s" % divmod(seconds, 60) if seconds >= 60 else "%d s" % seconds
+
+
+def remote_payload(installer, log, exit_file, limit=3480, status_file=None, result_file=None):
+    status_file = status_file or exit_file + ".status"
+    result_file = result_file or exit_file + ".result.json"
     invoke = "& " + quote(installer)
     if PureWindowsPath(installer).suffix.lower() == ".vbs":
         invoke = "& cscript.exe //B //NoLogo " + quote(installer)
     return """$ErrorActionPreference = 'Stop'
 $ec = 1
+%s
 try {
     Set-Location -LiteralPath %s
     $global:LASTEXITCODE = 0
@@ -709,11 +971,13 @@ try {
     $_ | Out-File -LiteralPath %s -Append -Encoding utf8
     $ec = 1
 } finally {
+    %s
     [string]$ec | Set-Content -LiteralPath %s -Encoding ascii
     Move-Item -LiteralPath %s -Destination %s -Force
 }
 exit $ec
-""" % (quote(str(PureWindowsPath(installer).parent)), invoke, quote(log), quote(log),
+""" % (install_activity_setup(limit), quote(str(PureWindowsPath(installer).parent)), invoke, quote(log), quote(log),
+        install_activity_finish("$ec", status_file, result_file, log),
         quote(exit_file + ".tmp"), quote(exit_file + ".tmp"), quote(exit_file))
 
 

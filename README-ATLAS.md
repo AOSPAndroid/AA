@@ -322,7 +322,7 @@ Search **Enable Remote Registry** in the palette or right-click a machine in the
 
 ### Deployment launch status
 
-Copy & execute shows **Launched** as soon as Windows confirms the remote process started. Script exit codes do not turn that status into Failed or imply installation success. Output and exit codes remain in the log/history; copy or process-start errors still fail. Background log collection retains the target lock while the process runs. Demo and hosted Preview remain read-only.
+Copy & execute shows **Launched** as soon as Windows confirms the remote process started. Monitoring then waits for the script and every installer it starts, including ones handed off after the script returns, and for Windows Installer, before reading the exit code. The deployment's activity shows what it is waiting for, and the history records the uninstall registrations that were added, removed or changed. Installers still running at the deployment timeout hold the PC for Operation recovery. Script exit codes do not turn that status into Failed or imply installation success. Output and exit codes remain in the log/history; copy or process-start errors still fail. Background log collection retains the target lock while the process runs. Demo and hosted Preview remain read-only.
 
 ### Reboot checks in Queue
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 from datetime import datetime
-import base64, hashlib, json, logging, os, re, secrets, shutil, sqlite3, subprocess, sys, threading, time, uuid
+import base64, hashlib, json, logging, os, re, secrets, shutil, sqlite3, subprocess, sys, threading, time, uuid, zlib
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Literal
@@ -39,6 +39,7 @@ from response_compression import compress_responses
 compress_responses(app)
 from job_service import JobService, TERMINAL
 from shared_operations import TargetLock, axis_ready
+from axis.it_tools import describe_install_activity, install_activity_finish, install_activity_setup, install_unconfirmed, read_install_activity
 job_service=JobService(lambda:HISTORY_DB,guard=axis_ready)
 jobs=job_service.jobs;lock=job_service.lock
 @app.on_event('startup')
@@ -70,13 +71,13 @@ def validate_pc(pc):
 
 def quote(v):return "'"+str(v).replace("'","''")+"'"
 def unc(pc,p='C:'):return rf'\\{validate_pc(pc)}\{p.replace(":","$",1).lstrip(chr(92))}'
-def run(args,check=True,timeout=120):
- p=subprocess.run(args,text=True,capture_output=True,timeout=timeout,creationflags=NW)
+def run(args,check=True,timeout=120,env=None):
+ p=subprocess.run(args,text=True,capture_output=True,timeout=timeout,creationflags=NW,env=dict(os.environ,**env) if env else None)
  if check and p.returncode:raise RuntimeError((p.stderr or p.stdout or f'Exit code {p.returncode}').strip())
  return p
-def ps(script,timeout=120):
+def ps(script,timeout=120,env=None):
  encoded=base64.b64encode(script.encode('utf-16le')).decode('ascii')
- return run(['powershell.exe','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-EncodedCommand',encoded],timeout=timeout).stdout.strip()
+ return run(['powershell.exe','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-EncodedCommand',encoded],timeout=timeout,env=env).stdout.strip()
 def hist_db():
  c=sqlite3.connect(HISTORY_DB,timeout=20,factory=ClosingConnection);c.row_factory=sqlite3.Row
  c.execute('''create table if not exists deployments(id text primary key,started text,finished text,operator text,target text,package text,action text,script text,mode text,state text,robocopy_code text,pid text,exit_code text,details text)''')
@@ -111,18 +112,31 @@ def copy_pkg(src,dst,fresh=False,threads=8):
  if p.returncode>7:raise RuntimeError(f'Robocopy failed: {p.returncode}\n{p.stderr or p.stdout}')
  return p.returncode
 def wmi_create(pc,cmd):
- out=ps(f'$r=Invoke-WmiMethod -ComputerName {quote(pc)} -Class Win32_Process -Name Create -ArgumentList {quote(cmd)} -EA Stop;if($r.ReturnValue-ne 0){{throw "WMI start failed: $($r.ReturnValue)"}};$r.ProcessId')
+ # The remote command travels in an environment variable: encoding it into this command line again could pass Windows' 32K limit.
+ out=ps(f'$r=Invoke-WmiMethod -ComputerName {quote(pc)} -Class Win32_Process -Name Create -ArgumentList $env:ATLAS_REMOTE_COMMAND -EA Stop;if($r.ReturnValue-ne 0){{throw "WMI start failed: $($r.ReturnValue)"}};$r.ProcessId',env={'ATLAS_REMOTE_COMMAND':cmd})
  return int(out.splitlines()[-1])
 def wmi_running(pc,pid):
  return ps(f'[bool](Get-WmiObject -ComputerName {quote(pc)} Win32_Process -Filter {quote("ProcessId="+str(int(pid)))} -EA Stop)',timeout=30).lower()=='true'
+def install_files(ex):
+ """The target's waiting status and installer-activity record for a launch's exit-code file."""
+ base=ex.rsplit('.',1)[0];return base+'.status',base+'.activity.json'
+def remote_command(payload):
+ # Compressed so the command line stays well inside Windows' 32K limit; it still never touches the target's disk.
+ packed=base64.b64encode(zlib.compress(payload.encode('utf-8'),9)[2:-4]).decode('ascii')
+ bootstrap=("$s=New-Object IO.Compression.DeflateStream((New-Object IO.MemoryStream(,[Convert]::FromBase64String('"+packed+"'))),"
+            "[IO.Compression.CompressionMode]::Decompress);& ([scriptblock]::Create((New-Object IO.StreamReader($s,[Text.Encoding]::UTF8)).ReadToEnd()))")
+ return 'powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand '+base64.b64encode(bootstrap.encode('utf-16le')).decode('ascii')
 def launch(pc,remote,pkg):
  token=uuid.uuid4().hex
  safe=re.sub(r'[^A-Za-z0-9_.-]','_',pkg)[:60]
- log=rf'C:\Temp\{safe}_{token}.log';ex=rf'C:\Temp\{safe}_{token}.exitcode'
+ log=rf'C:\Temp\{safe}_{token}.log';ex=rf'C:\Temp\{safe}_{token}.exitcode';status,activity=install_files(ex)
+ # The target stops waiting for installer activity early enough to report before monitoring ends.
+ limit=max(60,int(CONFIG.get('deployment_timeout_seconds',3600))-120)
  invoke=f'& {quote(remote)} *>&1 | Out-File -LiteralPath {quote(log)} -Encoding utf8' if remote.lower().endswith('.ps1') else f'& cscript.exe //B //NoLogo {quote(remote)} *>&1 | Out-File -LiteralPath {quote(log)} -Encoding utf8'
  # EncodedCommand avoids nested cmd/PowerShell quoting. Each attempt owns its result files.
  payload=f"""$ErrorActionPreference='Stop'
 $ec=1
+{install_activity_setup(limit)}
 try {{
  Set-Location -LiteralPath (Split-Path -LiteralPath {quote(remote)})
  Get-ChildItem -LiteralPath (Split-Path -LiteralPath {quote(remote)}) -Recurse -File -Filter *.ps1 | Unblock-File
@@ -133,17 +147,21 @@ try {{
  $_ | Out-File -LiteralPath {quote(log)} -Append -Encoding utf8
  $ec=1
 }} finally {{
+ {install_activity_finish('$ec',status,activity,log)}
  [string]$ec | Out-File -LiteralPath {quote(ex)} -Encoding ascii
 }}
 exit $ec
 """
- encoded=base64.b64encode(payload.encode('utf-16le')).decode('ascii')
- cmd='powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand '+encoded
- return wmi_create(pc,cmd),log,ex
-def monitor(pc,pid,log,ex):
+ return wmi_create(pc,remote_command(payload)),log,ex
+def monitor(pc,pid,log,ex,progress=None,activity=None):
+ # progress receives what the target is still waiting for; activity is filled with its installer-activity record.
  deadline=time.monotonic()+int(CONFIG.get('deployment_timeout_seconds',3600))
+ status_path,activity_path=(Path(unc(pc,path)) for path in install_files(ex));shown=None
  while wmi_running(pc,pid):
   if time.monotonic()>deadline:raise RuntimeError('Monitoring timed out; remote installation may still be running. Inspect target before retrying.')
+  try:status=status_path.read_text(encoding='utf-8-sig',errors='replace').strip()[:300]
+  except OSError:status=None
+  if progress and status and status!=shown:progress(status);shown=status
   time.sleep(2)
  eu,lu=Path(unc(pc,ex)),Path(unc(pc,log))
  # Brief grace period for SMB visibility; absence is never success.
@@ -153,6 +171,7 @@ def monitor(pc,pid,log,ex):
  values=eu.read_text(encoding='utf-8-sig',errors='replace').splitlines() if eu.is_file() else []
  ec=values[0].strip() if values else 'not written'
  lines=lu.read_text(encoding='utf-8-sig',errors='replace').splitlines()[-100:] if lu.is_file() else []
+ if activity is not None:activity.update(read_install_activity(activity_path) or {})
  return ec,lines
 
 class Deploy(BaseModel):computer:str;folder:str;script:str;action:Literal['Install','Uninstall','Repair']='Install';fresh:bool=False;threads:int=Field(8,ge=1,le=128);mode:Literal['full','copy','execute']='full';sha256:str|None=Field(None,pattern=r'^[a-f0-9]{64}$')
@@ -213,12 +232,17 @@ def _deploy_worker(j,p):
   if p.mode=='copy':
    emit(j,'Copy-only completed','complete');history_update(j,state='complete',finished=time.strftime('%Y-%m-%d %H:%M:%S'));return
   pid,log,ex=launch(pc,remote,pkg);launched=True;emit(j,'Launched',pid=pid);history_update(j,pid=str(pid))
-  ec,lines=monitor(pc,pid,log,ex);state,message=outcome(ec)
+  activity={};ec,lines=monitor(pc,pid,log,ex,lambda status:emit(j,status),activity);state,message=outcome(ec)
   if not re.fullmatch(r'-?\d+',str(ec).strip()):
    # No exit record is no outcome: hold the PC until someone inspects it and acknowledges, as after a lost monitor.
    job_service.unresolved.add(pc);message='Launched; the installer left no exit code. Inspect the target, then acknowledge it in Operation recovery.'
    with lock:jobs[j]['recovery_required']=True
-  emit(j,message,state,log=lines,exit_code=ec)
+  elif install_unconfirmed(activity):
+   # The script returned, but nothing confirms the installers it started have finished: the same open outcome.
+   job_service.unresolved.add(pc);message=f'Launched; {install_unconfirmed(activity)}. Inspect the target, then acknowledge it in Operation recovery.'
+   with lock:jobs[j]['recovery_required']=True
+  elif describe_install_activity(activity):message+='; '+describe_install_activity(activity)
+  emit(j,message,state,log=lines,exit_code=ec,**({'install':activity} if activity else {}))
   history_update(j,state=state,exit_code=str(ec),finished=time.strftime('%Y-%m-%d %H:%M:%S'),details=message+'\n'+'\n'.join(lines[-20:]))
  except Exception as e:
   state='launched' if launched else 'failed'

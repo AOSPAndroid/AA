@@ -7,7 +7,10 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
+from unittest.mock import patch
+import uuid
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import it_tools as it
@@ -157,6 +160,74 @@ function Get-ADUser {
                 self.assertTrue(exitfile.exists())
                 self.assertEqual(int(exitfile.read_text(encoding="utf-8-sig").strip()), expected)
                 self.assertTrue(log.exists())
+                self.assertTrue(it.read_install_activity(str(exitfile) + ".result.json")["settled"])
+
+
+@unittest.skipUnless(os.name == "nt" and POWERSHELL, "Job objects and process trees need Windows")
+class InstallerActivityTests(unittest.TestCase):
+    """The payload runs on this machine with fixture scripts; nothing is installed and no other PC is contacted."""
+
+    def run_payload(self, installer_text, limit=600, children=()):
+        folder = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, str(folder), True)  # A killed fixture process may still hold a file briefly.
+        for name, text in children:
+            (folder / name).write_text(text.replace("FOLDER", str(folder)), encoding="utf-8-sig")
+        installer = folder / "example_i.ps1"
+        installer.write_text(installer_text.replace("FOLDER", str(folder)), encoding="utf-8-sig")
+        log, exitfile, status, result = (folder / name for name in ("output.log", "exitcode.txt", "status.txt", "activity.json"))
+        payload = folder / "run.ps1"
+        payload.write_text(it.remote_payload(str(installer), str(log), str(exitfile), limit, str(status), str(result)), encoding="utf-8-sig")
+        started = time.monotonic()
+        subprocess.run([POWERSHELL, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", str(payload)],
+                       stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=120)
+        self.assertTrue(exitfile.exists(), log.read_text(encoding="utf-8-sig", errors="replace") if log.exists() else "no log")
+        return folder, it.read_install_activity(result), time.monotonic() - started, status
+
+    @staticmethod
+    def start(script):
+        return ("Start-Process -FilePath powershell.exe -WindowStyle Hidden -ArgumentList "
+                "@('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', '\"FOLDER\\%s\"')\n" % script)
+
+    def test_exit_record_waits_for_an_installer_the_script_started_and_left_running(self):
+        folder, activity, _, status = self.run_payload(self.start("child.ps1") + "exit 0", children=[
+            ("child.ps1", "Start-Sleep -Seconds 8; Set-Content -LiteralPath 'FOLDER\\installed.txt' -Value done")])
+        self.assertTrue((folder / "installed.txt").exists(), "The exit record was written before the installer finished")
+        self.assertTrue(activity["settled"])
+        self.assertEqual(activity["tracking"], "job object")
+        self.assertGreaterEqual(activity["waited_seconds"], 5)
+        self.assertIn("powershell.exe", status.read_text(encoding="utf-8-sig"))
+
+    def test_an_installer_whose_parent_already_exited_is_still_waited_for(self):
+        # Like an uninstaller that copies itself, starts the copy and exits at once.
+        folder, activity, _, _ = self.run_payload(self.start("handoff.ps1") + "exit 0", children=[
+            ("handoff.ps1", self.start("copy.ps1") + "exit 0"),
+            ("copy.ps1", "Start-Sleep -Seconds 8; Set-Content -LiteralPath 'FOLDER\\removed.txt' -Value done")])
+        self.assertTrue((folder / "removed.txt").exists(), "The exit record was written before the handed-off installer finished")
+        self.assertTrue(activity["settled"])
+
+    def test_activity_still_running_at_the_limit_is_reported_without_waiting_longer(self):
+        folder, activity, elapsed, _ = self.run_payload(self.start("slow.ps1") + "exit 0", limit=5, children=[
+            ("slow.ps1", "Set-Content -LiteralPath 'FOLDER\\slow.pid' -Value $PID; Start-Sleep -Seconds 90")])
+        try:
+            self.assertFalse(activity["settled"])
+            self.assertIn("powershell.exe", activity["still_running"])
+            self.assertLess(elapsed, 60)
+        finally:
+            pid = (folder / "slow.pid").read_text(encoding="utf-8-sig").strip()
+            subprocess.run(["taskkill.exe", "/F", "/PID", pid], capture_output=True)
+
+    def test_software_registered_by_the_installer_is_reported(self):
+        key = "HKCU:\\Software\\AxisTests\\" + uuid.uuid4().hex
+        self.addCleanup(subprocess.run, [POWERSHELL, "-NoProfile", "-NonInteractive", "-Command",
+                                         "Remove-Item -LiteralPath '%s' -Recurse -ErrorAction SilentlyContinue" % key], capture_output=True)
+        with patch.object(it, "UNINSTALL_KEYS", ((key + "\\Uninstall", "User"),)):
+            _, activity, _, _ = self.run_payload(
+                "New-Item -Path '%s\\Uninstall\\ExampleApp' -Force | Out-Null\n"
+                "New-ItemProperty -LiteralPath '%s\\Uninstall\\ExampleApp' -Name DisplayName -Value 'Example App' | Out-Null\n"
+                "New-ItemProperty -LiteralPath '%s\\Uninstall\\ExampleApp' -Name DisplayVersion -Value '2.1' | Out-Null\n"
+                "exit 0" % (key, key, key))
+        self.assertEqual(activity["software"]["added"], [{"name": "Example App", "version": "2.1"}])
+        self.assertIn("newly registered: Example App 2.1", it.describe_install_activity(activity))
 
 
 if __name__ == "__main__":

@@ -1,8 +1,9 @@
 """No remote Windows commands are executed by this suite."""
 from sqlite_fixture import isolate_backend_database
 isolate_backend_database()
-import base64,json,sqlite3,sys,tempfile,unittest,uuid
+import base64,json,re,sqlite3,sys,tempfile,unittest,uuid,zlib
 from pathlib import Path
+from install_fixture import finished
 from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 from backend import main as app
@@ -127,7 +128,7 @@ class Regression(unittest.TestCase):
   for code,expected in [(code,'launched') for code in ('0','3010','1641','1','1603','not written')]:
    j=uuid.uuid4().hex;app.jobs[j]={'state':'queued','events':[]};app.history_create(j,'TESTPC','Example','Install','setup_i.ps1','full')
    p=app.Deploy(computer='TESTPC',folder='Example',script='setup_i.ps1')
-   with patch.object(app.os.path,'isdir',return_value=True),patch.object(app,'copy_pkg',return_value=1),patch.object(app,'launch',return_value=(123,'log','exit')),patch.object(app,'monitor',return_value=(code,[])):
+   with patch.object(app.os.path,'isdir',return_value=True),patch.object(app,'copy_pkg',return_value=1),patch.object(app,'launch',return_value=(123,'log','exit')),patch.object(app,'monitor',side_effect=finished(code)):
     app.deploy_worker(j,p)
    self.assertEqual(app.jobs[j]['state'],expected)
    # No exit record is no outcome: the PC stays held until someone inspects it and acknowledges.
@@ -204,7 +205,11 @@ class Regression(unittest.TestCase):
   commands=[]
   with patch.object(app,'wmi_create',side_effect=lambda pc,cmd:commands.append(cmd) or 12):
    a=app.launch('TESTPC',r'C:\Temp\Packages\Example\setup_i.ps1','Example');b=app.launch('TESTPC',r'C:\Temp\Packages\Example\setup_i.ps1','Example')
-  self.assertNotEqual(a[1:],b[1:]);text=base64.b64decode(commands[0].split()[-1]).decode('utf-16le');self.assertIn('finally',text);self.assertIn('$LASTEXITCODE',text)
+  self.assertNotEqual(a[1:],b[1:])
+  # The payload is deflated inside a small bootstrap; the whole command stays well within Windows' 32K command-line limit.
+  bootstrap=base64.b64decode(commands[0].split()[-1]).decode('utf-16le');packed=re.search(r"FromBase64String\('([^']+)'\)",bootstrap).group(1)
+  text=zlib.decompress(base64.b64decode(packed),-15).decode('utf-8')
+  self.assertIn('finally',text);self.assertIn('$LASTEXITCODE',text);self.assertIn('Complete-InstallActivity',text);self.assertLess(len(commands[0]),16000)
  def test_busy_target_blocks_deployment(self):
   guard=app.target_lock('TESTPC');guard.acquire();j=uuid.uuid4().hex;app.jobs[j]={'state':'queued','events':[]}
   try:
@@ -212,7 +217,7 @@ class Regression(unittest.TestCase):
    self.assertEqual(app.jobs[j]['state'],'failed')
   finally:guard.release()
  def test_bulk_and_queue_terminal_states(self):
-  with patch.object(app.os.path,'isdir',return_value=True),patch.object(app,'copy_pkg',return_value=1),patch.object(app,'launch',return_value=(123,'log','exit')),patch.object(app,'monitor',return_value=('1603',[])):
+  with patch.object(app.os.path,'isdir',return_value=True),patch.object(app,'copy_pkg',return_value=1),patch.object(app,'launch',return_value=(123,'log','exit')),patch.object(app,'monitor',side_effect=finished('1603')):
    j=uuid.uuid4().hex;app.jobs[j]={'state':'queued','events':[]};app.bulk_worker(j,app.Bulk(computers=['TESTPC'],folder='Example',script='setup_i.ps1'))
    self.assertEqual(app.jobs[j]['state'],'complete');self.assertEqual(app.jobs[j]['results'][0]['completion'],'Launched')
    q=uuid.uuid4().hex;app.queue_jobs[q]={'items':[{'state':'waiting'}]};app._queue_worker(q,[app.QueueItem(computer='TESTPC',folder='Example',script='setup_i.ps1')]);self.assertEqual(app.queue_jobs[q]['state'],'complete');self.assertEqual(app.queue_jobs[q]['items'][0]['state'],'launched')

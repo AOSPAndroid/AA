@@ -13,4 +13,6 @@ Use for Atlas Workspace/Bulk deploy style package actions through Axis.
 5. Briefly state the change and let the tool present its approval. Atlas checks the target and runs only the approved script, refusing a changed or different staged copy; do not duplicate those checks routinely. Atlas and Axis share one per-PC guard. A blocked or unknown prior operation is not permission to bypass it.
 6. A returned job ID means queued; the job appears in Atlas's Deployments, marked Axis. Give the ID, then return unless asked to wait or verify. For a requested wait, call `it_job_status` with `wait_seconds=10` and read each job's `outcome`.
 
+A job finishes only after the script and the installers it started (and Windows Installer) finish. To verify an install, read `software_changes` first: added, removed or version-changed registrations.
+
 Report the outcome field: "launched" with an exit code means the script ran (0 is not proof the application works; 3010/1641 needs a restart, never an automatic one); "complete" is a finished copy-only run; "unknown" means no result was read. Never automatically retry an unknown outcome; use the job-recovery workflow. Atlas's Retry, Queue and deployment kits are UI actions; do not claim to have used them.

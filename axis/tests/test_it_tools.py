@@ -1,4 +1,5 @@
 """No live Windows targets: exercise approvals, job outcomes and context retention."""
+import itertools
 import json
 import os
 from pathlib import Path
@@ -7,12 +8,17 @@ import sys
 import tempfile
 import time
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import agent
 import it_tools as it
 import setup_local
+
+
+# The target's record when everything the installer script started has finished.
+FINISHED = {"settled": True, "waited_seconds": 2, "still_running": [], "left_running": [], "windows_installer_busy": False,
+            "tracking": "job object", "software": {"added": [], "removed": [], "changed": []}}
 
 
 class ITTests(unittest.TestCase):
@@ -341,7 +347,8 @@ class ITTests(unittest.TestCase):
         self.assertIn("unresolved Atlas operation", result["message"])
         ps.assert_not_called()
 
-    def deploy_simulated(self, exit_code=0, mode="full", robocopy=1, mutate=False, launch_error=False):
+    def deploy_simulated(self, exit_code=0, mode="full", robocopy=1, mutate=False, launch_error=False, activity=FINISHED,
+                         status=None, event=None, clock=None):
         plan = self.plan(mode)
         if mutate:
             (self.package / "app_i.ps1").write_text("changed")
@@ -358,15 +365,71 @@ class ITTests(unittest.TestCase):
             if launch_error:
                 raise RuntimeError("Transport disconnected after Create")
             jobfolder = local_share("PC-1", it.REMOTE_ROOT + "\\Jobs\\" + plan["id"])
-            if exit_code is not None:
+            if activity is not None:
+                (jobfolder / "activity.json").write_text(json.dumps(activity))
+            if status is not None:  # The script has exited and the target is still waiting for its installers.
+                (jobfolder / "status.txt").write_text(status, encoding="utf-8-sig")
+            elif exit_code is not None:
                 (jobfolder / "exitcode.txt").write_text(str(exit_code))
                 (jobfolder / "output.log").write_text("Installer output\n")
             return {"pid": 123}
+        def sleep(seconds):  # The installers finish while the worker waits.
+            jobfolder = local_share("PC-1", it.REMOTE_ROOT + "\\Jobs\\" + plan["id"])
+            (jobfolder / "exitcode.txt").write_text(str(exit_code))
         self.backend.ps = Mock(side_effect=ps)
-        clock = iter((0, 100, 101, 102))
-        with patch.object(it, "share", side_effect=local_share), patch.object(it.subprocess, "run", return_value=subprocess.CompletedProcess([], robocopy, b"copy", b"")) as run, patch.object(it.time, "monotonic", side_effect=lambda: next(clock)):
-            result = self.backend.deploy_one(plan, "PC-1", Mock())
+        clock = clock or iter((0, 100, 101, 102))
+        with patch.object(it, "share", side_effect=local_share), patch.object(it.subprocess, "run", return_value=subprocess.CompletedProcess([], robocopy, b"copy", b"")) as run, patch.object(it.time, "monotonic", side_effect=lambda: next(clock)), patch.object(it.time, "sleep", side_effect=sleep):
+            result = self.backend.deploy_one(plan, "PC-1", event or Mock())
         return result, run
+
+    def clear_remote_jobs(self):
+        jobdir = self.root / "remote" / "Temp" / "LocalAgent" / "Jobs"
+        if jobdir.exists():
+            import shutil
+            shutil.rmtree(jobdir)
+
+    def test_installers_still_running_after_the_script_are_waited_for_and_reported(self):
+        event = Mock()
+        settled = {"settled": True, "waited_seconds": 95, "still_running": [], "left_running": [], "windows_installer_busy": False,
+                   "tracking": "job object", "software": {"added": [{"name": "Example App", "version": "2.1"}], "removed": [], "changed": []}}
+        result, _ = self.deploy_simulated(activity=settled, status="Script exited with code 0; waiting for setup.exe to finish",
+                                          event=event, clock=itertools.count())
+        self.assertIn(call("PC-1", "Script exited with code 0; waiting for setup.exe to finish"), event.call_args_list)
+        self.assertEqual(result["state"], "script_succeeded")
+        self.assertFalse(result["application_verified"])
+        self.assertIn("installer activity finished after 1 min 35 s", result["message"])
+        self.assertIn("newly registered: Example App 2.1", result["message"])
+        self.assertIn("application health still needs verification", result["message"])
+        self.assertEqual(result["software_changes"]["added"], [{"name": "Example App", "version": "2.1"}])
+        self.assertTrue(result["installer_activity"]["settled"])
+
+    def test_installers_still_running_when_monitoring_stops_leave_an_unknown_outcome(self):
+        running = {"settled": False, "waited_seconds": 3400, "still_running": ["setup.exe"], "left_running": [],
+                   "windows_installer_busy": True, "tracking": "job object", "software": {"added": [], "removed": [], "changed": []}}
+        result, _ = self.deploy_simulated(activity=running)
+        self.assertEqual(result["state"], "unknown")
+        self.assertTrue(result["inspect_before_retry"])
+        self.assertEqual(result["exit_code"], 0)
+        self.assertIn("still running when monitoring stopped (setup.exe, Windows Installer)", result["message"])
+
+    def test_completion_not_confirmed_by_a_job_object_record_is_unknown(self):
+        for activity, reason in ((None, "no installer-activity record was written"),
+                                 (dict(FINISHED, tracking="process tree"), "could not track every process the script started")):
+            with self.subTest(reason=reason):
+                self.clear_remote_jobs()
+                result, _ = self.deploy_simulated(activity=activity)
+                self.assertEqual(result["state"], "unknown")
+                self.assertTrue(result["inspect_before_retry"])
+                self.assertIn(reason, result["message"])
+
+    def test_install_summary_names_left_running_apps_and_unchanged_software(self):
+        self.assertEqual(it.describe_install_activity({"settled": True, "waited_seconds": 3, "software": {}}),
+                         "no change in registered software")
+        text = it.describe_install_activity({"settled": True, "waited_seconds": 70, "left_running": ["teams.exe"], "software": {
+            "removed": [{"name": "Old App", "version": "1"}], "changed": [{"name": "Tool", "from": "1.0", "to": "1.1"}]}})
+        self.assertEqual(text, "installer activity finished after 1 min 10 s; left running: teams.exe; "
+                               "no longer registered: Old App; version changed: Tool 1.0 -> 1.1")
+        self.assertEqual(it.describe_install_activity(None), "")
 
     def test_copy_accepts_robocopy_success_codes_without_launch(self):
         for code in (0, 1, 3, 7):
