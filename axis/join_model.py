@@ -50,7 +50,7 @@ def problems(name, size, entries):
 
 
 def missing_parts(model, entries):
-    """[(part name, what is wrong with files that look like it)] for each part that is not usable as found."""
+    """[(part name, what is wrong with files that look like it, its release)] for each part not usable as found."""
     missing = []
     for f in model["files"]:
         if not f["parts"] or start.file_status(f)[0] == "ready":
@@ -58,7 +58,7 @@ def missing_parts(model, entries):
         view = start.parts_view(f)
         found, joining = start.parts_status(view)
         if not joining:
-            missing += [(name, problems(name, size, entries))
+            missing += [(name, problems(name, size, entries), view["release"])
                         for (name, size, _), path in zip(start.part_list(view), found) if not path]
     return missing
 
@@ -67,7 +67,7 @@ def downloaded(model, entries):
     """Whether any part of this model, usable or not, is in a searched folder."""
     total = sum(len(start.parts_view(f)["parts"]) for f in model["files"])
     missing = missing_parts(model, entries)
-    return len(missing) < total or any(found for _, found in missing)
+    return len(missing) < total or any(found for _, found, _ in missing)
 
 
 def report(model, entries):
@@ -79,7 +79,8 @@ def report(model, entries):
         if run:
             start.log("  " + run[0] + (" to " + run[-1].rsplit(".", 1)[1] if len(run) > 1 else ""))
             del run[:]
-    for name, found in missing_parts(model, entries):
+    missing = missing_parts(model, entries)
+    for name, found, _ in missing:
         if not found and run and run[-1].rsplit(".", 1)[0] == name.rsplit(".", 1)[0]:
             run.append(name)
             continue
@@ -91,7 +92,12 @@ def report(model, entries):
         else:
             run.append(name)
     flush()
-    start.log("\nDownload them from %s" % model["release"])
+    # A model that shares a file with another lists that file's parts under the other model's release.
+    releases = []
+    for _, _, release in missing:
+        if release not in releases:
+            releases.append(release)
+    start.log("\nDownload them from %s" % " and ".join(releases or [model["release"]]))
     start.log("Looked in:")
     for folder in start.SEARCH_DIRS:
         start.log("  " + folder)

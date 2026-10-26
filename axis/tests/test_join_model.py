@@ -85,6 +85,23 @@ class JoinModelTests(unittest.TestCase):
         self.assertIn("alpha.gguf.part002 is damaged", self.output.getvalue())
         self.assertFalse((self.here / "alpha.gguf").exists())
 
+    def test_a_shared_file_points_at_the_release_that_has_its_parts(self):
+        def part(name, data):
+            return {"file": name, "size": len(data), "sha256": hashlib.sha256(data).hexdigest(),
+                    "parts": [hashlib.sha256(data[i:i + 4]).hexdigest() for i in range(0, len(data), 4)]}
+        shared = part("base-00002-of-00002.gguf", b"shared table")
+        catalog = [{"key": "base", "name": "Base", "tag": "base", "note": "Test", "files": [part("base-00001-of-00002.gguf", b"base")]
+                    + [shared]},
+                   {"key": "variant", "name": "Variant", "tag": "variant", "note": "Test",
+                    "files": [part("variant-00001-of-00002.gguf", b"vari"), {"file": "variant-00002-of-00002.gguf", "same_as": shared["file"]}]}]
+        (self.here / "models.json").write_text(json.dumps(catalog), encoding="utf-8")
+        (self.downloads / "variant-00001-of-00002.gguf.part001").write_bytes(b"vari")
+        with patch.object(start, "MODELS", start.load_models()):
+            self.assertEqual(join_model.main(["--model", "variant"]), 1)
+        report = self.output.getvalue()
+        self.assertIn("base-00002-of-00002.gguf.part001 to part003", report)
+        self.assertIn("Download them from " + start.RELEASES + "base\n", report)
+
     def test_nothing_to_join(self):
         self.assertEqual(join_model.main([]), 1)
         self.assertIn("No model parts found", self.output.getvalue())
