@@ -632,7 +632,7 @@ def database_freshness():
 
 def deployment_details(job_id,job):
     targets=job.get('targets') or [r.get('machine','') for r in job.get('results',[]) if r.get('machine')]
-    details={'target':job.get('target',''),'package':job.get('package',''),'action':job.get('action',''),'script':job.get('script',''),'retry':not targets}
+    details={'target':job.get('target',''),'package':job.get('package',''),'action':job.get('action',''),'script':job.get('script',''),'retry':not targets,'requested_by':job.get('requested_by','')}
     if targets:details['target']=', '.join(targets)
     # Older persisted jobs retain their original selection in deployment history.
     if not details['package']:

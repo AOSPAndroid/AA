@@ -24,7 +24,8 @@ from pydantic import BaseModel, ConfigDict, Field, StrictBool, ValidationError
 import clipboard_history
 
 from axis.agent import Agent, MEMORY_FILE, change_memory, memory_entries, read_memory, without_entry, write_audit
-from axis.it_tools import ITTools, read_json, write_json
+from axis.it_tools import read_json, write_json
+from backend.axis_operations import AtlasOperations
 from backend.axis_sources import AtlasSources, SourceUnavailable
 
 MODEL_URL = "http://127.0.0.1:8080/v1"
@@ -496,6 +497,10 @@ class Sessions:
         return dict(model_status(), running=running, active_sessions=len(self.sessions),
                     database_available=Path(self.backend.MASTER_DB).is_file(), approvals="ask")
 
+    def operations(self, confirm):
+        """Axis's Windows tools on this Atlas's operations; earlier Axis job files stay readable."""
+        return AtlasOperations(self.backend, confirm, legacy_state=self.state)
+
     def _saved_id(self, folder, prefix):
         if not re.fullmatch(r"[a-f0-9]{1,32}", prefix or ""):
             raise ValueError("Use a job/output ID shown by Axis.")
@@ -528,10 +533,10 @@ class Sessions:
             ui.assistant(text + "\n\n(" + str(path) + ")" if text else
                          "Nothing remembered yet. Ask Axis to remember a fact; saving it needs your approval.")
         elif name == "/jobs" and len(args) <= 1:
-            identifier = self._saved_id("jobs", args[0]) if args else None
-            tool = ITTools(self.state, str(self.backend.REPO))
+            tool = self.operations(lambda action: False)  # Reading only; acknowledging needs the chat's approval.
+            identifier = tool.find_job(args[0]) if args else None
             ui.tool_start("it_job_status", {"job_id": identifier})
-            ui.tool_result("it_job_status", json.dumps(tool.it_job_status(identifier), ensure_ascii=False), 0)
+            ui.tool_result("it_job_status", json.dumps(tool.it_job_status(identifier), ensure_ascii=False, default=str), 0)
         elif name == "/output" and 1 <= len(args) <= 2:
             identifier = self._saved_id("outputs", args[0])
             offset = int(args[1]) if len(args) == 2 else 0
@@ -583,7 +588,7 @@ class Sessions:
                                              ctx=settings["ctx"], notes=str(self.root / "axis" / "notes"),
                                              package_repo=str(self.backend.REPO), state_dir=str(self.state), ui=ui,
                                              sampling=settings["sampling"], atlas_db=str(self.backend.MASTER_DB),
-                                             sources=self.sources)
+                                             sources=self.sources, operations=self.operations)
                 session.configuration = configuration
                 if session.saved_messages:
                     if session.saved_configuration == list(configuration):

@@ -59,8 +59,12 @@ class AxisAPI(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         root = Path(self.temp.name)
+        # Atlas's operations as Axis's Windows tools read them; nothing here runs.
         self.backend = SimpleNamespace(ROOT=root, MASTER_DB=root / "test.db", REPO=root / "packages",
-                                       validate_pc=self.validate_pc)
+                                       validate_pc=self.validate_pc, jobs={}, lock=threading.RLock(),
+                                       recent_deployments=lambda: {"deployments": []},
+                                       reboot_monitor=SimpleNamespace(snapshot=lambda: {"reboots": []}),
+                                       job_service=SimpleNamespace(unresolved=set()))
         self.backend.MASTER_DB.touch()
         self.app = FastAPI()
 
@@ -128,6 +132,9 @@ class AxisAPI(unittest.TestCase):
         self.assertEqual(agent.kwargs["atlas_db"], str(self.backend.MASTER_DB))
         self.assertEqual(agent.kwargs["package_repo"], str(self.backend.REPO))
         self.assertEqual(agent.kwargs["state_dir"], str(self.backend.ROOT / "data" / "axis" / "state"))
+        operations = agent.kwargs["operations"](lambda action: False)  # Windows work runs on Atlas's operations.
+        self.assertIsInstance(operations, api.AtlasOperations)
+        self.assertIs(operations.wmi, self.backend)
         self.assertEqual(agent.messages, ["one", "two"])
         self.post(message="separate")
         self.assertEqual(len(FakeAgent.instances), 2)
@@ -208,7 +215,8 @@ class AxisAPI(unittest.TestCase):
             rows = events(self.post(message="/help"))
             self.assertIn("/jobs", rows[1]["text"])
             rows = events(self.post(message="/jobs"))
-            self.assertEqual(json.loads(next(e["result"] for e in rows if e["type"] == "tool_result")), {"jobs": []})
+            self.assertEqual(json.loads(next(e["result"] for e in rows if e["type"] == "tool_result")),
+                             {"jobs": [], "unresolved_targets": []})
             rows = events(self.post(message="/reset", session_id=identifier))
             self.assertIn("Conversation cleared", rows[1]["text"])
         self.assertIsNone(self.sessions.get(identifier).agent)

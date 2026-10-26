@@ -74,7 +74,16 @@ This session is {elevation}; remote operations use your account's rights. Report
 - Browsing reads public HTTP(S) pages without login, browser cookies or form submissions. Firecrawl supports JavaScript and public PDFs; basic browsing supports HTML/text. Report blocked, incomplete or unsupported reads and any fallback shown by the tool. Never claim clicks, sign-ins or form submissions.
 
 ## Windows tools
-- Prefer inspect_computer, find_packages, deploy_package and computer_action for supported operations. They work without Atlas running. Never bypass a blocked structured operation with run_command.
+{windows_tools}
+
+## PowerShell fallback
+- Commands must be non-interactive with bounded output: select needed properties and use -First or -MaxEvents. Use WMI for remote PCs, not PsExec. Use Restart-Computer for reboots, not Win32Shutdown.
+- Never stop RpcSs, DcomLaunch, RpcEptMapper, Winmgmt, WinRM, LanmanServer or EventLog. Change service startup types only when asked. Never end System, smss, csrss, wininit, services, lsass or winlogon. Re-read process identity immediately before termination.
+- Active Directory is read-only unless a change is requested. Use exact identities and stop to clarify multiple matches.
+"""
+
+# The Windows tools section for Axis's own engine; inside AA, Atlas's operations supply theirs.
+WINDOWS_TOOLS = """- Prefer inspect_computer, find_packages, deploy_package and computer_action for supported operations. They work without Atlas running. Never bypass a blocked structured operation with run_command.
 - Package repository: {package_repo}. State and job logs: {state_dir}.
 - Resolve the exact package and action-specific script with find_packages before deployment. A unique search match can include its scripts; reuse them without a second discovery call. Multiple scripts still require an unambiguous selection. Use only explicit PCs supplied by the user or found in notes/directory results.
 - If several versions match and neither the user nor a known runbook selects one, immediately ask one short version question with a few exact returned names. Do not inspect targets, browse repository folders or read scripts to guess the preferred version. Results are sorted by name, not version/date, and may be paginated; list order does not establish the latest version.
@@ -82,13 +91,7 @@ This session is {elevation}; remote operations use your account's rights. Report
 - Service/process changes require a recent inspect_computer snapshot. If identity changed or the snapshot expired, inspect again. A tool result must explicitly support a success claim; distinguish accepted, verified, failed and unknown. Report unsuccessful exit codes/ReturnValue honestly, using the tool's documented exit-code meanings.
 - A deployment or reboot job ID means queued, not complete. Report the job ID and /jobs ID, then return unless the user asked to wait or verify. When waiting, use it_job_status with wait_seconds=10 instead of rapid polls. Read each target's final result before reporting completion.
 - Deployment results distinguish copied, script_succeeded, reboot_required, failed and unknown. Installer exit 0 verifies script execution, not application health; check the application before claiming it works. Only a reboot_verified result verifies restart. Never automatically retry an unknown outcome: inspect the target and log first. Acknowledging an unknown job only releases its target, without retrying or cancelling remote work.
-- Full tool results are saved. Read omitted sections only when needed, using read_tool_output with the returned output_id and character offset.
-
-## PowerShell fallback
-- Commands must be non-interactive with bounded output: select needed properties and use -First or -MaxEvents. Use WMI for remote PCs, not PsExec. Use Restart-Computer for reboots, not Win32Shutdown.
-- Never stop RpcSs, DcomLaunch, RpcEptMapper, Winmgmt, WinRM, LanmanServer or EventLog. Change service startup types only when asked. Never end System, smss, csrss, wininit, services, lsass or winlogon. Re-read process identity immediately before termination.
-- Active Directory is read-only unless a change is requested. Use exact identities and stop to clarify multiple matches.
-"""
+- Full tool results are saved. Read omitted sections only when needed, using read_tool_output with the returned output_id and character offset."""
 
 # Collected once at startup and put in the system prompt.
 FACTS_SCRIPT = r"""
@@ -254,7 +257,7 @@ def write_audit(state_dir, interface, decision, action):
 class Agent:
     def __init__(self, base_url, model, workdir, auto_approve, think, ctx=16384, notes=None,
                  package_repo=None, state_dir=None, max_steps=MAX_STEPS, deployment_timeout=3600, ui=None,
-                 web_enabled=True, sampling=None, atlas_db=None, memory_file=None, sources=None):
+                 web_enabled=True, sampling=None, atlas_db=None, memory_file=None, sources=None, operations=None):
         self.ui = ui or TerminalUI()
         self.base_url = base_url.rstrip("/")
         self.notes_dir = os.path.realpath(notes or os.path.join(os.path.dirname(os.path.abspath(__file__)), "notes"))
@@ -297,8 +300,15 @@ class Agent:
         # A configured database that is missing still guards: its read error refuses the change.
         seed = IN_AA and self.atlas.path is not None and os.path.realpath(str(self.atlas.path)) == \
             os.path.realpath(os.path.join(AA_ROOT, "office_atlas.db"))
-        self.it = ITTools(self.state_dir, package_repo, self.confirm, deployment_timeout,
-                          atlas_db=self.atlas.path, atlas_history=IN_AA and not seed)
+        if operations is not None:
+            # Inside AA: the same tool names run Atlas's own operations instead of Axis's engine.
+            self.it = operations(self.confirm)
+            self.tools = [t for t in self.tools if t["function"]["name"] not in IT_TOOL_NAMES] + list(self.it.TOOLS)
+            self.history_budget = max(0, int((ctx - self.max_reply) * 3) - len(json.dumps(self.tools)))
+        else:
+            self.it = ITTools(self.state_dir, package_repo, self.confirm, deployment_timeout,
+                              atlas_db=self.atlas.path, atlas_history=IN_AA and not seed)
+        self.it_names = set(getattr(self.it, "NAMES", IT_TOOL_NAMES))
         # The server is local; never route it through a system proxy.
         self.http = urllib.request.build_opener(urllib.request.ProxyHandler({}))
         try:
@@ -330,8 +340,9 @@ class Agent:
             web_mode=("Public web search and page reading are available when the task needs them. Provider: %s." % self.web.status
                       if self.web is not None else
                       "Web browsing is disabled for this session. Do not browse using other tools or shell commands."),
-            package_repo=str(self.it.repository) if self.it.repository else "not configured (use --package-repo)",
-            state_dir=self.state_dir,
+            windows_tools=getattr(self.it, "guidance", WINDOWS_TOOLS).format(
+                package_repo=str(self.it.repository) if self.it.repository else "not configured (use --package-repo)",
+                state_dir=self.state_dir),
             elevation="elevated (administrator rights)" if self.elevated else "not elevated (standard user rights)")
         self.messages = [{"role": "system", "content": system}]
 
@@ -818,7 +829,7 @@ class Agent:
                         return ("User declined. This conversation holds private Live Inbox or clipboard text, so each web "
                                 "lookup needs approval; keep queries generic or answer without the web.")
                 return self.web.call(name, args)
-            if name in IT_TOOL_NAMES:
+            if name in self.it_names:
                 # A host outside Atlas, such as text.attacker.example, would carry private text out through DNS.
                 destination = self.private_in_context() and self.outside_destination(name, args)
                 if destination and not self.confirm(
