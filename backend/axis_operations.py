@@ -48,7 +48,7 @@ TOOLS = [
     _tool("find_packages", "Search Atlas's package repository. A single match includes its action-specific scripts; reuse them without another lookup. Multiple matches require choosing an exact package. Supply package and offset for more script pages. Never guess a package or script.", {
         "query": STRING, "package": STRING, "action": {"type": "string", "enum": ACTIONS},
         "offset": {"type": "integer", "minimum": 0}}),
-    _tool("deploy_package", "After approval, start Atlas deployments to explicit PCs: one Atlas job per PC, shown in Atlas's Deployments and history. Atlas checks the target, copies the package with Robocopy, checks the staged script is the approved one, launches it and records its exit code. Returns queued job IDs, NOT installation success. Never retry an unknown outcome automatically.", {
+    _tool("deploy_package", "After approval, start Atlas deployments to explicit PCs: one Atlas job per PC, shown in Atlas's Deployments and history. Atlas checks the target, copies the package with Robocopy, checks the staged script is the approved one, launches it, waits for it and the installers it starts (and Windows Installer) to finish, then records its exit code and registered-software changes. Returns queued job IDs, NOT installation success. Never retry an unknown outcome automatically.", {
         "computers": {"type": "array", "items": STRING, "minItems": 1, "maxItems": MAX_TARGETS},
         "package": STRING, "script": STRING, "action": {"type": "string", "enum": ACTIONS},
         "mode": {"type": "string", "enum": ["full", "copy", "execute"]}},
@@ -474,6 +474,13 @@ class AtlasOperations:
                   "events": [e.get("message") for e in events[-20:]], "exit_code": exit_codes[-1] if exit_codes else None,
                   "log_tail": log[-40:] if isinstance(log, list) else log,
                   "requested_by": job.get("requested_by", "Atlas")}
+        install = next((e["install"] for e in reversed(events) if isinstance(e.get("install"), dict)), None)
+        if install:
+            # What the target waited for after the script returned, and what registered software changed.
+            result["installer_activity"] = {key: install.get(key) for key in (
+                "settled", "waited_seconds", "still_running", "left_running", "windows_installer_busy")}
+            if "software" in install:
+                result["software_changes"] = install["software"]
         if job.get("recovery_required") or job.get("state") in ("unknown", "interrupted"):
             result["recovery_required"] = not job.get("recovery_acknowledged")
         result["outcome"] = outcome(result)

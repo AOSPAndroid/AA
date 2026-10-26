@@ -33,6 +33,8 @@ The download includes the upstream Atlas seed data. Configure `ATLAS_DB_PATH` or
 Keep existing models, configuration and runtime data when updating. No model
 weights or API credentials are bundled.
 
+Deployments now wait for the installers a script starts, including ones it hands off before returning, and for Windows Installer, before reporting. The deployment shows what it is waiting for and then lists the software that was newly registered, removed or updated. Three more Qwen3.8 models can be selected in Axis: `35b-distill`, `27b-iq3` and `27b-abliterated`.
+
 Use **Stop AA.bat** to stop AA's local services. Accepted remote deployment jobs
 are independent of the browser chat and must be checked before retrying.
 

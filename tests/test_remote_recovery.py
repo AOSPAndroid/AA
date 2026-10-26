@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 from fastapi import HTTPException
 from backend import main
+from install_fixture import finished
 from job_service import JobService
 
 
@@ -59,7 +60,7 @@ class RemoteRecovery(unittest.TestCase):
             stack.enter_context(patch.object(main.os.path, 'isdir', return_value=True))
             stack.enter_context(patch.object(main, 'copy_pkg', return_value=1))
             stack.enter_context(patch.object(main, 'launch', return_value=(4321, 'fixture.log', 'fixture.exit')))
-            stack.enter_context(patch.object(main, 'monitor', return_value=('0', [])))
+            stack.enter_context(patch.object(main, 'monitor', side_effect=finished('0')))
             service.jobs['fixture'] = {'state': 'queued', 'events': []}
             request = main.Deploy(computer='FICT-PC', folder='FictionalPackage', script='setup_i.ps1')
             main.history_create('fixture', request.computer, request.folder, 'Install', request.script, 'full')

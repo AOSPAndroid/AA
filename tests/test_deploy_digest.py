@@ -9,6 +9,7 @@ import unittest
 from unittest.mock import patch
 
 from backend import main
+from install_fixture import finished
 from job_service import JobService
 
 
@@ -37,7 +38,7 @@ class DeploymentDigest(unittest.TestCase):
             stack.enter_context(patch.object(main.os.path, 'isdir', return_value=True))
             copied = stack.enter_context(patch.object(main, 'copy_pkg', side_effect=copy))
             launched = stack.enter_context(patch.object(main, 'launch', return_value=(4321, 'run.log', 'run.exit')))
-            stack.enter_context(patch.object(main, 'monitor', return_value=('0', ['done'])))
+            stack.enter_context(patch.object(main, 'monitor', side_effect=finished('0', ['done'])))
             if mode == 'execute':  # Whatever already sits in the staging folder on the PC.
                 Path(unc('FICT-PC', main.REMOTE_ROOT + r'\Example')).mkdir(parents=True)
                 (Path(unc('FICT-PC', main.REMOTE_ROOT + r'\Example')) / 'setup_i.ps1').write_bytes(staged)
