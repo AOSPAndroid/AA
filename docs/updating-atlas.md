@@ -7,7 +7,7 @@ Use the [AA Windows download](https://github.com/AOSPAndroid/AA/releases/downloa
 3. Run **Stop AA.bat** from the old AA folder and check that shutdown succeeded before copying runtime files.
 4. Extract the new ZIP. Copy your `config.json` and reuse your full GGUF model in the new `AA` or `AA/axis` folder. Model weights do not need to be downloaded again.
 5. Set `database_folder` in the new `config.json` to the **existing runtime database folder**, using its full path. This also keeps Knowledge Base and other folder-based data together. `ATLAS_DB_PATH`, if set, overrides the main database path; check that it still names the intended file. Keep the old runtime folder at that path.
-6. If you want saved Axis jobs and tool outputs, copy `data/axis` from the stopped installation. Do not copy `model-process.json` or process lock files. Chat conversations are held in memory and do not survive a restart.
+6. To retain Axis jobs, tool outputs, memory, saved chats and custom skills, copy their folders under `data/axis` from the stopped installation (`state`, `workspace`, `chats` and `skills`). Do not copy `model-process.json` or process lock files.
 7. Run **Start AA.bat** in the new folder under your DSK account. Check familiar people, desks, packages and Knowledge Base records, then open Axis chat. Keep the previous folder and backups until these checks succeed.
 
 Do not copy `data/server.json` or `data/viewer-server.json` into the new installation. They identify processes owned by the old folder; the new launcher creates its own records. Preserve older installation-level `backups/` directories too. If you choose to move runtime data instead of reusing its folder, do so only after shutdown and update its configured path.

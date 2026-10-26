@@ -226,6 +226,22 @@ class AxisAPI(unittest.TestCase):
         self.assertIn("- Prefer PC1 for tests", text)
         self.assertIn(str(memory), text)
 
+    def test_skills_commands_read_bundled_and_custom_guides_without_model(self):
+        custom = Path(self.temp.name) / "data" / "axis" / "skills" / "printer-check" / "SKILL.md"
+        custom.parent.mkdir(parents=True)
+        custom.write_text("---\nname: printer-check\ndescription: Local printer procedure.\n---\nInspect the requested PC only.\n", encoding="utf-8")
+        with patch.object(api, "model_status", side_effect=AssertionError("No inference for slash commands")):
+            rows = events(self.post(message="/skills"))
+            self.assertIn("pc-health", rows[1]["text"])
+            self.assertIn("printer-check", rows[1]["text"])
+            rows = events(self.post(message="/skills printer-check"))
+            self.assertIn("Inspect the requested PC only.", rows[1]["text"])
+            rows = events(self.post(message="/skills ../outside"))
+            self.assertEqual(rows[-2]["type"], "error")
+        self.assertEqual(FakeAgent.instances, [])
+        self.post(message="Apply printer-check")
+        self.assertEqual(FakeAgent.instances[-1].kwargs["skills"], str(custom.parents[1]))
+
     def test_all_mutations_require_token_and_reject_unsupported_settings(self):
         for path in ("chat", "approve", "cancel", "reset", "resume", "memory", "memory/forget"):
             response = self.client.post("/api/axis/" + path, json={})

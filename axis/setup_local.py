@@ -238,6 +238,18 @@ def setup_agent(root):
             url = AGENT_URL if name == "agent.py" else AGENT_URL.rsplit("/", 1)[0] + "/" + name
             with open(dest, "wb") as f:
                 f.write(fetch(url))
+    # AA's local agent has a skill library; the standalone upstream download may not.
+    # Copy matching local files together instead of fetching a new module from the other repository.
+    source = os.path.dirname(os.path.abspath(__file__))
+    library = os.path.join(source, "skill_library.py")
+    if os.path.isfile(library):
+        dest = os.path.join(root, "skill_library.py")
+        if os.path.abspath(library) != os.path.abspath(dest):
+            shutil.copyfile(library, dest)
+        skills = os.path.join(source, "skills")
+        dest = os.path.join(root, "skills")
+        if os.path.isdir(skills) and os.path.abspath(skills) != os.path.abspath(dest):
+            shutil.copytree(skills, dest, dirs_exist_ok=True)
     return os.path.join(root, "agent.py")
 
 
