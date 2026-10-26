@@ -31,7 +31,8 @@ def in_aa():
 
 def load_models():
     """Models in menu order. "parts" are the SHA-256 of each 1.9 GB release part. A model in several
-    files lists them under "files"; llama-server is given the first and finds the rest next to it."""
+    files lists them under "files"; llama-server is given the first and finds the rest next to it.
+    A file with "same_as" is byte-identical to another model's file: it reuses that file and its parts."""
     with open(os.path.join(HERE, "models.json")) as f:
         models = {}
         for m in json.load(f):
@@ -40,7 +41,18 @@ def load_models():
             m["files"] = [dict(one, name=m["name"], release=m["release"]) for one in files]
             m.setdefault("file", m["files"][0]["file"])
             models[m["key"]] = m
-        return models
+    by_name = {f["file"]: f for m in models.values() for f in m["files"] if "same_as" not in f}
+    for m in models.values():
+        for f in m["files"]:
+            if "same_as" in f:
+                source = by_name[f["same_as"]]
+                f.update({k: source[k] for k in ("size", "sha256", "parts", "release")}, source=f["same_as"])
+    return models
+
+
+def parts_view(f):
+    """The file whose parts and joined copy provide f: its source when it is shared, otherwise f."""
+    return dict(f, file=f["source"]) if f.get("source") else f
 
 
 MODELS = load_models()
@@ -158,12 +170,12 @@ def parts_status(m):
 
 def file_status(f):
     """For one model file: ("ready", path), ("parts", None) when joinable, or ("partial", parts found)."""
-    path = find_file(f["file"], f["size"])
+    path = find_file(f["file"], f["size"]) or (f.get("source") and find_file(f["source"], f["size"]))
     if path:
         return "ready", path
     if not f["parts"]:
         return None, 0  # parts not published yet
-    found, joining = parts_status(f)
+    found, joining = parts_status(parts_view(f))
     if joining or all(found):
         return "parts", None
     return "partial", sum(1 for p in found if p)
@@ -184,19 +196,41 @@ def model_status(m):
 
 def report_missing(m):
     log("%s is not ready yet. Missing or still downloading:" % m["name"])
+    releases = []
     for f in m["files"]:
-        if find_file(f["file"], f["size"]):
+        if file_status(f)[0] == "ready":
             continue
+        f = parts_view(f)
         found, joining = parts_status(f)
         if joining:
             continue
-        for (name, _, _), p in zip(part_list(f), found):
-            if not p:
-                log("  " + name)
-    log("\nDownload them from %s" % m["release"])
+        missing = [name for (name, _, _), p in zip(part_list(f), found) if not p]
+        for name in missing:
+            log("  " + name)
+        if missing and f["release"] not in releases:
+            releases.append(f["release"])
+    log("\nDownload them from %s" % " and ".join(releases or [m["release"]]))
     log("(wait until none ends in .crdownload). Looked in:")
     for d in SEARCH_DIRS:
         log("  " + d)
+
+
+def materialize(f):
+    """Path of one model file: found, joined from its parts, or linked from the identical file it shares."""
+    path = find_file(f["file"], f["size"])
+    if path:
+        return path
+    if not f.get("source"):
+        return join_parts(f)
+    source = find_file(f["source"], f["size"]) or join_parts(parts_view(f))
+    path = os.path.join(os.path.dirname(source), f["file"])
+    try:
+        os.link(source, path)  # the same bytes under a second name; no extra disk space
+    except OSError:
+        log("Copying %s to %s (a link was not possible here)..." % (f["source"], f["file"]))
+        shutil.copyfile(source, path + ".copying")
+        os.replace(path + ".copying", path)
+    return path
 
 
 def same_folder(paths):
@@ -251,7 +285,7 @@ def prepare_model(choice=None):
         key = usable[0] if len(usable) == 1 else choose(usable)
     state, _ = status[key]
     if state in ("ready", "parts"):
-        paths = [find_file(f["file"], f["size"]) or join_parts(f) for f in MODELS[key]["files"]]
+        paths = [materialize(f) for f in MODELS[key]["files"]]
         return key, same_folder(paths)
     if all(f["parts"] for f in MODELS[key]["files"]):
         report_missing(MODELS[key])

@@ -23,6 +23,11 @@ triage, job recovery and Knowledge Base drafts. Use `/skills` to list them or
 `/skills pc-health` to read a guide. Custom guides live in `data/axis/skills`;
 see `docs/axis-skills.md`. Skills retain the existing approvals and PC guards.
 
+This release also includes the Live Inbox first-click expansion fix and the
+shared Axis model/launcher improvements: `flash-abliterated`, verified model
+parts and reuse of the original Flash model's identical second GGUF. Select a
+model at AA startup; the browser and terminal then use that same model.
+
 The download includes the upstream Atlas seed data. Configure `ATLAS_DB_PATH` or
 `database_folder` in `config.json` to use your current Atlas database instead.
 Keep existing models, configuration and runtime data when updating. No model

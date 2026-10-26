@@ -17,6 +17,14 @@ prefers `C:\devhome\tools\python3.12\current\python.exe`. If this Python does no
 have Atlas's packages, run `Install_Dependencies.bat` once. The Windows download
 includes CPU and Vulkan llama.cpp runtimes, but no model weights or API keys.
 
+The model catalogue also includes `flash-abliterated`. Select it with
+`"Start AA.bat" --model flash-abliterated` after supplying its model files.
+The launcher reuses Flash's byte-identical second GGUF, linking it under the
+variant's filename when possible and copying it if linking is unavailable.
+The [variant release](https://github.com/AOSPAndroid/Axis/releases/tag/qwen3.8-flash-next-gsq-rco-abliterated-q2-0)
+contains the first file's 21 parts; its second file comes from the original
+[Flash release](https://github.com/AOSPAndroid/Axis/releases/tag/qwen3.8-flash-next-gsq-rco-q2-0).
+
 Use **Stop AA.bat** to stop this installation and the model it started. A model
 server already running when AA starts stays under its original owner's control.
 If the model is missing, the map still opens and chat explains how to start it.

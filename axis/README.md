@@ -141,6 +141,13 @@ If you downloaded model parts instead, `start.py` checks and joins them, using a
 
 `--model flash` selects Qwen3.8-Flash-Next: all 36 download parts produce two GGUF files totalling 66.4 GB. Both files must be in the same folder. The launcher loads the first, and llama.cpp finds its companion. Model-specific server options enable memory mapping and lazy table reads. `--model k2` selects K2-Horizon-MoVA-36B-A4B. Model metadata may supply context, temperature and top-p defaults; explicit command-line values override them.
 
+`flash-abliterated` selects the community variant (66.8 GB). Its first GGUF has
+21 parts in its own release; the second is byte-identical to the original Flash
+model's second GGUF and reuses that file or its 16 parts. The launcher creates
+the required companion filename with a hard link when possible, otherwise a
+copy. Inside AA, select this model with `"Start AA.bat" --model flash-abliterated`;
+the terminal client uses the model already selected by AA.
+
 ## Quick setup (Windows)
 
 `setup_local.py` downloads and verifies the model, installs the right llama.cpp build for your GPU, fetches the agent, and writes `start-server.bat` and `agent.bat` into `%USERPROFILE%\local-ai`:
