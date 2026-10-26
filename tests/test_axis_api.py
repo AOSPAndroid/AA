@@ -457,7 +457,11 @@ class Helpers(unittest.TestCase):
                             self.wfile.flush()
                         waiting.set()
                         self.connection.settimeout(3)
-                        if self.connection.recv(1) == b"":
+                        try:
+                            closed = self.connection.recv(1) == b""
+                        except ConnectionResetError:
+                            closed = True  # Closed with our streamed reply unread: a reset rather than a clean close.
+                        if closed:
                             disconnected.set()
 
                 server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
