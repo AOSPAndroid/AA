@@ -25,6 +25,7 @@ import clipboard_history
 
 from axis.agent import Agent, MEMORY_FILE, change_memory, memory_entries, read_memory, without_entry, write_audit
 from axis.it_tools import read_json, write_json
+from axis.skill_library import SkillLibrary
 from backend.axis_operations import AtlasOperations
 from backend.axis_sources import AtlasSources, SourceUnavailable
 
@@ -519,7 +520,7 @@ class Sessions:
         parts = message.split()
         name, args = parts[0].lower(), parts[1:]
         if name == "/help" and not args:
-            ui.assistant("Ask Axis about a person, PC or package. /status checks the local model; /jobs [ID] reads jobs; /output ID [offset] reads saved output; /memory shows what Axis remembers; /reset starts a fresh conversation. Changes need approval.")
+            ui.assistant("Ask Axis about a person, PC or package. /status checks the local model; /jobs [ID] reads jobs; /output ID [offset] reads saved output; /memory shows what Axis remembers; /skills [name] lists skills or reads a guide; /reset starts a fresh conversation. Changes need approval.")
         elif name == "/status" and not args:
             status = self.status()
             ui.assistant("Model: %s. Atlas database: %s. Changes require approval." %
@@ -536,6 +537,9 @@ class Sessions:
                 text = ""
             ui.assistant(text + "\n\n(" + str(path) + ")" if text else
                          "Nothing remembered yet. Ask Axis to remember a fact; saving it needs your approval.")
+        elif name == "/skills" and len(args) <= 1:
+            library = SkillLibrary(self.directory / "skills")
+            ui.assistant(library.display(args[0] if args else None))
         elif name == "/jobs" and len(args) <= 1:
             tool = self.operations(lambda action: False)  # Reading only; acknowledging needs the chat's approval.
             identifier = tool.find_job(args[0]) if args else None
@@ -592,7 +596,8 @@ class Sessions:
                                              ctx=settings["ctx"], notes=str(self.root / "axis" / "notes"),
                                              package_repo=str(self.backend.REPO), state_dir=str(self.state), ui=ui,
                                              sampling=settings["sampling"], atlas_db=str(self.backend.MASTER_DB),
-                                             sources=self.sources, operations=self.operations)
+                                             sources=self.sources, operations=self.operations,
+                                             skills=str(self.directory / "skills"))
                 session.configuration = configuration
                 if session.saved_messages:
                     if session.saved_configuration == list(configuration):

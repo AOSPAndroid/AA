@@ -490,7 +490,11 @@ class AgentTests(unittest.TestCase):
     def test_setup_includes_windows_runtime_files(self):
         with tempfile.TemporaryDirectory() as destination:
             setup_local.setup_agent(destination)
-            self.assertEqual({p.name for p in Path(destination).iterdir()}, {"agent.py", "it_tools.py", "it_windows.ps1", "terminal_ui.py", "web_tools.py", "atlas_db.py"})
+            self.assertEqual({p.name for p in Path(destination).iterdir()}, {"agent.py", "it_tools.py", "it_windows.ps1", "terminal_ui.py", "web_tools.py", "atlas_db.py", "skill_library.py", "skills"})
+            from skill_library import SkillLibrary
+            skills, errors = SkillLibrary(bundled=Path(destination) / "skills").scan()
+            self.assertEqual(len(skills), 10)
+            self.assertEqual(errors, [])
 
 
 if __name__ == "__main__":

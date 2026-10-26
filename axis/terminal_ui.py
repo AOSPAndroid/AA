@@ -291,6 +291,7 @@ class TerminalUI:
                 ("/jobs [ID]", "Deployment/reboot jobs or a job's details"),
                 ("/output [ID] [offset]", "Read saved tool output in pages"),
                 ("/memory", "Facts Axis remembers between chats"),
+                ("/skills [name]", "List skills or read a workflow guide"),
                 ("/history", "Recent requests from this session"),
                 ("/paste", "Enter multiple lines; a single . line submits"),
                 ("/reset", "Clear conversation; background jobs continue"),

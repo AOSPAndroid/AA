@@ -70,6 +70,12 @@ If the model is missing, the map still opens and chat explains how to start it.
   **Memory** panel lists facts and forgets one after confirmation; `/memory`
   shows the file, which you can also edit. Lines that look like passwords, keys
   or tokens are refused.
+- **Skills:** Axis has ten reusable workflows based on Atlas: people/PC lookup,
+  desks, PC health, performance triage, deployments, services/processes, AD access,
+  inbox/clipboard triage, job recovery and Knowledge Base drafts. `/skills` lists
+  them; `/skills pc-health` reads a guide. Ask naturally, for example "Use
+  pc-health to check this PC." Axis reads the relevant guide before using its
+  existing tools. See [Axis skills](docs/axis-skills.md) to add your own.
 - **Chats come back:** the latest chat reappears after a page reload or an AA
   restart and continues where it stopped. The local Admin backend keeps the 20
   most recent chats in `data/axis/chats`; nothing is stored in the browser.
@@ -110,6 +116,7 @@ then reuse your model and `config.json`, and point the new copy at your existing
 runtime database. Copy `data/axis/state` and `data/axis/workspace` only after
 stopping AA if you want to retain saved jobs, memory, tool outputs and working files;
 copy `data/axis/chats` to keep recent chats.
+Copy `data/axis/skills` to retain custom workflow guides.
 Keep the old folder until the new copy works. See [Updating AA](docs/updating-atlas.md).
 The inherited Atlas updater is disabled for AA so it cannot replace the combined
 app with standalone Atlas.

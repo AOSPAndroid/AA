@@ -17,6 +17,12 @@ remembers approved facts, finds desks on the map and keeps recent chats.
 untrusted evidence. The Clipboard has its own page. `axis\Start Agent.bat` opens
 a terminal onto the same Axis while AA runs. The LAN Viewer remains read-only.
 
+Axis includes ten reusable Atlas workflows for directory/desk lookup, PC health,
+performance triage, deployments, services/processes, AD access, inbox/clipboard
+triage, job recovery and Knowledge Base drafts. Use `/skills` to list them or
+`/skills pc-health` to read a guide. Custom guides live in `data/axis/skills`;
+see `docs/axis-skills.md`. Skills retain the existing approvals and PC guards.
+
 The download includes the upstream Atlas seed data. Configure `ATLAS_DB_PATH` or
 `database_folder` in `config.json` to use your current Atlas database instead.
 Keep existing models, configuration and runtime data when updating. No model
