@@ -61,6 +61,7 @@ class Chat(Input):
     session_id: str | None = Field(default=None, min_length=20, max_length=80)
     context: Selection | None = None
     attachment: Attachment | None = None
+    client: Literal["browser", "terminal"] = "browser"  # Where approvals are answered, for the audit log.
 
 
 class SessionInput(Input):
@@ -272,10 +273,11 @@ class ModelHTTP:
 
 
 class BrowserUI:
-    interface = "browser"
+    """Streams a turn to the browser panel or the AA terminal client; both answer approvals here."""
 
-    def __init__(self, turn):
+    def __init__(self, turn, interface="browser"):
         self.turn = turn
+        self.interface = interface
 
     @contextmanager
     def status(self, label):
@@ -499,7 +501,8 @@ class Sessions:
 
     def operations(self, confirm):
         """Axis's Windows tools on this Atlas's operations; earlier Axis job files stay readable."""
-        return AtlasOperations(self.backend, confirm, legacy_state=self.state)
+        # Earlier terminal jobs may also remain in axis\state from before the terminal used AA's chat.
+        return AtlasOperations(self.backend, confirm, legacy_state=(self.state, self.root / "axis" / "state"))
 
     def _saved_id(self, folder, prefix):
         if not re.fullmatch(r"[a-f0-9]{1,32}", prefix or ""):
@@ -569,7 +572,7 @@ class Sessions:
         return dict(attachment.model_dump(), label=label), [(name, args, result)]
 
     def run(self, session, turn, body, prefetched=()):
-        ui = BrowserUI(turn)
+        ui = BrowserUI(turn, body.client)
         try:
             turn.check()
             if self.command(session, ui, body.message.strip()):

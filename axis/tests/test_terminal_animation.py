@@ -139,6 +139,7 @@ class AnimationTests(unittest.TestCase):
     def test_plain_mode_reaches_startup_and_chat(self):
         process = MagicMock()
         with tempfile.TemporaryDirectory() as folder, patch.object(start, "TerminalUI") as ui, \
+             patch.object(start, "in_aa", return_value=False), \
              patch.object(start, "prepare_model", return_value=("35b", "model.gguf")), \
              patch.object(start, "server_ready", return_value=False), patch.object(start, "gpus", return_value=[]), \
              patch.object(start, "find_server", return_value="llama-server.exe"), \

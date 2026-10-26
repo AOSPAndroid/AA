@@ -142,6 +142,7 @@ class ModelSettingsTests(unittest.TestCase):
         for args, ctx, temperature, top_p in cases:
             with self.subTest(args=args), tempfile.TemporaryDirectory() as folder, ExitStack() as stack:
                 process = MagicMock()
+                stack.enter_context(patch.object(start, "in_aa", return_value=False))  # The standalone launcher.
                 stack.enter_context(patch.object(start, "MODELS", {"fixture": settings}))
                 stack.enter_context(patch.object(start, "prepare_model", return_value=("fixture", "first.gguf")))
                 stack.enter_context(patch.object(start, "server_ready", return_value=False))

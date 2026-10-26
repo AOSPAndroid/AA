@@ -376,6 +376,14 @@ def server_model():
 
 
 def main(argv=None):
+    argv = sys.argv[1:] if argv is None else list(argv)
+    if in_aa() and "--setup-firecrawl" not in argv:
+        # Inside AA, Start AA.bat runs the model and Axis; this window is a client of that same Axis.
+        if __package__:
+            from .aa_client import main as client
+        else:
+            from aa_client import main as client
+        return client(argv)
     p = argparse.ArgumentParser(description="Start llama-server and Axis.")
     p.add_argument("--setup-firecrawl", action="store_true", help="save a Firecrawl API key in your user profile, then exit")
     p.add_argument("--with-atlas", action="store_true", help="start Atlas with this Windows account and share its active database")
@@ -402,8 +410,6 @@ def main(argv=None):
         from web_tools import configure_firecrawl
         return configure_firecrawl()
 
-    if in_aa() and (a.with_atlas or a.atlas_dir):
-        p.error("AA already includes Atlas. Start AA.bat opens the map; this terminal shares its database, jobs and memory")
     if a.with_atlas or a.atlas_dir:
         if a.atlas_db:
             p.error("--atlas-db is for standalone Axis; shared startup selects Atlas's active database automatically")
@@ -415,7 +421,6 @@ def main(argv=None):
             return 1
     if a.atlas_db:
         agent_args += ["--atlas-db", a.atlas_db]
-    # Inside AA, agent.py itself uses AA's jobs, locks, memory, database and packages.
 
     ui = TerminalUI(plain=a.plain)
     if a.plain:

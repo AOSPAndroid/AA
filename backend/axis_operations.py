@@ -101,7 +101,8 @@ class AtlasOperations:
     def __init__(self, wmi, confirm, legacy_state=None):
         self.wmi = wmi
         self.confirm = confirm
-        self.legacy_state = Path(legacy_state) if legacy_state else None
+        folders = legacy_state if isinstance(legacy_state, (list, tuple)) else [legacy_state] if legacy_state else []
+        self.legacy_states = [Path(folder) for folder in folders]
         self.snapshots = {}
         self.reboots = {}  # last row seen per reboot job: Atlas drops a finished row after 10 seconds
         self.lock = threading.Lock()
@@ -339,10 +340,9 @@ class AtlasOperations:
     # ---- jobs ----------------------------------------------------------
 
     def legacy(self):
-        if self.legacy_state is None or not (self.legacy_state / "jobs").is_dir():
-            return None
+        """Earlier Axis job folders that still hold jobs, each read as Axis's own engine reads it."""
         from axis.it_tools import ITTools
-        return ITTools(self.legacy_state, confirm=self.confirm)
+        return [ITTools(folder, confirm=self.confirm) for folder in self.legacy_states if (folder / "jobs").is_dir()]
 
     def find_job(self, prefix):
         """A full job ID from the start of one, among Atlas's jobs, its reboots and earlier Axis jobs."""
@@ -351,8 +351,7 @@ class AtlasOperations:
         with self.wmi.lock:
             candidates = set(self.wmi.jobs)
         candidates |= {row.get("id") for row in self.wmi.reboot_monitor.snapshot()["reboots"]}
-        legacy = self.legacy()
-        if legacy:
+        for legacy in self.legacy():
             candidates |= {path.stem for path in (legacy.state / "jobs").glob("*.json")}
         matches = sorted(c for c in candidates if isinstance(c, str) and c.startswith(prefix))
         if len(matches) != 1:
@@ -404,8 +403,7 @@ class AtlasOperations:
                     for d in (recent if isinstance(recent, list) else recent.get("deployments", []))]
             rows += [{"job_id": r.get("id"), "kind": "reboot", "state": r.get("state"), "target": r.get("target"),
                       "last": r.get("message")} for r in wmi.reboot_monitor.snapshot()["reboots"]]
-            legacy = self.legacy()
-            if legacy:
+            for legacy in self.legacy():
                 rows += [dict({k: j.get(k) for k in ("kind", "computers", "state", "created", "acknowledged")},
                               job_id=j["id"], source="earlier Axis job") for j in legacy.jobs()[:20]]
             return {"jobs": rows, "unresolved_targets": sorted(wmi.job_service.unresolved)}
@@ -421,9 +419,9 @@ class AtlasOperations:
             else:
                 row = self.reboot_row(job_id)
                 if row is None:
-                    legacy = self.legacy()
-                    if legacy and (legacy.state / "jobs" / (job_id + ".json")).is_file():
-                        return dict(legacy.it_job_status(job_id, wait_seconds, acknowledge_unknown), source="earlier Axis job")
+                    for legacy in self.legacy():
+                        if (legacy.state / "jobs" / (job_id + ".json")).is_file():
+                            return dict(legacy.it_job_status(job_id, wait_seconds, acknowledge_unknown), source="earlier Axis job")
                     raise ValueError("No Atlas deployment or reboot has this job ID; check Atlas's history")
                 result = dict(copy.deepcopy(row), job_id=job_id, kind="reboot")
                 done = row.get("state") not in REBOOT_ACTIVE

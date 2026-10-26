@@ -1273,14 +1273,6 @@ def saved_id(agent, folder, prefix=None):
     return matches[0]
 
 
-def _aa_module(name):
-    import importlib.util
-    spec = importlib.util.spec_from_file_location("aa_" + name, os.path.join(AA_ROOT, name + ".py"))
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
 def unresolved_jobs(state):
     """Jobs in a state folder that would stop guarding their PCs if Axis used another folder."""
     folder = os.path.join(state, "jobs")
@@ -1298,33 +1290,6 @@ def unresolved_jobs(state):
                 job.get("state") == "unknown" and not job.get("acknowledged"):
             found.append(str(job.get("id", name[:-5])) if isinstance(job, dict) else name[:-5])
     return found
-
-
-def apply_aa_defaults(a):
-    """Inside AA, use the browser chat's jobs, locks and memory, Atlas's active database and its package
-    repository, however Axis was started. Returns a reason not to start, or None."""
-    if a.state_dir is None:
-        legacy = unresolved_jobs(os.path.join(AA_ROOT, "axis", "state"))
-        if legacy:
-            return ("Earlier terminal jobs in axis\\state are still active or unresolved: %s. They would stop guarding "
-                    "their PCs. Inspect those PCs, then review and acknowledge the jobs with: "
-                    "\"Start Agent.bat\" --state-dir state" % ", ".join(legacy))
-        a.state_dir = os.path.join(AA_ROOT, "data", "axis", "state")
-    paths = _aa_module("runtime_paths")
-    if a.atlas_db is None and not os.environ.get("AGENT_ATLAS_DB"):
-        try:
-            a.atlas_db = str(paths.prepare_runtime_database())  # Atlas's own first start: never the seed.
-        except (OSError, ValueError, sqlite3.Error):
-            a.atlas_db = str(paths.database_path())  # Missing: Axis refuses changes until it is back.
-    if a.package_repo is None and not os.environ.get("AGENT_PACKAGE_REPO"):
-        try:
-            with open(os.path.join(AA_ROOT, "config.json"), encoding="utf-8") as f:
-                config = json.load(f)
-        except (OSError, ValueError):
-            config = {}
-        a.package_repo = str(_aa_module("package_paths").package_repository(
-            config if isinstance(config, dict) else {}, Path(AA_ROOT)))
-    return None
 
 
 def handle_command(agent, ui, command, history):
@@ -1402,6 +1367,13 @@ def paste_request(ui, input_fn=None):
 
 
 def main(argv=None):
+    if IN_AA:
+        # Inside AA, Axis runs only in the local Admin backend; this window is a client of its chat.
+        if __package__:
+            from .aa_client import main as client
+        else:
+            from aa_client import main as client
+        return client(argv)
     p = argparse.ArgumentParser(description="Axis, a local assistant for an OpenAI-compatible server.")
     p.add_argument("task", nargs="*", help="run one task and exit")
     p.add_argument("--url", default=os.environ.get("AGENT_URL", "http://127.0.0.1:8080/v1"),
@@ -1433,11 +1405,6 @@ def main(argv=None):
                         help="summarize tool results; thinking remains visible")
     p.add_argument("--no-web", action="store_true", help="disable public web search and page reading")
     a = p.parse_args(argv)
-    if IN_AA:
-        problem = apply_aa_defaults(a)
-        if problem:
-            print(problem)
-            return 1
     a.package_repo = (a.package_repo or os.environ.get("AGENT_PACKAGE_REPO") or os.environ.get("WMI_PACKAGE_REPO")
                       or DEFAULT_PACKAGE_REPO)
     ui = TerminalUI(plain=a.plain, verbose=a.verbose)
