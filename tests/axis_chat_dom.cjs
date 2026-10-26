@@ -590,6 +590,132 @@ test("console pages attach the current target, a Live Inbox message or a clipboa
   assert.equal(f.w.AxisChat.attach({ kind: "file", id: "x" }), false);
 });
 
+test("work Axis starts opens in Atlas's own views, and its PCs can be selected", async (t) => {
+  const unsafe = '<img src=x onerror="window.attacked=true">';
+  const stream = (api) => {
+    const s = api.stream();
+    s.event({ type: "session", session_id: "session-one" });
+    s.event({ type: "tool_start", name: "deploy_package", args: {} });
+    s.event({
+      type: "tool_result",
+      name: "deploy_package",
+      result: JSON.stringify({
+        jobs: [
+          { computer: "PC1", job_id: "a".repeat(32), state: "queued" },
+          { computer: unsafe, state: "not started" },
+        ],
+      }),
+    });
+    s.event({ type: "tool_start", name: "computer_action", args: {} });
+    s.event({
+      type: "tool_result",
+      name: "computer_action",
+      result: JSON.stringify({
+        computer: "PC2",
+        job_id: "b".repeat(32),
+        state: "requested",
+      }),
+    });
+    s.event({ type: "tool_start", name: "find_packages", args: {} });
+    s.event({
+      type: "tool_result",
+      name: "find_packages",
+      result: JSON.stringify({ packages: ["PC3"] }),
+    });
+    s.event({ type: "answer", text: "Queued." });
+    s.finish();
+    return s.response;
+  };
+  for (const page of ["atlas-console", "atlas-map"]) {
+    const f = fixture(t, {
+      page,
+      route(call, api) {
+        if (call.url === "/api/axis/chat") return stream(api);
+      },
+    });
+    const calls = [];
+    f.w.AtlasNavigate = (url) => (calls.push(["navigate", url]), true);
+    if (page === "atlas-console") {
+      f.w.openDeploymentMonitor = (mode) => calls.push(["deployments", mode]);
+      f.w.page = (id) => calls.push(["page", id]);
+      f.w.setTarget = (pc) => calls.push(["target", pc]);
+      const drawer = f.w.document.createElement("aside");
+      drawer.id = "queueDrawer";
+      f.w.document.body.append(drawer);
+    }
+    f.submit("Install Example on PC1, then restart PC2");
+    await f.idle();
+    const buttons = [
+      ...f.w.document.querySelectorAll(".axis-atlas-links button"),
+    ];
+    assert.deepEqual(
+      buttons.map((button) => button.textContent),
+      [
+        "Show in Deployments",
+        "Select PC1 in Workspace",
+        "Show reboot monitor",
+        "Select PC2 in Workspace",
+      ],
+      page +
+        ": only real jobs and valid PC names become links; package names do not",
+    );
+    for (const button of buttons) button.click();
+    assert.deepEqual(
+      calls,
+      page === "atlas-console"
+        ? [
+            ["deployments", "active"],
+            ["page", "workspace"],
+            ["target", "PC1"],
+            ["page", "workspace"],
+            ["target", "PC2"],
+          ]
+        : [
+            ["navigate", "/installer?command=active"],
+            ["navigate", "/installer?machine=PC1"],
+            ["navigate", "/installer?command=queue"],
+            ["navigate", "/installer?machine=PC2"],
+          ],
+    );
+    if (page === "atlas-console")
+      assert(
+        f.w.document.querySelector("#queueDrawer").classList.contains("open"),
+      );
+    assert.equal(f.$("#axis-chat-messages img"), null);
+    assert.equal(f.w.attacked, undefined);
+  }
+});
+
+test("a finished deployment opens Atlas's recent list, a running one its live list", async (t) => {
+  for (const [state, mode] of [
+    ["launched", "recent"],
+    ["running", "active"],
+  ]) {
+    const f = fixture(t, {
+      page: "atlas-console",
+      route(call, api) {
+        if (call.url !== "/api/axis/chat") return;
+        const s = api.stream();
+        s.event({ type: "session", session_id: "session-one" });
+        s.event({ type: "tool_start", name: "it_job_status", args: {} });
+        s.event({
+          type: "tool_result",
+          name: "it_job_status",
+          result: JSON.stringify({ kind: "deployment", state, target: "PC1" }),
+        });
+        s.finish();
+        return s.response;
+      },
+    });
+    const opened = [];
+    f.w.openDeploymentMonitor = (value) => opened.push(value);
+    f.submit("How did it go?");
+    await f.idle();
+    f.w.document.querySelector(".axis-atlas-links button").click();
+    assert.deepEqual(opened, [mode], state);
+  }
+});
+
 test("desks found by Axis open on the map without reloading the chat", async (t) => {
   const unsafe = '<img src=x onerror="window.attacked=true">';
   const f = fixture(t, {

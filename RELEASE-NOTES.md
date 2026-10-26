@@ -7,11 +7,26 @@ or `AA/axis`, then run **Start AA.bat** under your DSK account. Python 3.12 and
 Atlas's existing dependencies are required; use `Install_Dependencies.bat` if
 they are missing. CPU and Vulkan llama.cpp runtimes are included.
 
-The local Admin map includes Axis chat with visible thinking, tool activity and
-action approvals. Axis shares Atlas's active directory database and configured
-package repository. Atlas and Axis share one per-PC operations lock and
-unknown-outcome guard, and Axis jobs appear in Atlas's activity panel. The LAN
-Viewer remains read-only.
+The local Admin map and console pages include Axis chat with visible thinking,
+tool activity and action approvals. Axis works on Atlas's own operations: its
+deployments are Atlas deployments, shown in Deployments and history and marked
+Axis; its reboots use Atlas's reboot monitor; and Atlas's own checks and per-PC
+guard apply. Axis reads Atlas's active database and package repository,
+remembers approved facts, finds desks on the map and keeps recent chats.
+**Ask Axis** on a Live Inbox message or a clipboard capture attaches it as
+untrusted evidence. The Clipboard has its own page. `axis\Start Agent.bat` opens
+a terminal onto the same Axis while AA runs. The LAN Viewer remains read-only.
+
+Axis includes ten reusable Atlas workflows for directory/desk lookup, PC health,
+performance triage, deployments, services/processes, AD access, inbox/clipboard
+triage, job recovery and Knowledge Base drafts. Use `/skills` to list them or
+`/skills pc-health` to read a guide. Custom guides live in `data/axis/skills`;
+see `docs/axis-skills.md`. Skills retain the existing approvals and PC guards.
+
+This release also includes the Live Inbox first-click expansion fix and the
+shared Axis model/launcher improvements: `flash-abliterated`, verified model
+parts and reuse of the original Flash model's identical second GGUF. Select a
+model at AA startup; the browser and terminal then use that same model.
 
 The download includes the upstream Atlas seed data. Configure `ATLAS_DB_PATH` or
 `database_folder` in `config.json` to use your current Atlas database instead.

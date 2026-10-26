@@ -190,6 +190,52 @@
     ]
   },
   {
+    "key": "flash-abliterated",
+    "name": "Qwen3.8-Flash-Next abliterated",
+    "note": "community edit without refusals",
+    "tag": "qwen3.8-flash-next-gsq-rco-abliterated-q2-0",
+    "server_args": [
+      "--load-mode",
+      "mmap",
+      "--lazy-mode",
+      "on"
+    ],
+    "files": [
+      {
+        "file": "Qwen3.8-Flash-Next-GSQ-RCO-abliterated-Q2_0-00001-of-00002.gguf",
+        "size": 38021379872,
+        "sha256": "1620faf21c845524cbe38dcbbaf850b8d155c2299df05d8b7bfb43b642c4647e",
+        "parts": [
+          "9396c980ff8b8ee5e7a16cbc5ae56f396f923277853056c067c1c5516ab25094",
+          "ffbdf540dda9115e73f46105e4fab9d0de9ccf5bc52503890086d260f3d4614d",
+          "46f1739ffa873c8543bba0083ab909b4abc5ec60c79ac68811c441802a4f121c",
+          "1197042b2679183a1129d7b9c78449d2ebe3b6628f222095480e1a4280042a50",
+          "74e713ebeed65428dcae1a8861a50f9719b812f6d425d2541a8418c82f429317",
+          "b50a212de50fd0697d10bda43feaf23b6f1026eecde4c3b9c25354ad0175a1b5",
+          "2d9aea84cd8dd21a6516c83ff9ce2d0cac705959551650356e6ab9526e9e7e2f",
+          "a7f18669030646082b49655afbd525193a2032fdaa924257b0a407c5bbc75825",
+          "b3f1e5b509220d6b5307478b6884de1802a5e8946b8eb0850ea3f667d84031f5",
+          "13f293bab6c80bc781eff25ac8b587a60d2f618db81b1c305350e8ee10583138",
+          "eaaaad41039928e0a11b52d9bc818304f4e7b210d9e685adcc392d5d4978bb8b",
+          "02fed963dcf6f563a9f9b44f96b5afefd76e4caf5aea90c351a24cf4c5a0cb00",
+          "51e6f3ad6d6b6064e6898e3b068d34bde912fac7ed3bbcef35781d080aa4fa9b",
+          "a265fbb686d59145e4ba174b9d142784da659b1d508c9c511237c5f373e98302",
+          "749a88f7d273aa3a9a05b3224604fd458af8a69fe2b669689cc52f5a901ed8ae",
+          "8c8e625c090f275523902f845e248aa9c7fd6b0db6a69cdb0eb7eff25ed5fc8b",
+          "43ad18a0d3ba269464c0f3df86bfe0833f518804979fe5485168212f23a0f7f9",
+          "e22c51951446afcfaf48c7f8676518ffe6c0d2811dcf56a768e6d4c3ba78bc41",
+          "3aa693407d79957729504edd1731df2741d4bf32b301e2e37ecf3de4afb28ee7",
+          "c9fda2804d92ade3f6774d5cdfa6c0d59af54671d4f9f31f924c74967c3489fb",
+          "817ec7c6f77988299ae42c01e0502a07c223a1db6a084ef380ccd87692a20ae0"
+        ]
+      },
+      {
+        "file": "Qwen3.8-Flash-Next-GSQ-RCO-abliterated-Q2_0-00002-of-00002.gguf",
+        "same_as": "Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf"
+      }
+    ]
+  },
+  {
     "key": "9b-distill",
     "name": "Qwen3.8-9B distill",
     "note": "community distill (the first model)",

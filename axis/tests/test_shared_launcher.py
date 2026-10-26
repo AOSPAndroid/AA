@@ -210,16 +210,17 @@ class SharedLauncherTests(unittest.TestCase):
                 self.assertNotIn("--atlas-dir", command)
                 self.assertEqual(atlas.call_count, int(shared))
 
-    def test_aa_terminal_refuses_to_start_a_second_atlas(self):
+    def test_aa_terminal_never_starts_a_second_atlas_or_model(self):
         aa = self.root / "AA"
         (aa / "axis").mkdir(parents=True)
         (aa / "aa_launcher.py").write_text("")
+        import aa_client
         with patch.object(start, "AA_ROOT", str(aa)), patch.object(launch_atlas, "start_atlas") as atlas, \
-             redirect_stderr(io.StringIO()) as errors:
-            with self.assertRaises(SystemExit):
-                start.main(["--with-atlas"])
+             patch.object(start, "prepare_model") as model, patch.object(aa_client, "main", return_value=0) as client:
+            self.assertEqual(start.main(["--with-atlas"]), 0)
         atlas.assert_not_called()
-        self.assertIn("AA already includes Atlas", errors.getvalue())
+        model.assert_not_called()
+        client.assert_called_once_with(["--with-atlas"])  # The client says such options do not apply in AA.
 
     def test_conflicting_database_override_is_rejected_before_starting_anything(self):
         with patch.object(launch_atlas, "start_atlas") as atlas, patch.object(start, "prepare_model") as prepare, \

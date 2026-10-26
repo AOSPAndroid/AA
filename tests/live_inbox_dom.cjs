@@ -85,14 +85,8 @@ const response = data => ({ ok: true, status: 200, json: async () => data });
   d.querySelector('.inbox-body [data-entity="person"]').click(); d.querySelector('.inbox-body [data-entity="machine"]').click();
   assert.deepEqual(sent.map(x => [x.action, x.user?.id, x.machine]), [['person', 9, undefined], ['target', 7, 'LAPTOP-04']]);
   assert(d.querySelector('.inbox-body[data-collapsed]'), 'A long message starts collapsed');
-  // In jsdom React occasionally drops this click right after the request actions above start their own
-  // work: it reaches the root with no error or re-render, and the same handler works when clicked again.
-  // Click again as a person would (bounded); the toggle itself must still work.
-  for (let attempt = 0; attempt < 3 && d.querySelector('.inbox-body[data-collapsed]'); attempt++) {
-    [...d.querySelectorAll('.inbox-message-card button')].find(b => b.textContent === 'Show the whole message')?.click();
-    try { await until(() => !d.querySelector('.inbox-body[data-collapsed]'), 1500); } catch {}
-  }
-  assert(!d.querySelector('.inbox-body[data-collapsed]'), 'Show the whole message expands the long message');
+  [...d.querySelectorAll('.inbox-message-card button')].find(b => b.textContent === 'Show the whole message').click();
+  await until(() => !d.querySelector('.inbox-body[data-collapsed]'));
   // Named people: details, desk, machines; a shared name lists its candidates.
   const marie = d.querySelector('[data-named-person="Marie Dupont"]');
   assert.match(marie.textContent, /written "DUPONT Marie"/); assert.match(marie.textContent, /X09 · Equities · Desk 04R019086/); assert.match(marie.textContent, /LAPTOP-09/);
@@ -127,8 +121,16 @@ const response = data => ({ ok: true, status: 200, json: async () => data });
   const shown = [];
   w.addEventListener('atlas:inbox-action', event => shown.push(event.detail));
   assert(!d.querySelector('.inbox-similar-card'), 'Nothing similar, no card');
+  // Clicked as soon as the message appears, before React runs its effects, "Show the whole message" still expands it.
+  let early = false;
+  const appear = new w.MutationObserver(() => {
+    const show = [...d.querySelectorAll('.inbox-message-card button')].find(b => b.textContent === 'Show the whole message');
+    if (show) { appear.disconnect(); early = true; show.click(); }
+  });
+  appear.observe(d.getElementById('liveInbox'), { childList: true, subtree: true });
   d.querySelector('[data-mail-id="1"]').click();
   await until(() => d.querySelector('.inbox-similar-card'));
+  assert(early && !d.querySelector('.inbox-body[data-collapsed]'), 'A click on Show the whole message is kept while the message is still mounting');
   const similar = d.querySelector('.inbox-similar-card');
   assert.match(similar.textContent, /same key words: vpn, connect/);
   assert.deepEqual([...similar.querySelectorAll('mark')].map(mark => mark.textContent), ['VPN', 'VPN', 'connect']);

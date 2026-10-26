@@ -1,6 +1,6 @@
 from __future__ import annotations
 from datetime import datetime
-import base64, json, logging, os, re, secrets, shutil, sqlite3, subprocess, sys, threading, time, uuid
+import base64, hashlib, json, logging, os, re, secrets, shutil, sqlite3, subprocess, sys, threading, time, uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Literal
@@ -155,7 +155,7 @@ def monitor(pc,pid,log,ex):
  lines=lu.read_text(encoding='utf-8-sig',errors='replace').splitlines()[-100:] if lu.is_file() else []
  return ec,lines
 
-class Deploy(BaseModel):computer:str;folder:str;script:str;action:Literal['Install','Uninstall','Repair']='Install';fresh:bool=False;threads:int=Field(8,ge=1,le=128);mode:Literal['full','copy','execute']='full'
+class Deploy(BaseModel):computer:str;folder:str;script:str;action:Literal['Install','Uninstall','Repair']='Install';fresh:bool=False;threads:int=Field(8,ge=1,le=128);mode:Literal['full','copy','execute']='full';sha256:str|None=Field(None,pattern=r'^[a-f0-9]{64}$')
 class Bulk(BaseModel):computers:list[str]=Field(min_length=1,max_length=200);folder:str;script:str;action:Literal['Install','Uninstall','Repair']='Install';fresh:bool=False;threads:int=Field(8,ge=1,le=128);concurrency:int=Field(5,ge=1,le=10)
 class Kill(BaseModel):computer:str;value:str;created:str|None=None;name:str|None=None;match:Literal['exact','contains']='exact'
 class Machine(BaseModel):computer:str
@@ -183,6 +183,12 @@ def outcome(ec):
  return 'launched','Launched'
 
 
+def file_sha256(path):
+ h=hashlib.sha256()
+ with open(path,'rb') as source:
+  for block in iter(lambda:source.read(1<<20),b''):h.update(block)
+ return h.hexdigest()
+
 def deploy_worker(j,p):
  with job_service.execution:
   return _deploy_worker(j,p)
@@ -197,13 +203,21 @@ def _deploy_worker(j,p):
   remote=rf'{REMOTE_ROOT}\{pkg}\{p.script}'
   emit(j,'Validating target access','running');history_update(j,state='running')
   if not os.path.isdir(unc(pc)):raise RuntimeError('Target administrative share is unavailable')
+  # An approved request (Axis) names the script's digest: run exactly that script or nothing. Queue items have none.
+  approved=getattr(p,'sha256',None)
+  if approved and file_sha256(Path(p.folder)/p.script)!=approved:raise RuntimeError('Installer changed after approval; nothing was copied or launched')
   if p.mode!='execute':
    emit(j,'Copying package...');rc=copy_pkg(p.folder,unc(pc,rf'{REMOTE_ROOT}\{pkg}'),p.fresh,p.threads)
    emit(j,f'Copy complete. Robocopy: {rc}');history_update(j,robocopy_code=str(rc))
+  if approved and file_sha256(unc(pc,remote))!=approved:raise RuntimeError('The installer on the target differs from the approved script; it was not launched')
   if p.mode=='copy':
    emit(j,'Copy-only completed','complete');history_update(j,state='complete',finished=time.strftime('%Y-%m-%d %H:%M:%S'));return
   pid,log,ex=launch(pc,remote,pkg);launched=True;emit(j,'Launched',pid=pid);history_update(j,pid=str(pid))
   ec,lines=monitor(pc,pid,log,ex);state,message=outcome(ec)
+  if not re.fullmatch(r'-?\d+',str(ec).strip()):
+   # No exit record is no outcome: hold the PC until someone inspects it and acknowledges, as after a lost monitor.
+   job_service.unresolved.add(pc);message='Launched; the installer left no exit code. Inspect the target, then acknowledge it in Operation recovery.'
+   with lock:jobs[j]['recovery_required']=True
   emit(j,message,state,log=lines,exit_code=ec)
   history_update(j,state=state,exit_code=str(ec),finished=time.strftime('%Y-%m-%d %H:%M:%S'),details=message+'\n'+'\n'.join(lines[-20:]))
  except Exception as e:
@@ -342,11 +356,12 @@ def deploy(p:Deploy):
 @app.get('/api/deploy/{j}/payload')
 def deployment_payload(j:str):
  """What a past deployment asked for, to add it to the queue again."""
- return Deploy(**saved_payload(j)).model_dump()
+ return Deploy(**saved_payload(j)).model_dump(exclude={'sha256'})
 @app.post('/api/deploy/{j}/retry')
 def retry_deployment(j:str):
  """Run a past deployment again with the same machine, package, script and options."""
- payload=Deploy(**saved_payload(j))
+ # The operator approves the retry here, for the script as it is now; an earlier approval's digest does not apply.
+ payload=Deploy(**{k:v for k,v in saved_payload(j).items() if k!='sha256'})
  return {**deploy(payload),'target':payload.computer,'package':Path(payload.folder).name,'action':payload.action}
 @app.get('/api/job/{j}')
 def job(j:str):
@@ -632,7 +647,7 @@ def database_freshness():
 
 def deployment_details(job_id,job):
     targets=job.get('targets') or [r.get('machine','') for r in job.get('results',[]) if r.get('machine')]
-    details={'target':job.get('target',''),'package':job.get('package',''),'action':job.get('action',''),'script':job.get('script',''),'retry':not targets}
+    details={'target':job.get('target',''),'package':job.get('package',''),'action':job.get('action',''),'script':job.get('script',''),'retry':not targets,'requested_by':job.get('requested_by','')}
     if targets:details['target']=', '.join(targets)
     # Older persisted jobs retain their original selection in deployment history.
     if not details['package']:

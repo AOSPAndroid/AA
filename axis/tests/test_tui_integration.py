@@ -274,7 +274,8 @@ class LauncherIntegrationTests(unittest.TestCase):
         for options, expected in (([], True), (["--think"], True), (["--no-think"], False)):
             with self.subTest(options=options), tempfile.TemporaryDirectory() as folder:
                 process = MagicMock()
-                with patch.object(start, "prepare_model", return_value=("35b", "model.gguf")), \
+                with patch.object(start, "in_aa", return_value=False), \
+                     patch.object(start, "prepare_model", return_value=("35b", "model.gguf")), \
                      patch.object(start, "server_ready", return_value=False), \
                      patch.object(start, "gpus", return_value=[]), \
                      patch.object(start, "find_server", return_value="llama-server.exe"), \

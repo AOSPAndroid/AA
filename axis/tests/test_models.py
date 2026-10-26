@@ -132,6 +132,49 @@ class ModelPreparationTests(unittest.TestCase):
         self.assertEqual(duplicate.read_bytes(), b"keep me")
         self.assertEqual(second.read_bytes(), b"second")
 
+    def shared_catalog(self, base_files, variant_files):
+        entries = [{"key": "base", "name": "Base model", "tag": "base", "note": "Test", "files": base_files},
+                   {"key": "variant", "name": "Variant model", "tag": "variant", "note": "Test", "files": variant_files}]
+        (self.here / "models.json").write_text(json.dumps(entries), encoding="utf-8")
+        models = start.load_models()
+        self.stack.enter_context(patch.object(start, "MODELS", models))
+        return models
+
+    def test_shared_file_is_linked_from_the_other_models_copy(self):
+        table = b"identical second file"
+        base_first, variant_first = b"base first file", b"variant first"
+        shared = self.file("base-00002-of-00002.gguf", table)
+        models = self.shared_catalog(
+            [self.file("base-00001-of-00002.gguf", base_first), shared],
+            [self.file("variant-00001-of-00002.gguf", variant_first),
+             {"file": "variant-00002-of-00002.gguf", "same_as": shared["file"]}])
+        alias = models["variant"]["files"][1]
+        self.assertEqual((alias["size"], alias["sha256"], alias["source"]), (len(table), shared["sha256"], shared["file"]))
+        (self.here / shared["file"]).write_bytes(table)
+        self.parts(models["variant"]["files"][0], variant_first)
+        self.assertEqual(start.model_status(models["variant"]), ("parts", None))
+        key, path = start.prepare_model("variant")
+        linked = Path(path).parent / "variant-00002-of-00002.gguf"
+        self.assertEqual((key, Path(path).read_bytes(), linked.read_bytes()), ("variant", variant_first, table))
+        self.assertEqual((self.here / shared["file"]).read_bytes(), table)  # the base model keeps its file
+        self.assertEqual(start.file_status(models["base"]["files"][1]), ("ready", str(self.here / shared["file"])))
+
+    def test_missing_shared_file_points_at_the_other_models_parts(self):
+        table, variant_first = b"identical second file", b"variant first"
+        shared = self.file("base-00002-of-00002.gguf", table)
+        models = self.shared_catalog(
+            [self.file("base-00001-of-00002.gguf", b"base first file"), shared],
+            [self.file("variant-00001-of-00002.gguf", variant_first),
+             {"file": "variant-00002-of-00002.gguf", "same_as": shared["file"]}])
+        (self.here / "variant-00001-of-00002.gguf").write_bytes(variant_first)
+        self.parts(shared, table[:4])  # only the first part of the shared file has arrived
+        self.assertEqual(start.model_status(models["variant"])[0], "partial")
+        start.report_missing(models["variant"])
+        report = self.output.getvalue()
+        self.assertIn("base-00002-of-00002.gguf.part002", report)
+        self.assertNotIn("base-00002-of-00002.gguf.part001", report)
+        self.assertIn(start.RELEASES + "base", report)
+
 
 class ModelSettingsTests(unittest.TestCase):
     def test_model_settings_and_explicit_overrides_reach_server_and_agent(self):
@@ -142,6 +185,7 @@ class ModelSettingsTests(unittest.TestCase):
         for args, ctx, temperature, top_p in cases:
             with self.subTest(args=args), tempfile.TemporaryDirectory() as folder, ExitStack() as stack:
                 process = MagicMock()
+                stack.enter_context(patch.object(start, "in_aa", return_value=False))  # The standalone launcher.
                 stack.enter_context(patch.object(start, "MODELS", {"fixture": settings}))
                 stack.enter_context(patch.object(start, "prepare_model", return_value=("fixture", "first.gguf")))
                 stack.enter_context(patch.object(start, "server_ready", return_value=False))

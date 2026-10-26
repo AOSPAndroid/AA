@@ -13,3 +13,11 @@ AA combines two projects owned by AOSPAndroid:
 AA adds the browser chat adapter, map chat panel and combined launcher. Upstream
 copyright and third-party notices remain with their source files. No model
 weights or API credentials are included in Git.
+
+Shared Axis improvements incorporated after the initial import:
+
+- `a9029f0a6f86bc27bec2308bf0e3465d3d9d328a`: the standalone skills port,
+  corresponding to AA's skill library and engine-specific guides.
+- `9ac7ba8` and `507aac9c6c477f4a73f503f1c397c30f3bab3e4c`: the Flash variant,
+  published part checksums and shared model-file preparation, ported with their
+  regression tests while preserving AA's launcher/client integration.

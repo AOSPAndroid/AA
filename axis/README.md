@@ -25,6 +25,7 @@ In a synthetic Linux rendering check, 10,000 five-character fragments required 5
 | `/jobs` / `/jobs ID` | Read deployment/reboot jobs directly, without asking the model |
 | `/output` / `/output ID offset` | Read the latest or selected saved tool result in character pages |
 | `/memory` | Show the facts Axis remembers between conversations |
+| `/skills` / `/skills NAME` | List skills or read one workflow guide, without the model |
 | `/history` | Show recent requests from this session |
 | `/paste` | Enter a multiline request; submit with a single `.` line |
 | `/reset` | Clear model conversation; retain jobs and saved output |
@@ -33,7 +34,7 @@ In a synthetic Linux rendering check, 10,000 five-character fragments required 5
 
 Saved job/output IDs accept an unambiguous prefix of at least six characters. Ctrl+C cancels the current request and returns to the prompt; it does not terminate the model server or cancel accepted background jobs. Interrupted actions can have unknown outcomes, so inspect their state before retrying. Input during `/paste` is discarded if cancelled. Incomplete/truncated model tool calls are not executed.
 
-Keep `terminal_ui.py`, `web_tools.py` and `atlas_db.py` next to `agent.py`; setup and the Windows bundle include them.
+Keep `terminal_ui.py`, `web_tools.py`, `atlas_db.py`, `skill_library.py` and the `skills` folder next to `agent.py`; setup and the Windows bundle include them.
 
 ## Public web search and reading
 
@@ -55,7 +56,7 @@ The basic fallback reads public HTML/text only. Neither provider signs into webs
 
 ## Standalone Windows IT actions
 
-Keep `agent.py`, `it_tools.py`, `it_windows.ps1`, `terminal_ui.py`, `web_tools.py` and `atlas_db.py` together. Both setup and the Windows bundle include them. To update an existing bundle, replace these files plus `start.py`; keep your models, notes, database and `state` folder.
+Keep `agent.py`, `it_tools.py`, `it_windows.ps1`, `terminal_ui.py`, `web_tools.py`, `atlas_db.py`, `skill_library.py` and the bundled `skills` folder together. Both setup and the Windows bundle include them. To update an existing bundle, replace these files plus `start.py`; keep your models, notes, database, `state` folder and custom skills.
 
 Start normally; the pictured OneDrive package repository is already the default:
 
@@ -119,7 +120,7 @@ Connections use SQLite `mode=ro` and `query_only`, fixed parameterized lookups a
 
 ## Shared Windows launcher
 
-**In AA this launcher is not included:** AA already contains Atlas. `Start AA.bat` opens the map with the browser chat, and `Start Agent.bat` in `AA\axis` opens this terminal with AA's active Atlas database, configured package repository, jobs, locks and memory (`data\axis\state`). This applies however Axis starts inside AA, including `python agent.py`. Explicit `--state-dir`, `--atlas-db` or `--package-repo` options still override them. If an earlier terminal folder `axis\state` still has active or unresolved jobs, startup stops and names them, because they would no longer guard their PCs; inspect those PCs and acknowledge the jobs with `"Start Agent.bat" --state-dir state`. Before AA's first start, the terminal makes AA's runtime copy of the seed database itself, so the seed is never changed. A configured database that is missing, such as a disconnected drive, makes Axis refuse PC changes until it is back. The rest of this section applies to standalone Axis.
+**In AA this launcher is not included:** AA already contains Atlas, and Axis runs only in AA's local Admin backend, on Atlas's own operations. `Start AA.bat` starts the model and opens the map with the chat. `Start Agent.bat` in `AA\axis`, or `python agent.py`, opens a terminal client of that same Axis. It needs AA running, shows the same chats (`--resume` continues the latest one), answers approvals in the window, and starts no model server or engine of its own. Model, database and package options do not apply there; AA's settings do. Jobs left by an earlier terminal in `axis\state` are listed when the terminal starts. Ask Axis about one by its ID to review or acknowledge it. The rest of this section applies to standalone Axis.
 
 In standalone Axis, `Start Axis + Atlas.bat` runs `start.py --with-atlas` through Axis's existing Python discovery. Run it under DSK to start both apps with that Windows account; no account switching or password storage is added. Atlas must already be installed. Its `Start-Office-Atlas.bat` handles Admin, Viewer, browser opening and configured collectors; any collector-specific account settings remain Atlas's responsibility. An explicit `WMI_PYTHON` is preserved; otherwise Atlas receives Axis's Python when it is 3.12 or newer, or uses its own Python discovery.
 
@@ -139,6 +140,13 @@ Extract the ZIP, then double-click `Start Agent.bat` inside its `local-agent` fo
 If you downloaded model parts instead, `start.py` checks and joins them, using about 2 GB of spare disk and resuming if interrupted. It starts llama-server and opens the agent. If several models are present it asks which to use. Add `--model 35b` to select the 35B or `--model 9b-distill` for the smaller distill.
 
 `--model flash` selects Qwen3.8-Flash-Next: all 36 download parts produce two GGUF files totalling 66.4 GB. Both files must be in the same folder. The launcher loads the first, and llama.cpp finds its companion. Model-specific server options enable memory mapping and lazy table reads. `--model k2` selects K2-Horizon-MoVA-36B-A4B. Model metadata may supply context, temperature and top-p defaults; explicit command-line values override them.
+
+`flash-abliterated` selects the community variant (66.8 GB). Its first GGUF has
+21 parts in its own release; the second is byte-identical to the original Flash
+model's second GGUF and reuses that file or its 16 parts. The launcher creates
+the required companion filename with a hard link when possible, otherwise a
+copy. Inside AA, select this model with `"Start AA.bat" --model flash-abliterated`;
+the terminal client uses the model already selected by AA.
 
 ## Quick setup (Windows)
 
@@ -182,6 +190,7 @@ python agent.py --workdir C:\path\to\project "list the .ps1 files and say what e
 | `--url` | `http://127.0.0.1:8080/v1` | Server address (`AGENT_URL` env var) |
 | `--model` | `Qwen3.8-9B-Q4_K_M` | Model name sent to the server (`AGENT_MODEL`) |
 | `--workdir` | current folder | The only folder the file tools may use |
+| `--skills` | `state/skills` (inside AA, always `AA/data/axis/skills`) | Custom workflow guides alongside bundled skills |
 | `--ctx` | `16384` | Must match the server's `-c`; older history is compacted to fit |
 | `--yes` | off | Approve writes and commands without asking |
 | `--think` | on | Enable and display model thinking; slower and uses more context |
@@ -197,6 +206,26 @@ python agent.py --workdir C:\path\to\project "list the .ps1 files and say what e
 | `--plain` | off | Disable colours and animation |
 | `--verbose` | on | Expand returned tool output; thinking is already displayed |
 | `--compact` | off | Summarize tool results; thinking stays visible |
+
+## Your skills
+
+Axis includes ten Atlas-based workflow guides in `skills/<name>/SKILL.md`. The
+model sees their names and descriptions and uses `read_skill` to load a relevant
+guide before following it. `/skills` lists the guides and `/skills NAME` reads
+one without inference; reading a guide does not run it. Ask "Use package-deployment
+to copy this package to the selected PC" to apply a workflow to a concrete task.
+
+Add your own guides in `AA/data/axis/skills/<name>/SKILL.md`; the browser chat and
+the AA terminal use the same Axis, so both see them. Standalone Axis defaults to
+`state/skills` for custom guides, or `--skills DIR`. Bundled guides are
+always available; custom names must be distinct. `/reset` refreshes the model's
+catalogue after adding or changing a description. Reads always use the current
+file. See [the format and bundled workflows](../docs/axis-skills.md).
+
+Skills use the existing tools, approvals, target locks and verification rules;
+they do not add new Windows operations. A workflow requiring an Atlas feature
+without an Axis tool explains the UI handoff. Notes remain reference material
+and `MEMORY.md` remains approved facts.
 
 ## Your notes
 

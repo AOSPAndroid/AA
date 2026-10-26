@@ -36,8 +36,10 @@ def main():
     with zipfile.ZipFile(args.output) as archive:
         assert archive.testzip() is None
         required = ('Start AA.bat', 'Stop AA.bat', 'aa_launcher.py', 'backend/axis_api.py',
-                    'frontend/assets/axis-chat.js', 'atlas/official-index.html',
-                    'axis/agent.py', 'axis/start.py', 'axis/models.json', 'office_atlas.db')
+                    'backend/axis_operations.py', 'backend/axis_sources.py', 'frontend/assets/axis-chat.js',
+                    'atlas/official-index.html', 'axis/agent.py', 'axis/aa_client.py', 'axis/start.py',
+                    'axis/models.json', 'axis/skill_library.py', 'axis/skills/pc-health/SKILL.md',
+                    'axis/skills/package-deployment/SKILL.md', 'office_atlas.db')
         for name in required:
             assert archive.read('AA/' + name), name
         assert not any(name.endswith('.gguf') or Path(name).name in ('firecrawl.key', '.env', 'config.json') for name in archive.namelist())

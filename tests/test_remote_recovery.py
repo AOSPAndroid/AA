@@ -69,6 +69,34 @@ class RemoteRecovery(unittest.TestCase):
             recovered.recover()
             recovered.target_ready('FICT-PC')
 
+    def test_a_missing_exit_record_stays_guarded_like_a_lost_monitor(self):
+        with tempfile.TemporaryDirectory() as tmp, ExitStack() as stack:
+            path = Path(tmp) / 'operations.db'
+            service = JobService(lambda: path)
+            stack.callback(service.pool.shutdown)
+            stack.enter_context(patch.multiple(main, job_service=service, jobs=service.jobs,
+                                              lock=service.lock, HISTORY_DB=path))
+            for name, value in [('validate_pc', lambda pc: pc), ('validate_deployment', lambda request: request)]:
+                stack.enter_context(patch.object(main, name, value))
+            stack.enter_context(patch.object(main, 'identity', return_value='FICTIONAL OPERATOR'))
+            stack.enter_context(patch.object(main.os.path, 'isdir', return_value=True))
+            stack.enter_context(patch.object(main, 'copy_pkg', return_value=1))
+            stack.enter_context(patch.object(main, 'launch', return_value=(4321, 'fixture.log', 'fixture.exit')))
+            stack.enter_context(patch.object(main, 'monitor', return_value=('not written', [])))
+            service.jobs['fixture'] = {'state': 'queued', 'events': []}
+            request = main.Deploy(computer='FICT-PC', folder='FictionalPackage', script='setup_i.ps1')
+            main.history_create('fixture', request.computer, request.folder, 'Install', request.script, 'full')
+            main._deploy_worker('fixture', request)
+            self.assertTrue(service.jobs['fixture']['recovery_required'])
+            self.assertIn('no exit code', service.jobs['fixture']['events'][-1]['message'])
+            with self.assertRaises(HTTPException):
+                service.target_ready('FICT-PC')
+            recovered = JobService(lambda: path)
+            stack.callback(recovered.pool.shutdown)
+            recovered.recover()
+            with self.assertRaises(HTTPException):
+                recovered.target_ready('FICT-PC')
+
     def test_guard_added_while_waiting_for_target_lock_blocks_new_work(self):
         with tempfile.TemporaryDirectory() as tmp, ExitStack() as stack:
             path = Path(tmp) / 'operations.db'

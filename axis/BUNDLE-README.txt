@@ -6,13 +6,20 @@ https://github.com/AOSPAndroid/Axis/blob/main/docs/GUIDE.md
 
 Contents: the agent, a launcher, and llama.cpp builds for the processor
 (llama-cpu) and for graphics cards (llama-vulkan). Models are separate.
-Keep agent.py, it_tools.py, it_windows.ps1, terminal_ui.py, web_tools.py and atlas_db.py
-together.
+Keep agent.py, it_tools.py, it_windows.ps1, terminal_ui.py, web_tools.py, atlas_db.py,
+skill_library.py and the bundled skills folder together.
 Atlas is not needed.
 
 In AA, Atlas is already included: run "Start AA.bat" in the AA folder for the
-map and browser chat. "Start Agent.bat" here opens the Axis terminal with AA's
-active Atlas database, package repository, jobs and memory (data\axis\state).
+map and chat. "Start Agent.bat" here then opens a terminal onto that same Axis,
+which runs inside AA on Atlas's own operations; the terminal starts nothing.
+
+Axis includes ten Atlas-based skills. /skills lists them; /skills pc-health
+reads a guide without the model. Ask Axis to use a skill for a concrete task.
+Custom guides go in AA\data\axis\skills\NAME\SKILL.md (standalone: state\skills,
+or --skills DIR). /reset refreshes the catalogue.
+Keep custom guides when updating. See AA\docs\axis-skills.md for the format.
+Skills use the existing approvals, tools and per-PC guards.
 
 Optional Atlas database: place office_atlas.db beside Start Agent.bat, or run:
   "Start Agent.bat" --atlas-db "F:\Atlas\DB\office_atlas.db"

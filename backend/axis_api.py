@@ -24,7 +24,9 @@ from pydantic import BaseModel, ConfigDict, Field, StrictBool, ValidationError
 import clipboard_history
 
 from axis.agent import Agent, MEMORY_FILE, change_memory, memory_entries, read_memory, without_entry, write_audit
-from axis.it_tools import ITTools, read_json, write_json
+from axis.it_tools import read_json, write_json
+from axis.skill_library import SkillLibrary
+from backend.axis_operations import AtlasOperations
 from backend.axis_sources import AtlasSources, SourceUnavailable
 
 MODEL_URL = "http://127.0.0.1:8080/v1"
@@ -60,6 +62,7 @@ class Chat(Input):
     session_id: str | None = Field(default=None, min_length=20, max_length=80)
     context: Selection | None = None
     attachment: Attachment | None = None
+    client: Literal["browser", "terminal"] = "browser"  # Where approvals are answered, for the audit log.
 
 
 class SessionInput(Input):
@@ -271,10 +274,11 @@ class ModelHTTP:
 
 
 class BrowserUI:
-    interface = "browser"
+    """Streams a turn to the browser panel or the AA terminal client; both answer approvals here."""
 
-    def __init__(self, turn):
+    def __init__(self, turn, interface="browser"):
         self.turn = turn
+        self.interface = interface
 
     @contextmanager
     def status(self, label):
@@ -496,6 +500,12 @@ class Sessions:
         return dict(model_status(), running=running, active_sessions=len(self.sessions),
                     database_available=Path(self.backend.MASTER_DB).is_file(), approvals="ask")
 
+    def operations(self, confirm):
+        """Axis's Windows tools on this Atlas's operations; earlier Axis job files stay readable."""
+        # Earlier terminal jobs may also remain in axis\state from before the terminal used AA's chat.
+        return AtlasOperations(self.backend, confirm, legacy_state=(self.state, self.root / "axis" / "state"),
+                               outputs=self.state / "outputs")
+
     def _saved_id(self, folder, prefix):
         if not re.fullmatch(r"[a-f0-9]{1,32}", prefix or ""):
             raise ValueError("Use a job/output ID shown by Axis.")
@@ -510,7 +520,7 @@ class Sessions:
         parts = message.split()
         name, args = parts[0].lower(), parts[1:]
         if name == "/help" and not args:
-            ui.assistant("Ask Axis about a person, PC or package. /status checks the local model; /jobs [ID] reads jobs; /output ID [offset] reads saved output; /memory shows what Axis remembers; /reset starts a fresh conversation. Changes need approval.")
+            ui.assistant("Ask Axis about a person, PC or package. /status checks the local model; /jobs [ID] reads jobs; /output ID [offset] reads saved output; /memory shows what Axis remembers; /skills [name] lists skills or reads a guide; /reset starts a fresh conversation. Changes need approval.")
         elif name == "/status" and not args:
             status = self.status()
             ui.assistant("Model: %s. Atlas database: %s. Changes require approval." %
@@ -527,11 +537,14 @@ class Sessions:
                 text = ""
             ui.assistant(text + "\n\n(" + str(path) + ")" if text else
                          "Nothing remembered yet. Ask Axis to remember a fact; saving it needs your approval.")
+        elif name == "/skills" and len(args) <= 1:
+            library = SkillLibrary(self.directory / "skills")
+            ui.assistant(library.display(args[0] if args else None))
         elif name == "/jobs" and len(args) <= 1:
-            identifier = self._saved_id("jobs", args[0]) if args else None
-            tool = ITTools(self.state, str(self.backend.REPO))
+            tool = self.operations(lambda action: False)  # Reading only; acknowledging needs the chat's approval.
+            identifier = tool.find_job(args[0]) if args else None
             ui.tool_start("it_job_status", {"job_id": identifier})
-            ui.tool_result("it_job_status", json.dumps(tool.it_job_status(identifier), ensure_ascii=False), 0)
+            ui.tool_result("it_job_status", json.dumps(tool.it_job_status(identifier), ensure_ascii=False, default=str), 0)
         elif name == "/output" and 1 <= len(args) <= 2:
             identifier = self._saved_id("outputs", args[0])
             offset = int(args[1]) if len(args) == 2 else 0
@@ -564,7 +577,7 @@ class Sessions:
         return dict(attachment.model_dump(), label=label), [(name, args, result)]
 
     def run(self, session, turn, body, prefetched=()):
-        ui = BrowserUI(turn)
+        ui = BrowserUI(turn, body.client)
         try:
             turn.check()
             if self.command(session, ui, body.message.strip()):
@@ -583,7 +596,8 @@ class Sessions:
                                              ctx=settings["ctx"], notes=str(self.root / "axis" / "notes"),
                                              package_repo=str(self.backend.REPO), state_dir=str(self.state), ui=ui,
                                              sampling=settings["sampling"], atlas_db=str(self.backend.MASTER_DB),
-                                             sources=self.sources)
+                                             sources=self.sources, operations=self.operations,
+                                             skills=str(self.directory / "skills"))
                 session.configuration = configuration
                 if session.saved_messages:
                     if session.saved_configuration == list(configuration):

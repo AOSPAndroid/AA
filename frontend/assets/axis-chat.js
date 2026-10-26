@@ -186,6 +186,91 @@
     }
     container.append(row);
   }
+  // Work Axis starts is Atlas's own work: open it in Atlas's views. Selecting a PC gives no permission.
+  const PC = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;
+  const FINISHED = new Set([
+    "launched",
+    "complete",
+    "failed",
+    "cancelled",
+    "interrupted",
+    "unknown",
+  ]);
+  function atlasView(command) {
+    const onConsole = document.body.classList.contains("atlas-console");
+    if (
+      onConsole &&
+      (command === "active" || command === "recent") &&
+      typeof window.openDeploymentMonitor === "function"
+    )
+      return window.openDeploymentMonitor(command);
+    if (
+      onConsole &&
+      command === "queue" &&
+      document.querySelector("#queueDrawer")
+    )
+      return document.querySelector("#queueDrawer").classList.add("open");
+    navigate("/installer?" + new URLSearchParams({ command }));
+  }
+  function selectPc(pc) {
+    if (
+      document.body.classList.contains("atlas-console") &&
+      typeof window.setTarget === "function" &&
+      typeof window.page === "function"
+    ) {
+      window.page("workspace");
+      return window.setTarget(pc, "Selected from Axis chat");
+    }
+    navigate("/installer?" + new URLSearchParams({ machine: pc }));
+  }
+  function navigate(url) {
+    if (!window.AtlasNavigate?.(url)) location.assign(url);
+  }
+  function atlasLinks(container, name, result) {
+    let data;
+    try {
+      data = JSON.parse(result);
+    } catch {
+      return;
+    }
+    if (!data || typeof data !== "object") return;
+    const links = [];
+    const started = name === "deploy_package" ? data.jobs || [] : [];
+    if (started.some((job) => job && job.job_id))
+      links.push(["Show in Deployments", () => atlasView("active")]);
+    else if (name === "it_job_status" && data.kind === "deployment")
+      links.push([
+        "Show in Deployments",
+        () => atlasView(FINISHED.has(data.state) ? "recent" : "active"),
+      ]);
+    if (
+      (name === "computer_action" &&
+        data.job_id &&
+        data.state === "requested") ||
+      (name === "it_job_status" && data.kind === "reboot")
+    )
+      links.push(["Show reboot monitor", () => atlasView("queue")]);
+    const pcs = new Set(started.map((job) => job && job.computer));
+    if (["inspect_computer", "computer_action"].includes(name))
+      pcs.add(data.computer);
+    if (name === "it_job_status") pcs.add(data.target);
+    if (name === "search_atlas")
+      for (const item of data.items || [])
+        if (item && item.kind === "computers") pcs.add(item.name);
+    for (const pc of [...pcs]
+      .filter((pc) => typeof pc === "string" && PC.test(pc))
+      .slice(0, 5))
+      links.push(["Select " + pc + " in Workspace", () => selectPc(pc)]);
+    if (!links.length) return;
+    const row = element("div", "axis-atlas-links");
+    for (const [label, run] of links) {
+      const link = element("button", "", label);
+      link.type = "button";
+      link.addEventListener("click", run);
+      row.append(link);
+    }
+    container.append(row);
+  }
   function updateSelection() {
     const source = window.AtlasAxisSelection;
     const selected = source?.();
@@ -429,6 +514,7 @@
           element("pre", "axis-tool-result", print(event.result)),
         );
         if (event.name === "find_desk") deskLinks(tool.content, event.result);
+        atlasLinks(tool.content, event.name, event.result);
         if (event.output_id)
           tool.content.append(
             element("small", "axis-tool-saved", "/output " + event.output_id),
