@@ -70,6 +70,12 @@ def downloaded(model, entries):
     return len(missing) < total or any(found for _, found, _ in missing)
 
 
+def following(previous, name):
+    """Whether name is the part right after previous of the same file (file.gguf.part002 after .part001)."""
+    (stem, number), (last_stem, last) = name.rsplit(".part", 1), previous.rsplit(".part", 1)
+    return stem == last_stem and int(number) == int(last) + 1
+
+
 def report(model, entries):
     """List the parts that stop a model from being joined, with what is wrong with each one found."""
     start.log("%s cannot be joined yet. Missing or unusable parts:" % model["name"])
@@ -81,7 +87,7 @@ def report(model, entries):
             del run[:]
     missing = missing_parts(model, entries)
     for name, found, _ in missing:
-        if not found and run and run[-1].rsplit(".", 1)[0] == name.rsplit(".", 1)[0]:
+        if not found and run and following(run[-1], name):
             run.append(name)
             continue
         flush()

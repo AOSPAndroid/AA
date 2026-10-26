@@ -102,6 +102,13 @@ class JoinModelTests(unittest.TestCase):
         self.assertIn("base-00002-of-00002.gguf.part001 to part003", report)
         self.assertIn("Download them from " + start.RELEASES + "base\n", report)
 
+    def test_a_range_of_missing_parts_never_covers_a_part_that_is_present(self):
+        self.parts("alpha", skip=(1, 3))
+        self.assertEqual(join_model.main([]), 1)
+        report = self.output.getvalue()
+        self.assertIn("  alpha.gguf.part001\n  alpha.gguf.part003\n", report)
+        self.assertNotIn("to part", report)
+
     def test_nothing_to_join(self):
         self.assertEqual(join_model.main([]), 1)
         self.assertIn("No model parts found", self.output.getvalue())
