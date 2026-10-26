@@ -130,6 +130,10 @@ class Regression(unittest.TestCase):
    with patch.object(app.os.path,'isdir',return_value=True),patch.object(app,'copy_pkg',return_value=1),patch.object(app,'launch',return_value=(123,'log','exit')),patch.object(app,'monitor',return_value=(code,[])):
     app.deploy_worker(j,p)
    self.assertEqual(app.jobs[j]['state'],expected)
+   # No exit record is no outcome: the PC stays held until someone inspects it and acknowledges.
+   self.assertEqual(bool(app.jobs[j].get('recovery_required')),code=='not written')
+   self.assertEqual('TESTPC' in app.job_service.unresolved,code=='not written')
+   app.job_service.unresolved.discard('TESTPC')
  def test_launch_status_survives_log_failure_but_not_start_failure(self):
   for started in (True,False):
    j=uuid.uuid4().hex;app.jobs[j]={'state':'queued','events':[]};app.history_create(j,'TESTPC','Example','Install','setup_i.ps1','full')

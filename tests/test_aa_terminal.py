@@ -182,6 +182,20 @@ class TerminalClientTests(unittest.TestCase):
         for value in ("ffffffffffff", "PC7", "eeeeeeeeeeee", "PC8", "deployment"):
             self.assertIn(value, text)
 
+    def test_an_atlas_job_shows_its_outcome_exit_code_and_log_in_the_terminal(self):
+        import io
+        from axis.terminal_ui import TerminalUI
+        stream = io.StringIO()
+        ui = TerminalUI(stream=stream, plain=True, verbose=True, width=120)
+        ui.tool_result("it_job_status", json.dumps({
+            "job_id": "f" * 32, "kind": "deployment", "state": "launched", "target": "PC7", "package": "Example",
+            "exit_code": "1603", "outcome": "launched, exit code 1603: the script reported a failure",
+            "events": ["Copy complete. Robocopy: 1", "Launched"], "log_tail": ["MSI (s) Product: Example -- failed"],
+            "verification_note": "An exit code describes the script run."}), 0.1)
+        text = stream.getvalue()
+        for value in ("ffffffff", "PC7", "1603", "the script reported a failure", "Robocopy: 1", "Product: Example -- failed"):
+            self.assertIn(value, text)
+
     def test_one_message_from_the_command_line(self):
         chat, ui = self.chat()
         with patch.object(aa_client, "earlier_terminal_jobs", return_value=[]):

@@ -583,6 +583,8 @@ class TerminalUI:
                 self._web_read_body(data)
             elif isinstance(data, dict) and name in ("search_atlas", "read_atlas_record"):
                 self._atlas_body(name, data)
+            elif isinstance(data, dict) and name == "it_job_status" and "job_id" in data and "id" not in data:
+                self._atlas_job_body(data)
             elif isinstance(data, dict) and ("jobs" in data or (name == "it_job_status" and "id" in data)):
                 self._jobs_body(data)
             elif isinstance(data, dict):
@@ -785,6 +787,37 @@ class TerminalUI:
             if isinstance(value, (dict, list)):
                 value = json.dumps(value, ensure_ascii=False)
             self._line(str(key) + "  " + str(value), prefix="  ")
+
+    def _atlas_job_body(self, data):
+        """One Atlas deployment or reboot, as Axis inside AA reports it."""
+        state = data.get("state", "unknown")
+        self._line("%s  %s" % (self._state(state), data.get("job_id", "")), self._tone(state), prefix="  ", bold=True)
+        for key in ("target", "package", "action", "script", "exit_code"):
+            if data.get(key) not in (None, ""):
+                self._line(key.replace("_", " ").title() + "  " + str(data[key]), prefix="  ")
+        outcome = str(data.get("outcome") or "")
+        if outcome:
+            unknown = outcome.startswith("unknown")
+            failed = unknown or "failure" in outcome or outcome.startswith("failed")
+            self._line("Outcome  " + outcome, "warning" if unknown else "error" if failed else self._tone(state),
+                       prefix="  ", bold=True)
+        if data.get("message"):
+            self._line(str(data["message"]), prefix="  ")
+        events = [e if isinstance(e, str) else str(e.get("message", "")) for e in data.get("events") or []]
+        if events:
+            self._heading("RECORDED ACTIVITY", tone="dim")
+        for event in events if self.verbose else events[-5:]:
+            self._line("[LOG] " + event, "dim", prefix="  ")
+        log = data.get("log_tail") or []
+        log = log if isinstance(log, list) else str(log).splitlines()
+        if log:
+            self._heading("INSTALLER LOG", tone="dim")
+        for line in log if self.verbose else log[-10:]:
+            self._line(str(line), "dim", prefix="  ")
+        if data.get("recovery_required"):
+            self._line("The PC stays blocked until someone inspects it and acknowledges this outcome.", "warning", prefix="  ")
+        if data.get("verification_note"):
+            self._line(str(data["verification_note"]), "warning", prefix="  ")
 
     def _jobs_body(self, data):
         if "jobs" in data:

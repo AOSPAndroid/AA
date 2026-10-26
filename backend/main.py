@@ -214,6 +214,10 @@ def _deploy_worker(j,p):
    emit(j,'Copy-only completed','complete');history_update(j,state='complete',finished=time.strftime('%Y-%m-%d %H:%M:%S'));return
   pid,log,ex=launch(pc,remote,pkg);launched=True;emit(j,'Launched',pid=pid);history_update(j,pid=str(pid))
   ec,lines=monitor(pc,pid,log,ex);state,message=outcome(ec)
+  if not re.fullmatch(r'-?\d+',str(ec).strip()):
+   # No exit record is no outcome: hold the PC until someone inspects it and acknowledges, as after a lost monitor.
+   job_service.unresolved.add(pc);message='Launched; the installer left no exit code. Inspect the target, then acknowledge it in Operation recovery.'
+   with lock:jobs[j]['recovery_required']=True
   emit(j,message,state,log=lines,exit_code=ec)
   history_update(j,state=state,exit_code=str(ec),finished=time.strftime('%Y-%m-%d %H:%M:%S'),details=message+'\n'+'\n'.join(lines[-20:]))
  except Exception as e:

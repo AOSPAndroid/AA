@@ -284,6 +284,11 @@ class AtlasOperationTests(unittest.TestCase):
         app.jobs[job].update(state='launched', recovery_required=False, events=[{'message': 'x', 'exit_code': 'not written'}])
         self.assertTrue(self.ops.call('it_job_status', {'job_id': job})['outcome'].startswith('unknown'))
         self.assertIn('ping only', self.ops.call('computer_action', {'computer': 'TESTPC', 'action': 'reboot'})['message'])
+        # Atlas holds a PC whose installer left no exit code (backend/main.py); Axis then refuses it.
+        self.reboots.rows.clear()
+        app.jobs[job]['recovery_required'] = True; app.job_service.unresolved.add('TESTPC')
+        with self.assertRaisesRegex(ValueError, 'unknown outcome'):
+            self.deploy()
 
     def test_saved_tool_output_is_pruned_after_thirty_days(self):
         outputs = Path(self.tmp.name) / 'outputs'
