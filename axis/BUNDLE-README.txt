@@ -11,8 +11,8 @@ together.
 Atlas is not needed.
 
 In AA, Atlas is already included: run "Start AA.bat" in the AA folder for the
-map and browser chat. "Start Agent.bat" here opens the Axis terminal with AA's
-active Atlas database, package repository, jobs and memory (data\axis\state).
+map and chat. "Start Agent.bat" here then opens a terminal onto that same Axis,
+which runs inside AA on Atlas's own operations; the terminal starts nothing.
 
 Optional Atlas database: place office_atlas.db beside Start Agent.bat, or run:
   "Start Agent.bat" --atlas-db "F:\Atlas\DB\office_atlas.db"
