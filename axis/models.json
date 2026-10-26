@@ -249,5 +249,66 @@
       "94b5be0fea2b7f36ff152adb4c36714d9cebb52a0e56363a546743e942c22978",
       "c319a4ee35a766cfa4f841c262a838424a60d908ebdebf2256a5adf8a7ae8bd9"
     ]
+  },
+  {
+    "key": "35b-distill",
+    "name": "Qwen3.8-35B-A3B distill",
+    "note": "fast; community distill, always thinks",
+    "tag": "qwen3.8-35b-a3b-distill-q4-k-m",
+    "file": "Qwen3.8-35B-A3B-Q4_K_M.gguf",
+    "size": 21713462944,
+    "sha256": "196103269085bc54c9b8f49ed21e9f53e1b56b465e8b796c6d8e31e06f63cfa5",
+    "parts": [
+      "4892f8c58cdeb7cb4d506275a49d933f26908381bb146065bf17687cb2b306cc",
+      "5dbaf9b9fe5de11a1e0c00307b792978a772ded469a6c2e8ffe045201e061c99",
+      "51e0e1c1ff86c907659246773fb3132bd9172b42df014056c7dc2ceee2b5edcb",
+      "b549a70b67e141086c13891b98ec7a766ee0e99321c2926ce67baee6ee5d3950",
+      "9460c9f180596fcc26f268c29f294cb16ba1723d07185bf968881361af176da8",
+      "4914a8a5c9c96e9bbe0fb45b2cd24fcae7470b90849d5576f479e3bbaab3847f",
+      "5b7dbbc220adc8b05550e260207cadf1f96c02723897ade91062000bb66ff606",
+      "34ab5deed3548e8a70a3627ffda01162b2e6250a7cf6d1bf1a47a7f0641e3691",
+      "fd2d85452e4a74cf7b7d1073fa3a11e9dbfa1abe0b6dd00527abce2bf85c0ca6",
+      "45e7ef2abb29e1581de1ef7a00e099828e53fe151b1b7d901b4575add5cc1fcf",
+      "a17ef311dab7797962fd5b7eccb722bdb27533cc8da0b8fb5c914af656c2c8ee",
+      "a5bc3f17491635cbfaadbcf5663e99cbaf8232d3b0d2ab000137130dbc5f8c0b"
+    ]
+  },
+  {
+    "key": "27b-iq3",
+    "name": "Qwen3.8-27B IQ3_S",
+    "note": "smaller 27B for 16 GB of memory",
+    "tag": "qwen3.8-27b-gsq-rco-iq3-s",
+    "file": "Qwen3.8-27B-GSQ-RCO-IQ3_S.gguf",
+    "size": 11771546784,
+    "sha256": "64b53b64c7aa39f20a7e54bd80582fe595b1d745624ee8a72e92508c0326d810",
+    "parts": [
+      "1a4f5894976bbde38b65c40c75baf064f6df2032ae0f8c9c5932ca303f3a1576",
+      "a8405044400ebae555f70b36ba39aa48c365a594f43bed8a0880b9d2a7e46498",
+      "900e7d68abc64b3958f228fb0e0615b53dd500a5355bedf04b96bec7fa380a3e",
+      "2faee5d73a2dbb43c939832b3c97bc8d841b66f46c78360e73f409e05422ebf9",
+      "04e12d15bfb16f173265599231574182232c752cb935acb2cfbd838bf71a9abc",
+      "30b5550eb92b78f453f993b9ed36ad61fe38f2bd1740e9f6f20ac0b7c0a284b3",
+      "23304f1a34a5e85298935cd3651dd18671698f2699d4191a7ae1ba8706824ad0"
+    ]
+  },
+  {
+    "key": "27b-abliterated",
+    "name": "Qwen3.8-27B abliterated",
+    "note": "community edit without refusals",
+    "tag": "qwen3.8-27b-abliterated-q4-k",
+    "file": "Huihui-Qwen3.8-27B-abliterated-Q4_K.gguf",
+    "size": 16810714400,
+    "sha256": "6c2c13cef89238c3604d756b07b3ef5fafebbd61095feb8553ff449c95e4c1c6",
+    "parts": [
+      "71716a37be09951d0b0d92c87229dedb8df3f8d7f028dd53a540b8c1d7476d38",
+      "1874544571e5d203e75d4276a3c903d79297724d0f8f7b1b4dba48a45135b64b",
+      "26be82198811ebaeea91215c780bf995ffbfe57328910afc5a304c99857353b3",
+      "485a7d1884de706681d29b549c2c736b3dc51fd8540b34b2fcffc67eba9e874a",
+      "26afb70dc871c8413b57dd43832e02f83005bb1577ae51d67b9144cf73281b59",
+      "6ca5af9b095bfdfde5d2bf5ece09922b802670ad853cdafeceff859760d89dd4",
+      "1da972fa993607d054a4c45813295a4b3698c274e3fc92ee0ce08cbdbaec2f7a",
+      "95dbc8210014270da4aaea02bdc28de875a1789964f87da02af266109e77289f",
+      "d3ffae8c5964cd556356e6a1e5f61c191c181a27d6d703197339e4b2b7382bff"
+    ]
   }
 ]
