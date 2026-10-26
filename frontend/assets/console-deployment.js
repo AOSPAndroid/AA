@@ -795,7 +795,7 @@ function deploymentCard(item) {
   }
   const failed = ["failed", "interrupted", "unknown"].includes(item.state);
   const actions = item.retry ? `<div class="deployment-card-actions">${failed ? `<button type="button" class="primary" data-deployment-retry="${esc(item.id)}">Retry</button>` : ""}<button type="button" data-deployment-queue="${esc(item.id)}">Add to queue</button></div>` : "";
-  return `<article class="deployment-monitor-card"><header><b>${esc(item.target || "Machine not recorded")}</b><span class="${statusAccent(item.state)}">${esc(item.state)}</span></header><p class="deployment-package"><strong>${esc(item.package || "Package not recorded")}</strong>${item.action ? " · " + esc(item.action) : ""}</p>${item.script ? `<small class="deployment-script">${esc(item.script)}</small>` : ""}<p>${esc(item.last_message || "")}</p>${actions}<pre>${esc(terminalLines(item.events))}</pre></article>`;
+  return `<article class="deployment-monitor-card"><header><b>${esc(item.target || "Machine not recorded")}</b><span class="${statusAccent(item.state)}">${esc(item.state)}</span></header><p class="deployment-package"><strong>${esc(item.package || "Package not recorded")}</strong>${item.action ? " · " + esc(item.action) : ""}${item.requested_by === "Axis" ? ' <small class="history-source" title="Started from Axis chat">Axis</small>' : ""}</p>${item.script ? `<small class="deployment-script">${esc(item.script)}</small>` : ""}<p>${esc(item.last_message || "")}</p>${actions}<pre>${esc(terminalLines(item.events))}</pre></article>`;
 }
 function renderDeploymentMonitor(data) {
   const list = document.querySelector("#deploymentsList");

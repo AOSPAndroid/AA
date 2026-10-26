@@ -23,7 +23,7 @@ const payload = id => ({ computer: 'PC-' + id, folder: 'Example App', script: 's
     let match = path.match(/^\/api\/deploy\/([^/]+)\/(retry|payload)$/);
     if (match) return match[2] === 'retry' ? response({ job: 'new-' + match[1], target: 'PC-OTHER', package: 'Example App', action: 'Install' }) : response(payload(match[1]));
     if (path === '/api/deployments/recent') return response({ deployments: [
-      { id: 'd1', kind: 'single', state: 'failed', target: 'PC-D1', package: 'Example App', action: 'Install', retry: true, events: [] },
+      { id: 'd1', kind: 'single', state: 'failed', target: 'PC-D1', package: 'Example App', action: 'Install', retry: true, events: [], requested_by: 'Axis' },
       { id: 'd2', kind: 'single', state: 'complete', target: 'PC-D2', package: 'Example App', action: 'Install', retry: true, events: [] },
       { id: 'b1', kind: 'single', state: 'failed', target: 'PC1, PC2', package: 'Example App', action: 'Install', retry: false, events: [] }] });
     if (path === '/api/deployments/active') return response({ deployments: [], count: 0 });
@@ -52,6 +52,8 @@ const payload = id => ({ computer: 'PC-' + id, folder: 'Example App', script: 's
   w.eval('openDeploymentMonitor("recent")');
   await until(() => d.querySelectorAll('.deployment-monitor-card').length === 3);
   const cards = [...d.querySelectorAll('.deployment-monitor-card')];
+  // A deployment Axis started is an ordinary Atlas deployment, marked with where it came from.
+  assert.deepEqual(cards.map(c => c.querySelector('.history-source')?.textContent || ''), ['Axis', '', '']);
   assert.deepEqual(cards.map(c => [...c.querySelectorAll('.deployment-card-actions button')].map(b => b.textContent)), [['Retry', 'Add to queue'], ['Add to queue'], []]);
   cards[0].querySelector('[data-deployment-retry]').click();
   await until(() => calls.includes('POST /api/deploy/d1/retry'));
