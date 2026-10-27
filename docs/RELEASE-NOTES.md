@@ -7,6 +7,10 @@ Atlas's map and Axis chat in one application.
 Files are recognised by their columns. A users and devices snapshot that would
 remove more than 10% waits for review in Manage Database > Import folder.
 
+**Quieter Axis chat.** Each tool call now collapses to a one-line summary you can
+expand for its full request and result, and **Thinking** is off by default with a
+header toggle (it resets off for each new chat). Turn it on for a hard problem.
+
 **Admin and Demo match.** Demo now shows the same map, desk inspector, menus and
 console pages as Admin, with changes greyed out instead of hidden or replaced.
 The top left reads **Atlas**, and **Ask Axis** is a floating button in the
@@ -18,8 +22,8 @@ or `AA/axis`, then run **Start AA.bat** under your DSK account. Python 3.12 and
 Atlas's existing dependencies are required; use `windows\Install_Dependencies.bat` if
 they are missing. CPU and Vulkan llama.cpp runtimes are included.
 
-The local Admin map and console pages include Axis chat with visible thinking,
-tool activity and action approvals. Axis works on Atlas's own operations: its
+The local Admin map and console pages include Axis chat with streamed tool
+activity and action approvals, and optional model reasoning. Axis works on Atlas's own operations: its
 deployments are Atlas deployments, shown in Deployments and history and marked
 Axis; its reboots use Atlas's reboot monitor; and Atlas's own checks and per-PC
 guard apply. Axis reads Atlas's active database and package repository,

@@ -14,8 +14,10 @@ must not deploy over them.
 - Keep the interface compact and use the existing shared design-system tokens.
 - Axis executes only through the local Admin backend. Never expose its chat,
   approvals, model control or tools through the read-only LAN Viewer.
-- Keep thinking visible and reuse Axis's existing tool approval and verification
-  rules. A selected desk supplies context, not permission to make changes.
+- Keep Axis's work visible — streamed tool activity and approvals — and reuse its
+  existing tool approval and verification rules. The model's private reasoning may
+  be toggled (off by default in the browser chat); tool activity and approvals are
+  never hidden. A selected desk supplies context, not permission to make changes.
 - Use the active Atlas database and package repository for the embedded agent.
 - Keep model files, credentials, runtime state and logs out of Git. The imported
   Atlas seed database and static data are upstream source assets, not runtime state.

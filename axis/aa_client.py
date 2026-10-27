@@ -41,6 +41,7 @@ class AAChat:
         self.http = opener or urllib.request.build_opener(urllib.request.ProxyHandler({}))
         self.session_id = None
         self._token = None
+        self.think = True  # The terminal shows the model's reasoning by default; --no-think hides it.
 
     def request(self, method, path, body=None, timeout=30):
         headers = {"Accept": "application/json"}
@@ -77,7 +78,7 @@ class AAChat:
         return data.get("transcript") or []
 
     def send(self, message):
-        body = {"message": message, "client": "terminal"}
+        body = {"message": message, "client": "terminal", "think": self.think}
         if self.session_id:
             body["session_id"] = self.session_id
         try:
@@ -203,12 +204,15 @@ def main(argv=None, ui=None, chat=None):
     p.add_argument("--plain", action="store_true", help="plain output without colour or animation")
     p.add_argument("--compact", dest="verbose", action="store_false", default=True,
                    help="summarize tool results; thinking remains visible")
+    p.add_argument("--no-think", dest="think", action="store_false", default=True,
+                   help="hide the model's reasoning (faster, quieter)")
     a, ignored = p.parse_known_args(argv)
     ui = ui or TerminalUI(plain=a.plain, verbose=a.verbose)
     if ignored:
         ui.notice("Inside AA the model, database and package settings come from AA; ignored: %s" % " ".join(ignored), "dim")
     try:
         chat = chat or AAChat(admin_base(), ui)
+        chat.think = a.think
         status = chat.status()
     except Unavailable as error:
         ui.error(str(error))

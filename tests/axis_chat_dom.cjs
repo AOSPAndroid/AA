@@ -311,17 +311,42 @@ test("split UTF-8 and CRLF events preserve full visible thinking, tool output an
   );
   assert.equal(f.w.attacked, undefined);
   assert.equal(
-    f.$(
-      ".axis-message-thinking [hidden], .axis-message-tool [hidden], #axis-chat-messages details:not([open])",
-    ),
+    f.$(".axis-message-thinking [hidden], .axis-message-tool [hidden]"),
     null,
   );
+  // The tool call collapses to a one-line card; its full result stays in the DOM as text.
+  const card = f.$(".axis-tool-card");
+  assert(card && card.tagName === "DETAILS" && !card.open, "tool detail is collapsed by default");
+  assert.equal(f.$(".axis-tool-name").textContent, "inspect computer");
   assert.match(f.$(".axis-tool-saved").textContent, /output-one/);
   assert.equal(f.$("#axis-chat-activity").hidden, true);
   assert.equal(
     f.requests("/api/axis/chat")[0].headers["X-Atlas-Token"],
     "local-admin-token",
   );
+});
+
+test("thinking is off by default, toggles per message, and resets on a new chat", async (t) => {
+  const f = fixture(t);
+  await tick();
+  const toggle = f.$("#axis-chat-think");
+  assert.equal(toggle.getAttribute("aria-checked"), "false");
+  assert.equal(toggle.textContent, "Thinking off");
+  f.submit("first");
+  await f.idle();
+  assert.equal(f.requests("/api/axis/chat")[0].payload.think, false);
+  toggle.click();
+  assert.equal(toggle.getAttribute("aria-checked"), "true");
+  assert.equal(toggle.textContent, "Thinking on");
+  f.submit("second");
+  await f.idle();
+  assert.equal(f.requests("/api/axis/chat")[1].payload.think, true);
+  f.$("#axis-chat-reset").click();
+  await until(
+    () => toggle.getAttribute("aria-checked") === "false",
+    "New chat turns thinking back off",
+  );
+  assert.equal(toggle.textContent, "Thinking off");
 });
 
 test("the latest saved chat is shown again on load with decisions as history", async (t) => {
@@ -809,6 +834,7 @@ test("desk context requires explicit attachment, captures that desk, and exclude
   await f.idle();
   assert.deepEqual(f.requests("/api/axis/chat")[1].payload, {
     message: "Check this machine",
+    think: false,
     session_id: "session-one",
     context: {
       desk_id: original.desk_id,
