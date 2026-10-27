@@ -128,6 +128,11 @@ tools; local chat, notes, files and IT tools remain available.
    It then starts llama-server and opens the agent. Close the window to
    stop both.
 
+To join a model without starting anything, double-click "Join Model.bat".
+It checks each part, joins them next to it, and names any part that is
+missing, still downloading, renamed by the browser or the wrong size.
+Parts kept elsewhere: Join Model.bat --folder D:\Models
+
 BUNDLE-COMMIT.txt identifies the source commit used to build this ZIP.
 
 To skip the question: python start.py --model 35b

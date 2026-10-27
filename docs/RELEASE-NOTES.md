@@ -46,6 +46,8 @@ weights or API credentials are bundled.
 
 Deployments now wait for the installers a script starts, including ones it hands off before returning, and for Windows Installer, before reporting. The deployment shows what it is waiting for and then lists the software that was newly registered, removed or updated. More Qwen3.8 models can be selected in Axis: `35b-distill`, `27b-iq3`, `27b-abliterated`, and the 27B at 8 or 16 bits (`27b-q8`, `27b-bf16`) for PCs with a large graphics card or plenty of memory.
 
+`axis\Join Model.bat` joins a model's downloaded parts on its own, without starting AA. It checks every part, and names any that are missing, still downloading, renamed by the browser or the wrong size.
+
 Use **Stop AA.bat** to stop AA's local services. Accepted remote deployment jobs
 are independent of the browser chat and must be checked before retrying.
 
