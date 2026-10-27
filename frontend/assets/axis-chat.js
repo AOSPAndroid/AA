@@ -192,16 +192,27 @@
     return text.length > 80 ? text.slice(0, 79) + "…" : text;
   }
   function resultHint(result) {
+    let data = result;
     try {
-      const data = typeof result === "string" ? JSON.parse(result) : result;
-      if (Array.isArray(data?.items))
+      data = typeof result === "string" ? JSON.parse(result) : result;
+    } catch {}
+    if (typeof data === "string") {
+      if (/^\s*Error:/i.test(data)) return "error";
+      if (/^\s*User declined/i.test(data)) return "declined";
+    }
+    if (data && typeof data === "object") {
+      if (data.error || data.ok === false) return "error";
+      if (data.state) return String(data.state);
+      if (Array.isArray(data.results)) {
+        const count = data.results.length;
+        const succeeded = data.results.filter((row) => row?.ok === true).length;
+        return succeeded + " succeeded" + (count > succeeded ? " · " + (count - succeeded) + " to review" : "");
+      }
+      if (Array.isArray(data.items))
         return data.items.length + (data.items.length === 1 ? " result" : " results");
       if (Array.isArray(data)) return data.length + " rows";
-      if (data && typeof data === "object") {
-        if (data.job_id) return "job started";
-        if (data.state) return String(data.state);
-      }
-    } catch {}
+      if (data.job_id) return "job started";
+    }
     return "done";
   }
   function toolCard(name) {

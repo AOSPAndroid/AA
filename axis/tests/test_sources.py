@@ -133,6 +133,26 @@ class SourceTests(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertFalse(self.agent.known_pc(name))
 
+    def test_private_bulk_reads_approve_every_outside_target_before_contact(self):
+        self.private()
+        self.agent.it.call = MagicMock(return_value={'count': 3})
+        args = {'computers': ['PC1', 'FIRST.external.example', 'SECOND.external.example'], 'view': 'overview'}
+        with patch.object(self.agent, 'known_pc', side_effect=lambda pc: pc == 'PC1'):
+            self.assertIn('declined', self.agent.call_tool('inspect_computers', args).lower())
+        self.agent.it.call.assert_not_called()
+        approval = self.ui.confirm.call_args[0][0]
+        self.assertIn('FIRST.external.example', approval)
+        self.assertIn('SECOND.external.example', approval)
+
+    def test_a_private_batch_never_contacts_targets_hidden_by_truncation(self):
+        self.private()
+        self.agent.it.call = MagicMock()
+        args = {'computers': ['%s%s.example' % (str(i), 'x' * 50) for i in range(8)], 'view': 'preflight'}
+        with patch.object(self.agent, 'known_pc', return_value=False):
+            self.assertIn('300', self.agent.call_tool('inspect_computers', args))
+        self.agent.it.call.assert_not_called()
+        self.ui.confirm.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

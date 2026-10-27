@@ -12,4 +12,6 @@ Use for a stopped service, an application process or print-spooler troubleshooti
 4. The tool rechecks identity, handles approval and verifies final state. Reuse that verification; inspect again only if a needed check is missing, failed or uncertain. Never replace a refused structured action with a shell command.
 5. For printing, a running Spooler proves service state, not a working printer or cleared queue. Ask for a test print or the specific remaining error if necessary. Deleting spool files, reinstalling drivers and clearing queues are separate changes; never do them as an automatic follow-up.
 
+For a requested start, stop or restart of one named service across up to 50 explicit PCs, use `bulk_service_action`. One approval lists every target; each PC keeps its lock, identity and protected-service checks. Report each result; pending or unknown changes are not successes and need inspection before retrying.
+
 Never stop protected Windows services/processes. Do not change service startup types unless requested. `enable_remote_registry` is a separate explicit, approved action; do not enable it just because a software query failed. For Event Viewer or Computer Management, use `open_remote_tool` only when requested, and report the UI launch separately from diagnosis or connection success.

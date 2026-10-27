@@ -113,7 +113,7 @@ class LoopGuardTests(unittest.TestCase):
                 self.assertEqual(self.agent.call_tool.call_count, 3)
 
     def test_live_reads_and_polling_run_each_time_without_invalidating_notes(self):
-        for name in ("inspect_computer", "it_job_status", "directory_lookup", "web_search", "web_read", "read_file", "list_dir"):
+        for name in ("inspect_computer", "inspect_computers", "it_job_status", "directory_lookup", "web_search", "web_read", "read_file", "list_dir"):
             with self.subTest(name=name):
                 self.agent.call_tool = Mock(return_value="Current observation")
                 self.script([call("notes", "search_notes", {"query": "package"}),

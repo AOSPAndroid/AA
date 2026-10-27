@@ -6,6 +6,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from unittest.mock import Mock, call, patch
@@ -194,6 +195,96 @@ class ITTests(unittest.TestCase):
         self.assertIn("not yet verified", result["message"])
         self.assertNotIn("verified", result)
         self.assertNotIn("application_verified", result)
+
+    def test_inspect_computers_reads_each_pc_and_isolates_failures(self):
+        def ps(request, timeout=60):
+            pc = request["computer"]
+            self.assertEqual(request["view"], "overview")
+            if pc == "PC-2":
+                raise RuntimeError("PC-2 is unreachable")
+            return {"ok": True, "computer": pc, "data": {"Cpu": 12, "MemoryFreeMB": 2048}}
+        self.backend.ps = Mock(side_effect=ps)
+        # Duplicates collapse; case is normalised; one failure does not stop the rest.
+        result = self.backend.inspect_computers(["pc-1", "PC-2", "PC-1", "pc-3"], "overview")
+        self.assertEqual(result["view"], "overview")
+        self.assertEqual([(row["computer"], row["ok"]) for row in result["results"]],
+                         [("PC-1", True), ("PC-2", False), ("PC-3", True)])
+        self.assertEqual(result["count"], 3)
+        self.assertEqual(result["results"][0]["data"], {"Cpu": 12, "MemoryFreeMB": 2048})
+        self.assertIn("unreachable", result["results"][1]["error"])
+        self.assertEqual(self.backend.ps.call_count, 3)
+
+    def test_inspect_computers_rejects_bad_view_count_and_name(self):
+        self.backend.ps = Mock()
+        with self.assertRaises(ValueError):
+            self.backend.inspect_computers(["PC-1"], "services")
+        with self.assertRaises(ValueError):
+            self.backend.inspect_computers([], "overview")
+        with self.assertRaises(ValueError):
+            self.backend.inspect_computers(["PC-" + str(n) for n in range(51)], "overview")
+        with self.assertRaises(ValueError):
+            self.backend.inspect_computers(["bad name"], "overview")
+        self.backend.ps.assert_not_called()
+
+
+    def test_bulk_service_action_one_approval_per_pc_verification_and_isolated_failures(self):
+        def ps(request, timeout=60):
+            if request["op"] == "inspect":
+                return {"items": [{"Name": "Spooler"}]}
+            self.assertEqual(request["op"], "service_stop")
+            self.assertEqual(request["name"], "Spooler")
+            self.assertEqual(request["expected"]["Name"], "Spooler")
+            if request["computer"] == "PC-2":
+                raise RuntimeError("Protected service cannot be stopped or restarted")
+            return {"ok": True, "computer": request["computer"], "verified": True, "after": {"State": "Stopped"}}
+        self.backend.ps = Mock(side_effect=ps)
+        result = self.backend.bulk_service_action(["pc-1", "PC-2", "pc-1", "pc-3"], "service_stop", "Spooler")
+        self.assertEqual(self.confirm.call_count, 1)  # One approval for the whole batch.
+        self.assertIn("3 PCs", self.confirm.call_args[0][0])
+        self.assertEqual(result["succeeded"], 2)
+        self.assertEqual([(r["computer"], r["ok"]) for r in result["results"]],
+                         [("PC-1", True), ("PC-2", False), ("PC-3", True)])
+        self.assertEqual(result["results"][0]["state"], "Stopped")
+        self.assertIn("Protected", result["results"][1]["error"])
+
+    def test_bulk_service_action_declined_runs_nothing_and_validates(self):
+        self.backend.ps = Mock()
+        self.confirm.return_value = False
+        self.assertEqual(self.backend.bulk_service_action(["PC-1"], "service_restart", "Spooler")["state"], "declined")
+        self.backend.ps.assert_not_called()
+        for bad in (lambda: self.backend.bulk_service_action(["PC-1"], "reboot", "x"),
+                    lambda: self.backend.bulk_service_action([], "service_stop", "x"),
+                    lambda: self.backend.bulk_service_action(["PC-1"], "service_stop", "")):
+            with self.assertRaises(ValueError):
+                bad()
+
+    def test_bulk_service_approval_names_the_entire_batch(self):
+        self.confirm.return_value = False
+        self.backend.ps = Mock()
+        pcs = ['PC-%s' % i for i in range(12)]
+        self.backend.bulk_service_action(pcs, 'service_restart', 'Spooler')
+        for pc in pcs:
+            self.assertIn(pc, self.confirm.call_args[0][0])
+        self.backend.ps.assert_not_called()
+
+    def test_bulk_services_do_not_count_unverified_changes_as_success(self):
+        self.backend.ps = Mock(return_value={'ok': True, 'verified': False, 'items': [{'Name': 'Spooler'}],
+                                             'after': {'State': 'Running'}})
+        result = self.backend.bulk_service_action(['PC-1'], 'service_restart', 'Spooler')
+        self.assertEqual(result['succeeded'], 0)
+        self.assertFalse(result['results'][0]['ok'])
+
+    def test_bulk_service_change_uses_a_fresh_identity_under_the_target_lock(self):
+        service = {'Name': 'Spooler', 'PathName': 'C:\\Windows\\spoolsv.exe', 'StartName': 'LocalSystem'}
+        def ps(request, timeout=60):
+            if request['op'] == 'inspect':
+                return {'items': [service]}
+            self.assertEqual(request['expected'], service)
+            return {'ok': True, 'verified': True, 'after': {'State': 'Stopped'}}
+        self.backend.ps = Mock(side_effect=ps)
+        result = self.backend.bulk_service_action(['PC-1'], 'service_stop', 'Spooler')
+        self.assertEqual(result['succeeded'], 1)
+        self.assertEqual([call.args[0]['op'] for call in self.backend.ps.call_args_list], ['inspect', 'service_stop'])
 
     def test_snapshot_is_bound_to_target_view_and_lifetime(self):
         self.backend.ps = Mock(return_value={"ok": True, "computer": "PC-1", "items": [{"Name": "Spooler"}]})
@@ -506,6 +597,23 @@ class ITTests(unittest.TestCase):
         result = it.read_json(path)["results"][0]
         self.assertEqual(result["state"], "reboot_verified")
         self.assertTrue(result["verified"])
+
+    def test_bulk_inspection_validates_the_whole_batch_before_contacting_a_pc(self):
+        self.backend.ps = Mock()
+        with self.assertRaises(ValueError):
+            self.backend.inspect_computers(['PC-1', 'bad name'], 'overview')
+        self.backend.ps.assert_not_called()
+
+
+    def test_bulk_reads_overlap_with_bounded_workers(self):
+        barrier = threading.Barrier(2)
+        def read(request):
+            barrier.wait(timeout=5)
+            return {'computer': request['computer'], 'data': {'fixture': True}}
+        self.backend.ps = Mock(side_effect=read)
+        result = self.backend.inspect_computers(['PC-1', 'PC-2'], 'preflight')
+        self.assertTrue(all(row['ok'] for row in result['results']), result)
+
 
 
 class AgentTests(unittest.TestCase):

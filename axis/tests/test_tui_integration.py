@@ -23,6 +23,32 @@ def tool_call(identifier, name="list_dir", arguments='{"path":"."}'):
 
 
 class TUIIntegrationTests(unittest.TestCase):
+    def test_thinking_toggle_preserves_the_conversation_and_updates_its_budget(self):
+        self.agent.messages.append({'role': 'user', 'content': 'Keep this request'})
+        history = list(self.agent.messages)
+        self.agent.set_thinking(True)
+        self.assertTrue(self.agent.think)
+        self.assertEqual(self.agent.sampling, {'temperature': 0.6, 'top_p': 0.95})
+        high_reply = self.agent.max_reply
+        low_budget = self.agent.history_budget
+        self.agent.set_thinking(False)
+        self.assertFalse(self.agent.think)
+        self.assertLess(self.agent.max_reply, high_reply)
+        self.assertGreater(self.agent.history_budget, low_budget)
+        self.assertEqual(self.agent.messages, history)
+
+
+    def test_thinking_toggle_keeps_explicit_sampling_overrides(self):
+        with patch.object(agent, 'system_facts', return_value=('Test PC', False)):
+            configured = agent.Agent('http://127.0.0.1:8080/v1', 'fixture', str(self.root), False, False,
+                                     notes=str(self.root / 'notes'), state_dir=str(self.root / 'state'),
+                                     sampling={'temperature': 1.0}, ui=self.ui, web_enabled=False)
+        configured.set_thinking(True)
+        self.assertEqual(configured.sampling, {'temperature': 1.0, 'top_p': 0.95})
+        configured.set_thinking(False)
+        self.assertEqual(configured.sampling, {'temperature': 1.0, 'top_p': 0.9})
+
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary.name)

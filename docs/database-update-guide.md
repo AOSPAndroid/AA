@@ -26,10 +26,11 @@ Save the exports in **`C:\AtlasXL`** and Atlas imports them by itself within a m
 | Citrix VDIs | `SingleSessionMachines.csv` (or `.xlsx`) | Citrix VDI data, default mode: VDIs in the file are replaced, others kept |
 | Packages | `u_cmdb_software_package.csv` | Package data: rows are added or updated, none removed |
 
-- Atlas recognises each file by its columns, so names such as `SingleSessionMachines (1).csv` work. When several files are the same kind, the newest one is used. Other files in the folder are listed and left alone.
+- Atlas recognises each file by its columns, so names such as `SingleSessionMachines (1).csv` work. When several files are the same kind, the newest one is used. Other files in the folder are listed and left alone. An automatic device import needs a hostname column plus an asset field such as serial number, model, asset tag or discovery/status information; a generic list with only a Name column is ignored.
 - Each import is the same as the matching Manage Database section, with the same backup in `backups/` and the same import history and restore. Users and devices go first, so Citrix links match the new directory.
 - **Users and devices are a complete snapshot**, as described below: people and devices missing from the exports disappear from directory search. With **Ask before large removals** on (the default), a snapshot that removes more than 10% of the users or devices waits in **Manage Database > Import folder** with its counts and warnings; choose **Back up and apply** or **Skip these files**. Atlas also waits while deployments or queue jobs run, and for a file saved less than 30 seconds ago.
-- A file Atlas cannot import is shown with the reason and is not read again until you save it again. **Check now** retries straight away.
+- Atlas waits for files still being saved or temporarily locked, then retries automatically. It also refuses an export that changes while being copied or read. A review for an older snapshot is withdrawn while new files settle.
+- A file with invalid data or above the import size limit is shown with the reason and is not read again until you save it again. **Check now** retries straight away. One invalid import does not prevent other recognised export kinds from updating.
 - Imported files are read again only once they change. Overwrite the files with new exports, or add new ones; you do not need to delete anything.
 - Change the folder, or turn the folder off, in **Manage Database > Import folder**. The setting is kept in `import-folder.json` beside the database. Demo and hosted Preview never import.
 

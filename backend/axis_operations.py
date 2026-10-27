@@ -9,6 +9,7 @@ Axis job files from earlier versions stay readable, and an unknown one can still
 so no PC they protect is released silently.
 """
 from contextlib import contextmanager
+from concurrent.futures import ThreadPoolExecutor
 import copy
 import hashlib
 import os
@@ -19,7 +20,7 @@ from pathlib import Path, PureWindowsPath
 
 from fastapi import HTTPException
 
-from axis.it_tools import OUTPUT_SECONDS, linked, target_key
+from axis.it_tools import OUTPUT_SECONDS, linked, target_key, inspection_targets, service_targets
 
 STRING = {"type": "string"}
 ACTIONS = ["Install", "Uninstall", "Repair"]
@@ -45,6 +46,13 @@ TOOLS = [
         "computer": STRING, "view": {"type": "string", "enum": VIEWS}, "query": STRING,
         "offset": {"type": "integer", "minimum": 0}, "limit": {"type": "integer", "minimum": 1, "maximum": 100}},
         ["computer", "view"]),
+    _tool("inspect_computers", "Read up to 50 explicit Windows PCs with Atlas's preflight, overview or disk checks. Uses at most eight readers, preserves target order and reports each PC's result or error. Read-only; use inspect_computer for services, processes or software.", {
+        "computers": {"type": "array", "items": STRING, "minItems": 1, "maxItems": 50},
+        "view": {"type": "string", "enum": ["preflight", "overview", "disks"]}}, ["computers", "view"]),
+    _tool("bulk_service_action", "Start, stop or restart one named service on up to 50 explicit PCs after one approval listing every PC. Uses Atlas's per-PC locks, protected-service checks, current service identity and outcome verification. Each PC reports its own result; an unverified change is not success. No external snapshot is needed.", {
+        "computers": {"type": "array", "items": STRING, "minItems": 1, "maxItems": 50},
+        "action": {"type": "string", "enum": ["service_start", "service_stop", "service_restart"]},
+        "name": STRING}, ["computers", "action", "name"]),
     _tool("find_packages", "Search Atlas's package repository. A single match includes its action-specific scripts; reuse them without another lookup. Multiple matches require choosing an exact package. Supply package and offset for more script pages. Never guess a package or script.", {
         "query": STRING, "package": STRING, "action": {"type": "string", "enum": ACTIONS},
         "offset": {"type": "integer", "minimum": 0}}),
@@ -69,6 +77,8 @@ TOOLS = [
 NAMES = {tool["function"]["name"] for tool in TOOLS}
 
 GUIDANCE = """- inspect_computer, find_packages, deploy_package, computer_action, directory_lookup and open_remote_tool run Atlas's own operations, with its checks and locks. Use them for supported work and never bypass a blocked one with run_command.
+- Use inspect_computers for a quick read of preflight, overview or disks across an explicit list of up to 50 PCs. Each PC keeps its own readings or error; services, processes and software use inspect_computer.
+- Use bulk_service_action for a requested start, stop or restart of one named service across explicit PCs. One approval lists every target; Atlas checks and verifies each independently. Pending, failed or unknown results are not success; inspect before retrying an uncertain change.
 - Package repository: {package_repo}. Saved tool output: {state_dir}.
 - Resolve the exact package and action-specific script with find_packages before deployment. A unique search match can include its scripts; reuse them without a second discovery call. Multiple scripts still require an unambiguous selection. Use only explicit PCs supplied by the user or found in notes/directory results.
 - If several versions match and neither the user nor a known runbook selects one, immediately ask one short version question with a few exact returned names. Do not inspect targets, browse repository folders or read scripts to guess the preferred version. Results are sorted by name, not version/date, and may be paginated.
@@ -253,6 +263,17 @@ class AtlasOperations:
         page = _page(items, query, offset, limit, ("Name", "Publisher", "Version"))
         return dict(page, computer=pc, view=view, warnings=data.get("warnings") or [])
 
+    def inspect_computers(self, computers, view):
+        targets = inspection_targets(computers, view, self.pc)
+        def inspect(pc):
+            try:
+                return {"computer": pc, "ok": True, "data": self.inspect_computer(pc, view)}
+            except Exception as error:
+                return {"computer": pc, "ok": False, "error": str(error)[:400]}
+        with ThreadPoolExecutor(max_workers=min(8, len(targets))) as pool:
+            results = list(pool.map(inspect, targets))
+        return {"view": view, "count": len(results), "results": results}
+
     @staticmethod
     def package_name(name):
         """A package is a folder name in the repository, never a path: a path could reach another host."""
@@ -421,6 +442,44 @@ class AtlasOperations:
         return dict(started, state="requested", job_id=started["job"], message=(
             "Reboot requested. Atlas's reboot monitor follows ping only; before saying the PC restarted, compare its "
             "boot time with inspect_computer overview. Progress: it_job_status with this job_id."))
+
+    def bulk_service_action(self, computers, action, name):
+        pcs, name = service_targets(computers, action, name, self.pc)
+        if not self.confirm("%s %s on %d PCs: %s" % (action, name, len(pcs), ", ".join(pcs))):
+            return {"state": "declined"}
+        import service_actions
+        verb = {"service_start": "start", "service_stop": "stop", "service_restart": "restart"}[action]
+        outcomes = {"service_start": {"started", "already_running"}, "service_stop": {"stopped", "already_stopped"},
+                    "service_restart": {"restarted"}}
+        results = []
+        for pc in pcs:
+            attempted = False
+            try:
+                with self.held(pc):
+                    items = service_actions.list_services(self.wmi, pc)["items"]
+                    matches = [item for item in items if str(item.get("name", "")).casefold() == name.casefold()]
+                    if len(matches) != 1:
+                        raise ValueError("The exact service was not found; no service was changed")
+                    item = matches[0]
+                    if item.get("can_" + verb) is False:
+                        raise ValueError("Atlas will not %s %s: %s" % (verb, item["name"], item.get(verb + "_reason") or "not allowed"))
+                    request = self.wmi.ServiceControl(computer=pc, name=item["name"], expected_identity=item["identity"])
+                    attempted = True
+                    data = getattr(service_actions, verb + "_service")(self.wmi, request)
+                wanted = "Stopped" if action == "service_stop" else "Running"
+                verified = data.get("outcome") in outcomes[action] and data.get("state") == wanted
+                row = {"computer": pc, "ok": verified, "verified": verified,
+                       "outcome": data.get("outcome"), "state": data.get("state"), "data": data}
+                if not verified:
+                    row["error"] = data.get("message") or "Service change was not verified. Inspect current state before retrying."
+                results.append(row)
+            except Exception as error:
+                detail = str(error.detail) if isinstance(error, HTTPException) else str(error)
+                results.append({"computer": pc, "ok": False, "verified": False,
+                                "outcome": "unknown" if attempted else "not_started",
+                                "error": detail[:400] + (". Inspect current state before retrying." if attempted else "")})
+        return {"action": action, "name": name, "count": len(results),
+                "succeeded": sum(1 for row in results if row["ok"]), "results": results}
 
     def directory_lookup(self, kind, identity, server=""):
         import active_directory

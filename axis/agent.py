@@ -92,6 +92,9 @@ This session is {elevation}; remote operations use your account's rights. Report
 
 # The Windows tools section for Axis's own engine; inside AA, Atlas's operations supply theirs.
 WINDOWS_TOOLS = """- Prefer inspect_computer, find_packages, deploy_package and computer_action for supported operations. They work without Atlas running. Never bypass a blocked structured operation with run_command.
+- For a quick read across several PCs at once (preflight, overview or disks), use inspect_computers with the explicit list; it returns one row per PC and reports each unreachable PC without stopping the others. Use inspect_computer for one PC's services, processes or software.
+
+- To start, stop or restart one service by name on several PCs, use bulk_service_action with the explicit list: one approval covers them all, each PC is verified on its own, and a failing PC does not stop the rest. Use computer_action for a single PC bound to its snapshot. For anything beyond a single named service, run a saved script instead.
 - Package repository: {package_repo}. State and job logs: {state_dir}.
 - Resolve the exact package and action-specific script with find_packages before deployment. A unique search match can include its scripts; reuse them without a second discovery call. Multiple scripts still require an unambiguous selection. Use only explicit PCs supplied by the user or found in notes/directory results.
 - If several versions match and neither the user nor a known runbook selects one, immediately ask one short version question with a few exact returned names. Do not inspect targets, browse repository folders or read scripts to guess the preferred version. Results are sorted by name, not version/date, and may be paginated; list order does not establish the latest version.
@@ -480,7 +483,6 @@ class Agent:
         self.sampling = {"temperature": 0.6 if enabled else 0.3, "top_p": 0.95 if enabled else 0.9, **self._sampling_override}
         self.max_reply = min(4096 if enabled else 2048, self.ctx // 3)
         self.history_budget = max(0, int((self.ctx - self.max_reply) * 3) - len(json.dumps(self.tools)))
-
     def warm_up(self):
         """Have the server process the system prompt now, so the first answer starts sooner."""
         body = {"model": self.model, "messages": self.messages + [{"role": "user", "content": "hi"}],
@@ -652,6 +654,12 @@ class Agent:
         Changes already ask for approval with their target."""
         if name == "inspect_computer":
             return None if self.known_pc(args.get("computer")) else str(args.get("computer"))
+        if name == "inspect_computers":
+            computers = args.get("computers")
+            if not isinstance(computers, list) or not 1 <= len(computers) <= 50 or not all(isinstance(pc, str) for pc in computers):
+                return None  # The backend rejects malformed batches before contacting any target.
+            outside = [pc for pc in dict.fromkeys(computers) if not self.known_pc(pc)]
+            return ", ".join(outside) or None
         if name == "directory_lookup":
             # An explicit server, or the DOMAIN of DOMAIN\account, chooses the directory server to contact.
             identity = str(args.get("identity") or "")
@@ -777,7 +785,7 @@ class Agent:
         if key is not None and name in ATLAS_TOOL_NAMES:
             key = key + (json.dumps(self.atlas.fingerprint(), sort_keys=True),)
         observations = {"search_notes", "read_note", "read_skill", "find_packages", "read_tool_output",
-                        "read_file", "list_dir", "inspect_computer", "directory_lookup"} | WEB_TOOL_NAMES | ATLAS_TOOL_NAMES | self.source_names
+                        "read_file", "list_dir", "inspect_computer", "inspect_computers", "directory_lookup"} | WEB_TOOL_NAMES | ATLAS_TOOL_NAMES | self.source_names
         read_job = name == "it_job_status" and isinstance(args, dict) and not args.get("acknowledge_unknown")
         if name not in observations and not read_job:
             # A command, change or unknown tool may invalidate reference data, even if it fails.
@@ -865,9 +873,12 @@ class Agent:
             if name in self.it_names:
                 # A host outside Atlas, such as text.attacker.example, would carry private text out through DNS.
                 destination = self.private_in_context() and self.outside_destination(name, args)
+                if destination and len(destination) > PRIVATE_WEB_TEXT:
+                    return ("Error: outside-Atlas targets must fit within %d characters so every destination can be "
+                            "approved in full. Split the batch or use exact Atlas PC names." % PRIVATE_WEB_TEXT)
                 if destination and not self.confirm(
                         "%s: contact %s (not an Atlas PC or the default domain; private Live Inbox or clipboard text is "
-                        "in this conversation)" % (name, destination[:300])):
+                        "in this conversation)" % (name, destination)):
                     return "User declined to contact a host outside Atlas."
                 return json.dumps(self.it.call(name, args), ensure_ascii=False, default=str)
             if name in self.source_names:

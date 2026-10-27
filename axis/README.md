@@ -88,10 +88,12 @@ The model gets these tools:
 | Tool | What it does |
 | --- | --- |
 | `inspect_computer` | Preflight, OS/user/memory, disks, services, processes and machine-wide software registrations; paginated results. |
+| `inspect_computers` | Read many PCs at once — preflight, overview or disks — one row per PC with its readings or error; up to 50 PCs, read-only. |
 | `find_packages` | Search package folders and discover `.ps1`/`.vbs` scripts ending in `_i`/`_install`/`_installs`, `_u`/`_uninstall`/`_uninstalls`, or `_r`/`_repair`/`_repairs`. A unique search match includes its action scripts in the same result; multiple matches still need a choice. |
 | `deploy_package` | Install, uninstall or repair through the selected package script; full, copy-only or execute-existing modes; up to 200 explicit PCs, processed in order. |
 | `it_job_status` | Saved per-PC outcomes, exit codes and logs, with bounded waits; inspect unknown outcomes before releasing a target for another attempt. |
 | `computer_action` | Verified service start/stop/restart, checked process termination, explicit RemoteRegistry enable/start, monitored reboot, and cleanup of this agent's package staging only. |
+| `bulk_service_action` | Start, stop or restart one service by name across up to 50 PCs after one combined approval; each PC verified independently, protected services refused, failures isolated. |
 | `directory_lookup` | Exact AD user/computer/group lookup and membership; read-only. |
 | `open_remote_tool` | RDP, Remote Assistance, Computer Management, Event Viewer, administrative share, temp or package folder. Opens the UI; does not automate a remote session. |
 | `read_tool_output` | Read the full saved output when a result was too long for the conversation. |
@@ -137,7 +139,7 @@ If the command line can't reach the internet, download [local-agent-windows.zip]
 
 Extract the ZIP, then double-click `Start Agent.bat` inside its `local-agent` folder. If you already have the complete `Qwen3.6-35B-A3B-UD-Q4_K_M.gguf`, copy it into that same folder; no model parts need to be downloaded or joined. Python 3.8 or newer must already be installed.
 
-If you downloaded model parts instead, `start.py` checks and joins them, using about 2 GB of spare disk and resuming if interrupted. It starts llama-server and opens the agent. If several models are present it asks which to use. Add `--model 35b` to select the 35B or `--model 9b-distill` for the smaller distill.
+To only join a model's parts, double-click **Join Model.bat** (or run `python join_model.py`, with `--model KEY` and `--folder DIR` if the parts are elsewhere). It checks every part against its published checksum, joins them next to the tool and starts nothing else. When it can't, it says which parts are missing, still downloading, renamed by the browser (`(1)` added) or the wrong size. Otherwise, if you downloaded model parts, `start.py` checks and joins them, using about 2 GB of spare disk and resuming if interrupted. It starts llama-server and opens the agent. If several models are present it asks which to use. Add `--model 35b` to select the 35B or `--model 9b-distill` for the smaller distill.
 
 `--model flash` selects Qwen3.8-Flash-Next: all 36 download parts produce two GGUF files totalling 66.4 GB. Both files must be in the same folder. The launcher loads the first, and llama.cpp finds its companion. Model-specific server options enable memory mapping and lazy table reads. `--model k2` selects K2-Horizon-MoVA-36B-A4B. Model metadata may supply context, temperature and top-p defaults; explicit command-line values override them.
 
@@ -147,6 +149,11 @@ model's second GGUF and reuses that file or its 16 parts. The launcher creates
 the required companion filename with a hard link when possible, otherwise a
 copy. Inside AA, select this model with `"Start AA.bat" --model flash-abliterated`;
 the terminal client uses the model already selected by AA.
+
+Resumed joins recheck every complete part already in the unfinished file and
+recover from a missing or interrupted checkpoint. The complete GGUF checksum is
+verified before the model is marked ready. A damaged prefix stops the join
+without removing the remaining downloaded parts.
 
 ## Quick setup (Windows)
 

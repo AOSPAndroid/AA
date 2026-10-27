@@ -98,6 +98,50 @@ def sha256(path, label):
     return h.hexdigest()
 
 
+def joined_prefix(m, target):
+    """Recover a checkpoint from verified bytes, never from a possibly torn JSON file."""
+    state = {"appended": 0, "size": 0}
+    available = os.path.getsize(target)
+    log("Checking the previously joined model parts...")
+    with open(target, "rb") as source:
+        for number, (name, size, digest) in enumerate(part_list(m), 1):
+            if available - state["size"] < size:
+                break  # An interrupted append is discarded only after the remaining parts are checked.
+            hashed = hashlib.sha256()
+            remaining = size
+            while remaining:
+                block = source.read(min(CHUNK, remaining))
+                if not block:
+                    log()
+                    sys.exit("Error: %s changed while its joined parts were checked. No remaining parts were removed." % target)
+                hashed.update(block)
+                remaining -= len(block)
+                print("\r  joined prefix %3d%%" % (100 * (state["size"] + size - remaining) // max(available, 1)), end="", flush=True)
+            if hashed.hexdigest() != digest:
+                log()
+                sys.exit("Error: joined data for %s is damaged in %s. Keep the remaining parts and restore the damaged join before retrying." % (name, target))
+            state = {"appended": number, "size": state["size"] + size}
+    log()
+    if not state["appended"]:
+        sys.exit("Error: %s has an incomplete first part. Keep your downloaded parts and restore the join before retrying." % target)
+    return state
+
+
+
+def save_join_state(path, state):
+    temporary = path + ".tmp"
+    try:
+        with open(temporary, "w") as out:
+            json.dump(state, out)
+            out.flush()
+            os.fsync(out.fileno())
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.remove(temporary)
+
+
+
 def join_parts(m):
     """Join verified parts in place (needs only one part of spare disk) and resume if interrupted."""
     parts = part_list(m)
@@ -107,13 +151,14 @@ def join_parts(m):
             first_dir = d
     if first_dir is None:
         first = find_file(*parts[0][:2])
+        if first is None:
+            sys.exit("Error: %s is missing. Download it from %s and rerun." % (parts[0][0], m["release"]))
         first_dir = os.path.dirname(first)
     target = os.path.join(first_dir, m["file"] + ".joining")
     state_path = target + ".json"
     state = {"appended": 0, "size": 0}
-    if os.path.exists(state_path):
-        with open(state_path) as f:
-            state = json.load(f)
+    if os.path.exists(target):
+        state = joined_prefix(m, target)
         log("Resuming the join after part %d." % state["appended"])
 
     todo = parts[state["appended"]:]
@@ -129,6 +174,9 @@ def join_parts(m):
             sys.exit("Error: %s is damaged. Delete it, download it again and rerun." % path)
         paths.append(path)
 
+    if os.path.exists(target):
+        with open(target, "r+b") as out:
+            out.truncate(state["size"])
     log("Joining...")
     for i, path in enumerate(paths, state["appended"] + 1):
         if i == 1:
@@ -143,23 +191,28 @@ def join_parts(m):
                 out.flush()
                 os.fsync(out.fileno())
         state = {"appended": i, "size": os.path.getsize(target)}
-        with open(state_path, "w") as f:
-            json.dump(state, f)
+        save_join_state(state_path, state)
         if path != target:
             os.remove(path)
         print("\r  %3d%%" % (100 * state["size"] // m["size"]), end="", flush=True)
     log()
     if os.path.getsize(target) != m["size"]:
         sys.exit("Error: the joined model has the wrong size. Delete %s and download the parts again." % target)
+    if sha256(target, "complete model") != m["sha256"]:
+        sys.exit("Error: the complete model checksum does not match. The join was kept at %s; it will not be used as a GGUF." % target)
     final = os.path.join(HERE, m["file"])
     try:
         os.replace(target, final)
     except OSError:  # different drive: leave it where it is
         final = os.path.join(first_dir, m["file"])
         os.replace(target, final)
-    os.remove(state_path)
+    try:
+        os.remove(state_path)
+    except FileNotFoundError:
+        pass  # A completed prefix can be recovered even when its checkpoint was lost.
     log("Model ready: %s" % final)
     return final
+
 
 
 def parts_status(m):
