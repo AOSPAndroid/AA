@@ -8,6 +8,7 @@ import time
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
@@ -15,7 +16,7 @@ from fastapi.testclient import TestClient
 import package_data
 import vdi_data
 from atlas_store import ClosingConnection
-from import_folder import ImportFolder, headers, kind_of, register
+from import_folder import ImportFolder, Settings, headers, kind_of, register
 from sqlite_fixture import connect as fixture_connect
 from test_directory_exports import device_sheets, workbook
 from test_directory_pair import csv_text
@@ -70,12 +71,85 @@ class ImportFolderTests(unittest.TestCase):
         # Citrix and package exports also have a Name column a devices export would accept.
         self.assertEqual(kind_of(['Name', 'Machine Catalog', 'Delivery Group', 'User', 'User Display Name', 'Power State']), 'vdi')
         self.assertEqual(kind_of(['u_display_name', 'name', 'u_package_sub_state', 'assigned_to']), 'packages')
-        self.assertEqual(kind_of(['Name', 'Requested for', 'Opened']), 'devices', 'A bare name column is a devices export')
+        self.assertEqual(kind_of(['Name', 'Requested for', 'Opened']), '', 'An unrelated list must not become device inventory')
         self.assertEqual(kind_of(['Ticket', 'Opened', 'Short description']), '')
         # A Citrix CSV saved as UTF-16 with Excel's sep= line.
         self.assertEqual(headers(self.write('a.csv', citrix_csv([citrix_device()], sep=True, encoding='utf-16'))), CITRIX_HEADERS)
         self.assertEqual(kind_of(headers(self.write('SingleSessionMachines.csv.xlsx', {'Sheet1': [['Name', 'User', 'Delivery Group'], ['VDI-1', 'x1', 'EMEA']]}))), 'vdi')
         self.assertEqual(kind_of(headers(self.write('u_cmdb_software_package.csv', package_csv([('App', 'Live')])))), 'packages')
+
+    def test_a_locked_header_is_retried_without_resaving_the_export(self):
+        self.write('citrix.csv', citrix_csv([citrix_device()]))
+        with patch('import_folder.headers', side_effect=[PermissionError('locked'), CITRIX_HEADERS]) as read:
+            first = self.watcher.check()
+            second = self.watcher.check()
+        self.assertEqual(first['status']['state'], 'waiting')
+        self.assertEqual(second['groups']['vdi']['result'], 'applied')
+        self.assertEqual(read.call_count, 2)
+
+    def test_an_unfinished_new_export_prevents_importing_an_older_snapshot(self):
+        self.directory()
+        self.watcher.state['review_large'] = False
+        before = self.count('select count(*) from users')
+        self.write('new-users.xlsx', b'incomplete workbook', age=1)
+        summary = self.watcher.check()
+        self.assertEqual(summary['status']['state'], 'waiting')
+        self.assertEqual(self.count('select count(*) from users'), before)
+        self.assertIsNone(summary['held'])
+
+    def test_an_old_review_is_withdrawn_while_a_new_export_is_being_saved(self):
+        self.directory()
+        first = self.watcher.check()
+        self.assertIsNotNone(first['held'])
+        before = self.count('select count(*) from users')
+        self.write('new-users.xlsx', b'incomplete workbook', age=1)
+        summary = self.watcher.check()
+        self.assertIsNone(summary['held'])
+        self.assertEqual(summary['groups']['directory']['result'], 'waiting')
+        self.assertEqual(self.count('select count(*) from users'), before)
+
+    def test_an_export_changed_during_copy_does_not_reach_the_database(self):
+        import shutil
+        self.directory()
+        self.watcher.state['review_large'] = False
+        before = self.count('select count(*) from users')
+        copy = shutil.copy2
+        changed = False
+        def changing_copy(source, destination, *args, **kwargs):
+            nonlocal changed
+            if Path(source).name == 'sys_user.csv' and not changed:
+                changed = True
+                self.write('sys_user.csv', csv_text(self.sheets['users']) + '\n')
+            return copy(source, destination, *args, **kwargs)
+        with patch('import_folder.shutil.copy2', side_effect=changing_copy):
+            summary = self.watcher.check()
+        self.assertTrue(changed)
+        self.assertEqual(summary['groups']['directory']['result'], 'waiting')
+        self.assertEqual(self.count('select count(*) from users'), before)
+
+    def test_oversized_packages_are_reported_without_aborting_other_imports(self):
+        self.write('citrix.csv', citrix_csv([citrix_device()]))
+        self.write('packages.csv', package_csv([('App', 'Live')]) + b' ' * (10 * 1024 * 1024))
+        summary = self.watcher.check()
+        self.assertEqual(summary['groups']['vdi']['result'], 'applied')
+        self.assertEqual(summary['groups']['packages']['result'], 'error')
+        self.assertIn('larger than 10 MB', summary['groups']['packages']['message'])
+
+    def test_changing_folders_discards_cached_export_classifications(self):
+        data = package_csv([('App', 'Live')])
+        citrix = citrix_csv([citrix_device()])
+        size = max(len(data), len(citrix)) + 10
+        first = self.write('snapshot.csv', citrix + b' ' * (size - len(citrix)))
+        self.assertIn('vdi', self.watcher.scan(self.folder))
+        other = self.folder.parent / 'other-exports'
+        other.mkdir()
+        second = other / first.name
+        second.write_bytes(data + b' ' * (size - len(data)))
+        os.utime(second, ns=(first.stat().st_atime_ns, first.stat().st_mtime_ns))
+        self.watcher.configure(Settings(folder=str(other)))
+        found = self.watcher.scan(other)
+        self.assertIn('packages', found)
+        self.assertNotIn('vdi', found)
 
     def test_a_large_snapshot_waits_for_review_then_later_saves_apply_by_themselves(self):
         before = self.count('select count(*) from users')

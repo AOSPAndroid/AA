@@ -85,6 +85,47 @@ class JoinModelTests(unittest.TestCase):
         self.assertIn("alpha.gguf.part002 is damaged", self.output.getvalue())
         self.assertFalse((self.here / "alpha.gguf").exists())
 
+    def test_an_interrupted_join_recovers_a_missing_or_torn_checkpoint(self):
+        for checkpoint, prefix in ((None, 6), ('{"appended":', 6), (None, len(self.data['alpha']))):
+            with self.subTest(checkpoint=checkpoint, prefix=prefix):
+                self.parts("alpha")
+                for part in self.downloads.glob('alpha.gguf.part*'):
+                    if prefix == len(self.data['alpha']) or part.name.endswith('part001'):
+                        part.unlink()
+                target = self.downloads / "alpha.gguf.joining"
+                target.write_bytes(self.data["alpha"][:prefix])
+                state = Path(str(target) + ".json")
+                if checkpoint is not None:
+                    state.write_text(checkpoint, encoding="utf-8")
+                self.assertEqual(join_model.main(["--model", "alpha"]), 0)
+                self.assertEqual((self.here / "alpha.gguf").read_bytes(), self.data["alpha"])
+                (self.here / "alpha.gguf").unlink()
+
+    def test_a_corrupt_joined_prefix_never_consumes_the_remaining_parts(self):
+        self.parts("alpha")
+        (self.downloads / "alpha.gguf.part001").unlink()
+        target = self.downloads / "alpha.gguf.joining"
+        target.write_bytes(b"XXXX")
+        Path(str(target) + ".json").write_text('{"appended": 1, "size": 4}', encoding="utf-8")
+        before = {p.name: p.read_bytes() for p in self.downloads.glob("*.part*")}
+        self.assertEqual(join_model.main(["--model", "alpha"]), 1)
+        self.assertIn("damaged", self.output.getvalue())
+        self.assertEqual({p.name: p.read_bytes() for p in self.downloads.glob("*.part*")}, before)
+        self.assertFalse((self.here / "alpha.gguf").exists())
+
+    def test_the_complete_model_checksum_is_verified_before_publication(self):
+        self.parts("alpha")
+        start.MODELS["alpha"]["files"][0]["sha256"] = "0" * 64
+        self.assertEqual(join_model.main(["--model", "alpha"]), 1)
+        self.assertIn("checksum", self.output.getvalue())
+        self.assertFalse((self.here / "alpha.gguf").exists())
+        self.assertTrue((self.downloads / "alpha.gguf.joining").exists())
+
+    def test_file_errors_are_reported_without_a_traceback(self):
+        with patch.object(join_model, "join", side_effect=PermissionError("fixture folder is locked")):
+            self.assertEqual(join_model.main(["--model", "alpha"]), 1)
+        self.assertIn("fixture folder is locked", self.output.getvalue())
+
     def test_a_shared_file_points_at_the_release_that_has_its_parts(self):
         def part(name, data):
             return {"file": name, "size": len(data), "sha256": hashlib.sha256(data).hexdigest(),

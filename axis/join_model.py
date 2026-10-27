@@ -122,8 +122,8 @@ def join(key):
     start.log("Joining %s..." % model["name"])
     path = start.same_folder([start.materialize(f) for f in model["files"]])
     if os.path.normcase(os.path.dirname(os.path.abspath(path))) != os.path.normcase(start.HERE):
-        start.log("The parts are on another drive, so the model stayed there. Move %s into AA's axis folder."
-                  % ("its files" if len(model["files"]) > 1 else "it"))
+        start.log("The model files are ready in %s. To keep them next to this tool, move them into %s."
+                  % (os.path.dirname(path), start.HERE))
     return path
 
 
@@ -158,6 +158,9 @@ def main(argv=None):
         if isinstance(stop.code, str):
             start.log(stop.code)
         return stop.code if isinstance(stop.code, int) else 1
+    except OSError as error:
+        start.log("Error: %s. Keep your model parts and rerun when the file is available." % error)
+        return 1
     start.log("Model ready: %s" % path)
     return 0
 

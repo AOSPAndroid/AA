@@ -218,5 +218,21 @@ class ModelSettingsTests(unittest.TestCase):
             self.assertEqual(command[command.index("--load-mode"):], extra)
 
 
+class PublishedCatalogTests(unittest.TestCase):
+    def test_every_model_lists_one_checksum_per_release_part(self):
+        entries = json.loads((Path(start.__file__).parent / "models.json").read_text(encoding="utf-8"))
+        self.assertEqual(len({m["key"] for m in entries}), len(entries))
+        self.assertEqual(len({m["tag"] for m in entries}), len(entries))
+        for m in entries:
+            for f in m.get("files") or [m]:
+                if "same_as" in f:
+                    continue
+                with self.subTest(model=m["key"], file=f["file"]):
+                    self.assertRegex(f["sha256"], "^[0-9a-f]{64}$")
+                    self.assertEqual(len(f["parts"]), -(-f["size"] // start.PART_SIZE))
+                    self.assertTrue(all(len(part) == 64 for part in f["parts"]))
+
+
+
 if __name__ == "__main__":
     unittest.main()

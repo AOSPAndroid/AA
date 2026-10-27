@@ -43,6 +43,13 @@ LABELS = {'users': 'Users', 'devices': 'Devices', 'vdi': 'Citrix VDI', 'packages
 GROUPS = {'directory': ('users', 'devices'), 'vdi': ('vdi',), 'packages': ('packages',)}
 GROUP_LABELS = {'directory': 'Users & devices', 'vdi': 'Citrix VDI', 'packages': 'Package data'}
 PACKAGE_STATES = {'u_package_sub_state', 'package state'}
+DEVICE_FIELDS = {'infrastructure_itsi', 'sys_class_name', 'operational_status', 'correlation_id', 'serial_number',
+                 'model_id', 'last_discovered', 'discovery_source', 'last_logon_user', 'asset_tag', 'model_category',
+                 'last_used', 'install_status'}
+
+
+class ExportChanged(OSError):
+    """The export no longer matches the version selected by the watcher; retry it without writing."""
 
 
 def now():
@@ -101,7 +108,15 @@ def kind_of(names):
     lowered = {name.casefold() for name in names}
     if lowered & PACKAGE_STATES and lowered & {'name', 'short package name', 'short_package_name'}:
         return 'packages'
-    return {'user': 'users', 'machine': 'devices'}.get(directory_kind(names), '')
+    kind = directory_kind(names)
+    if kind == 'user':
+        return 'users'
+    if kind == 'machine':
+        from directory_workbook import directory_columns
+        # Manual imports explicitly select a device file; an automatic folder cannot trust Name alone.
+        if {field for _, _, field in directory_columns('machine', names)} & DEVICE_FIELDS:
+            return 'devices'
+    return ''
 
 
 class Settings(BaseModel):
@@ -124,6 +139,7 @@ class ImportFolder:
         self.interval, self.clock = interval, clock
         self.lock = threading.Lock()
         self.kinds = {}
+        self.pending = []
         self.held = None
         self.checked = None
         self.thread = None
@@ -162,6 +178,8 @@ class ImportFolder:
             self.drop_held()
             if folder != self.state.get('folder'):
                 self.state.update(groups={}, files=[])
+                self.kinds.clear()
+                self.pending = []
             self.state.update(folder=folder, enabled=settings.enabled and bool(folder), review_large=settings.review_large)
             if self.state['enabled']:
                 self.set_status('checking', 'Checking the import folder…')
@@ -188,18 +206,41 @@ class ImportFolder:
     # Finding the exports.
     def scan(self, folder):
         found = []
+        self.pending = []
         for path in sorted(folder.iterdir()):
-            if not path.is_file() or path.suffix.casefold() not in ('.csv', '.xlsx') or path.name.startswith(('~$', '.')):
+            if path.suffix.casefold() not in ('.csv', '.xlsx') or path.name.startswith(('~$', '.')):
                 continue
-            stat = path.stat()
+            try:
+                if not path.is_file():
+                    continue
+                stat = path.stat()
+            except OSError:
+                self.pending.append(path.name)
+                continue
             signature = (path.name, stat.st_mtime_ns, stat.st_size)
-            if signature not in self.kinds:
+            item = {'path': path, 'name': path.name, 'kind': '', 'signature': list(signature),
+                    'modified': datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat(timespec='seconds'), 'size': stat.st_size}
+            if self.clock() - stat.st_mtime < STABLE_SECONDS:
+                self.pending.append(path.name)
+            else:
                 try:
-                    self.kinds[signature] = kind_of(headers(path))
-                except Exception:  # Unreadable or not an export: listed, never imported.
-                    self.kinds[signature] = ''
-            found.append({'path': path, 'name': path.name, 'kind': self.kinds[signature], 'signature': list(signature),
-                          'modified': datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat(timespec='seconds'), 'size': stat.st_size})
+                    if signature not in self.kinds:
+                        try:
+                            kind = kind_of(headers(path))
+                        except OSError:
+                            raise  # Locked or temporarily unavailable: do not cache an unrecognised file.
+                        except Exception:
+                            kind = ''
+                        self.ensure_current(item)
+                        self.kinds[signature] = kind
+                    self.ensure_current(item)
+                    item['kind'] = self.kinds[signature]
+                except OSError:
+                    self.kinds.pop(signature, None)
+                    self.pending.append(path.name)
+            found.append(item)
+        seen = {tuple(item['signature']) for item in found}
+        self.kinds = {signature: kind for signature, kind in self.kinds.items() if signature in seen}
         newest = {}
         for item in found:
             if item['kind'] and (item['kind'] not in newest or item['signature'][1] > newest[item['kind']]['signature'][1]):
@@ -227,7 +268,19 @@ class ImportFolder:
             self.state['files'] = []
             self.set_status('empty', f'Create {folder} and save the exports there; Atlas imports them within a minute.')
             return self.summary()
-        newest = self.scan(folder)
+        try:
+            newest = self.scan(folder)
+        except OSError as error:
+            self.set_status('waiting', f'Could not read the import folder yet ({error.__class__.__name__}); retrying.')
+            return self.summary()
+        if self.pending:
+            message = f'Waiting for {", ".join(self.pending)}: files were just saved or are temporarily unreadable. Atlas will retry.'
+            for entry in self.state['groups'].values():
+                if entry.get('result') in ('held', 'waiting'):
+                    entry.update(result='waiting', message=message, at=now())
+            self.drop_held()
+            self.set_status('waiting', message)
+            return self.summary()
         if not newest:
             self.set_status('empty', f'No exports recognised in {folder} yet. Save the users, devices, Citrix and package exports there.')
             return self.summary()
@@ -273,10 +326,20 @@ class ImportFolder:
     def copies(self, items, work):
         paths = []
         for item in items:
+            self.ensure_current(item)
             copy = Path(work) / item['name']
             shutil.copy2(item['path'], copy)
+            self.ensure_current(item)
             paths.append(copy)
+        for item in items:
+            self.ensure_current(item)
         return paths
+
+    @staticmethod
+    def ensure_current(item):
+        stat = Path(item['path']).stat()
+        if [item['name'], stat.st_mtime_ns, stat.st_size] != item['signature']:
+            raise ExportChanged(f'{item["name"]} changed while being read')
 
     # Users & devices: the Manage Database snapshot import.
     def import_directory(self, items, signature):
@@ -374,9 +437,15 @@ class ImportFolder:
 
     # Citrix VDI and package data: the Manage Database imports, applied straight away.
     def read(self, item, limit):
+        self.ensure_current(item)
         if item['size'] > limit:
             raise ValueError(f'{item["name"]} is larger than {limit // (1024 * 1024)} MB.')
-        return Path(item['path']).read_bytes()
+        with Path(item['path']).open('rb') as source:
+            content = source.read(limit + 1)
+        self.ensure_current(item)
+        if len(content) != item['size']:
+            raise ExportChanged(f'{item["name"]} changed while being read')
+        return content
 
     def import_vdi(self, items, signature):
         import vdi_data
@@ -384,6 +453,9 @@ class ImportFolder:
         item = items[0]
         try:
             content = self.read(item, vdi_data.MAX_FILE_BYTES)
+        except ValueError as error:
+            self.record('vdi', signature, 'error', str(error), files=[item['name']])
+            return
         except OSError as error:
             self.state['groups']['vdi'] = {'result': 'waiting', 'message': f'Could not open {item["name"]} yet ({error.__class__.__name__}); retrying.', 'at': now(), 'files': [item['name']]}
             return
@@ -412,6 +484,9 @@ class ImportFolder:
             return
         try:
             content = self.read(item, 10 * 1024 * 1024)
+        except ValueError as error:
+            self.record('packages', signature, 'error', str(error), files=[item['name']])
+            return
         except OSError as error:
             self.state['groups']['packages'] = {'result': 'waiting', 'message': f'Could not open {item["name"]} yet ({error.__class__.__name__}); retrying.', 'at': now(), 'files': [item['name']]}
             return

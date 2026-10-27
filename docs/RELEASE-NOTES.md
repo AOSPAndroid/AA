@@ -2,6 +2,13 @@
 
 Atlas's map and Axis chat in one application.
 
+**Review fixes.** Model joins verify the existing prefix after an interruption,
+recover their checkpoint and check the complete GGUF checksum before reporting
+success. The import folder now waits for saved or locked files, retries
+temporary read failures, ignores generic Name-only lists and refuses exports
+that change while being read. Oversized exports are reported without stopping
+the other imports. Shared model-join fixes also ship in standalone Axis.
+
 **Import folder.** Save the users, devices, Citrix and package exports in
 `C:\AtlasXL` and Atlas imports them within a minute, each with its usual backup.
 Files are recognised by their columns. A users and devices snapshot that would

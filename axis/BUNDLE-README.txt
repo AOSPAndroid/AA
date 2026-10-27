@@ -132,6 +132,9 @@ To join a model without starting anything, double-click "Join Model.bat".
 It checks each part, joins them next to it, and names any part that is
 missing, still downloading, renamed by the browser or the wrong size.
 Parts kept elsewhere: Join Model.bat --folder D:\Models
+Interrupted joins verify the existing prefix and rebuild their checkpoint.
+The complete GGUF checksum is checked before the model is marked ready.
+If the prefix is damaged, the remaining downloaded parts are left alone.
 
 BUNDLE-COMMIT.txt identifies the source commit used to build this ZIP.
 

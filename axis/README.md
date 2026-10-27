@@ -148,6 +148,11 @@ the required companion filename with a hard link when possible, otherwise a
 copy. Inside AA, select this model with `"Start AA.bat" --model flash-abliterated`;
 the terminal client uses the model already selected by AA.
 
+Resumed joins recheck every complete part already in the unfinished file and
+recover from a missing or interrupted checkpoint. The complete GGUF checksum is
+verified before the model is marked ready. A damaged prefix stops the join
+without removing the remaining downloaded parts.
+
 ## Quick setup (Windows)
 
 `setup_local.py` downloads and verifies the model, installs the right llama.cpp build for your GPU, fetches the agent, and writes `start-server.bat` and `agent.bat` into `%USERPROFILE%\local-ai`:
