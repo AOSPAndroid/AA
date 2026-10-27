@@ -250,14 +250,17 @@ class DataFolder:
                     except OSError:
                         h = None
                     self.mark(kind, 'error', f'{", ".join(p.name for p in files)}: {error}', files=[p.name for p in files], hash=h)
+        self.overall(fresh)
+        return self.summary()
+
+    def overall(self, fresh=()):
+        """The card's headline: the most pressing state among the exports."""
         results = [entry.get('result') for entry in self.state.get('kinds', {}).values()]
         state = 'error' if 'error' in results else 'held' if 'held' in results else 'waiting' if 'waiting' in results or fresh else 'synced'
-        message = {'error': 'An export could not be imported; see below.',
-                   'held': 'A users-and-devices snapshot is waiting for your review.',
-                   'waiting': 'Waiting: ' + (', '.join(fresh) + ' still being saved.' if fresh else 'see below.'),
-                   'synced': 'Up to date with the exports in the folder.'}[state]
-        self.set_status(state, message)
-        return self.summary()
+        self.set_status(state, {'error': 'An export could not be imported; see below.',
+                                'held': 'A users-and-devices snapshot is waiting for your review.',
+                                'waiting': 'Waiting: ' + (', '.join(fresh) + ' still being saved.' if fresh else 'see below.'),
+                                'synced': 'Up to date with the exports in the folder.'}[state])
 
     @staticmethod
     def files_for(kind, found):
@@ -413,7 +416,7 @@ class DataFolder:
                 self.save()
                 raise
             self.discard_held()
-            self.set_status('synced', 'Users and devices updated after review.')
+            self.overall()
             return self.summary()
 
     def run(self):
