@@ -28,7 +28,11 @@ class StandIn:
         self.messages = []
         self.answer_shown = True
         self.approved = None
+        self.think = False
         StandIn.last = self
+
+    def set_thinking(self, enabled):
+        self.think = bool(enabled)
 
     def run(self, message, prefetched=()):
         self.messages.append(message)
@@ -201,6 +205,13 @@ class TerminalClientTests(unittest.TestCase):
         with patch.object(aa_client, "earlier_terminal_jobs", return_value=[]):
             self.assertEqual(aa_client.main(["--plain", "PC9"], ui=ui, chat=chat), 0)
         ui.write_response.assert_called_with("Nothing found for PC9")
+        self.assertIs(StandIn.last.think, True)  # The terminal shows reasoning by default.
+
+    def test_no_think_hides_reasoning_in_the_terminal(self):
+        chat, ui = self.chat()
+        with patch.object(aa_client, "earlier_terminal_jobs", return_value=[]):
+            aa_client.main(["--plain", "--no-think", "PC9"], ui=ui, chat=chat)
+        self.assertIs(StandIn.last.think, False)
 
 
 if __name__ == "__main__":

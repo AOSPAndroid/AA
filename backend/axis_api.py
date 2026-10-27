@@ -62,6 +62,7 @@ class Chat(Input):
     session_id: str | None = Field(default=None, min_length=20, max_length=80)
     context: Selection | None = None
     attachment: Attachment | None = None
+    think: bool = False  # The chat starts with the model's reasoning hidden; the header toggle turns it on per turn.
     client: Literal["browser", "terminal"] = "browser"  # Where approvals are answered, for the audit log.
 
 
@@ -586,13 +587,16 @@ class Sessions:
             if not model["ready"]:
                 raise RuntimeError(model["message"])
             settings = model_settings(self.root, model["model"])
-            configuration = (model["model"], str(self.backend.MASTER_DB), str(self.backend.REPO), json.dumps(settings, sort_keys=True))
+            # Thinking is a per-turn toggle (set below), so it is kept out of the configuration key:
+            # changing it must not start a fresh conversation.
+            engine = {key: settings[key] for key in ("ctx", "sampling")}
+            configuration = (model["model"], str(self.backend.MASTER_DB), str(self.backend.REPO), json.dumps(engine, sort_keys=True))
             if session.agent is None or session.configuration != configuration:
                 if session.agent is not None:
                     ui.notice("Model or database/package settings changed; started a fresh conversation.")
                 workspace = self.directory / "workspace"
                 workspace.mkdir(parents=True, exist_ok=True)
-                session.agent = self.factory(MODEL_URL, model["model"], str(workspace), False, settings["think"],
+                session.agent = self.factory(MODEL_URL, model["model"], str(workspace), False, False,
                                              ctx=settings["ctx"], notes=str(self.root / "axis" / "notes"),
                                              package_repo=str(self.backend.REPO), state_dir=str(self.state), ui=ui,
                                              sampling=settings["sampling"], atlas_db=str(self.backend.MASTER_DB),
@@ -609,6 +613,7 @@ class Sessions:
                     session.saved_messages = session.saved_configuration = None
             session.agent.ui = ui
             session.agent.http = ModelHTTP(turn)
+            session.agent.set_thinking(body.think)
             message = body.message.strip()
             if body.context:
                 context = body.context.model_dump(exclude_defaults=True)
