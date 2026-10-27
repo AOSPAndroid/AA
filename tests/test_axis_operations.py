@@ -3,6 +3,7 @@ from sqlite_fixture import isolate_backend_database
 isolate_backend_database()
 import hashlib, json, os, tempfile, time, unittest
 from pathlib import Path
+import threading
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -83,6 +84,27 @@ class AtlasOperationTests(unittest.TestCase):
         self.assertEqual(self.ops.call('find_packages', {'package': 'Example App', 'action': 'Uninstall'})['scripts'], ['remove_u.ps1'])
         with self.assertRaises(ValueError):
             self.ops.call('find_packages', {'package': '..\\outside'})
+
+    def test_bulk_inspection_uses_atlas_readers_and_preserves_order(self):
+        barrier = threading.Barrier(2)
+        def overview(pc):
+            barrier.wait(timeout=5)
+            if pc == 'PC2':
+                raise RuntimeError('PC2 is unreachable')
+            return {'fixture': pc}
+        with patch.object(app, 'overview', side_effect=overview):
+            result = self.ops.call('inspect_computers', {'computers': ['pc1', 'PC2', 'PC1'], 'view': 'overview'})
+        self.assertEqual([(r['computer'], r['ok']) for r in result['results']], [('PC1', True), ('PC2', False)])
+        self.assertEqual(result['results'][0]['data']['overview'], {'fixture': 'PC1'})
+        self.assertIn('unreachable', result['results'][1]['error'])
+        self.confirm.assert_not_called()
+
+    def test_invalid_bulk_targets_are_rejected_before_any_atlas_read(self):
+        with patch.object(app, 'overview') as read:
+            for computers, view in ((['PC1', 'bad name'], 'overview'), (['PC1'], 'services'), ([], 'overview')):
+                with self.subTest(computers=computers, view=view), self.assertRaises(ValueError):
+                    self.ops.call('inspect_computers', {'computers': computers, 'view': view})
+        read.assert_not_called()
 
     def test_a_deployment_axis_starts_is_an_atlas_deployment(self):
         self.confirm.return_value = False

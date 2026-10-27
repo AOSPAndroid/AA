@@ -481,7 +481,6 @@ class Agent:
         self.sampling = {"temperature": 0.6 if enabled else 0.3, "top_p": 0.95 if enabled else 0.9, **self._sampling_override}
         self.max_reply = min(4096 if enabled else 2048, self.ctx // 3)
         self.history_budget = max(0, int((self.ctx - self.max_reply) * 3) - len(json.dumps(self.tools)))
-
     def warm_up(self):
         """Have the server process the system prompt now, so the first answer starts sooner."""
         body = {"model": self.model, "messages": self.messages + [{"role": "user", "content": "hi"}],
@@ -653,6 +652,12 @@ class Agent:
         Changes already ask for approval with their target."""
         if name == "inspect_computer":
             return None if self.known_pc(args.get("computer")) else str(args.get("computer"))
+        if name == "inspect_computers":
+            computers = args.get("computers")
+            if not isinstance(computers, list) or not 1 <= len(computers) <= 50 or not all(isinstance(pc, str) for pc in computers):
+                return None  # The backend rejects malformed batches before contacting any target.
+            outside = [pc for pc in dict.fromkeys(computers) if not self.known_pc(pc)]
+            return ", ".join(outside) or None
         if name == "directory_lookup":
             # An explicit server, or the DOMAIN of DOMAIN\account, chooses the directory server to contact.
             identity = str(args.get("identity") or "")
@@ -778,7 +783,7 @@ class Agent:
         if key is not None and name in ATLAS_TOOL_NAMES:
             key = key + (json.dumps(self.atlas.fingerprint(), sort_keys=True),)
         observations = {"search_notes", "read_note", "read_skill", "find_packages", "read_tool_output",
-                        "read_file", "list_dir", "inspect_computer", "directory_lookup"} | WEB_TOOL_NAMES | ATLAS_TOOL_NAMES | self.source_names
+                        "read_file", "list_dir", "inspect_computer", "inspect_computers", "directory_lookup"} | WEB_TOOL_NAMES | ATLAS_TOOL_NAMES | self.source_names
         read_job = name == "it_job_status" and isinstance(args, dict) and not args.get("acknowledge_unknown")
         if name not in observations and not read_job:
             # A command, change or unknown tool may invalidate reference data, even if it fails.
@@ -866,9 +871,12 @@ class Agent:
             if name in self.it_names:
                 # A host outside Atlas, such as text.attacker.example, would carry private text out through DNS.
                 destination = self.private_in_context() and self.outside_destination(name, args)
+                if destination and len(destination) > PRIVATE_WEB_TEXT:
+                    return ("Error: outside-Atlas targets must fit within %d characters so every destination can be "
+                            "approved in full. Split the batch or use exact Atlas PC names." % PRIVATE_WEB_TEXT)
                 if destination and not self.confirm(
                         "%s: contact %s (not an Atlas PC or the default domain; private Live Inbox or clipboard text is "
-                        "in this conversation)" % (name, destination[:300])):
+                        "in this conversation)" % (name, destination)):
                     return "User declined to contact a host outside Atlas."
                 return json.dumps(self.it.call(name, args), ensure_ascii=False, default=str)
             if name in self.source_names:

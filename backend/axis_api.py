@@ -388,6 +388,21 @@ class Session:
         return list(self.configuration) if self.configuration is not None else self.saved_configuration
 
 
+def same_configuration(saved, current):
+    """Old chat records included thinking in the engine key; it is now a per-turn choice."""
+    if not isinstance(saved, (list, tuple)) or len(saved) != 4 or list(saved[:3]) != list(current[:3]):
+        return False
+    try:
+        old, new = json.loads(saved[3]), json.loads(current[3])
+    except (ValueError, TypeError):
+        return False
+    if not isinstance(old, dict) or not isinstance(new, dict):
+        return False
+    old.pop('think', None)
+    new.pop('think', None)
+    return old == new
+
+
 def restore_history(agent, saved):
     """Continue a saved chat under the new agent's current system prompt; reuse only well-formed history."""
     current = getattr(agent, "messages", None)
@@ -604,7 +619,7 @@ class Sessions:
                                              skills=str(self.directory / "skills"))
                 session.configuration = configuration
                 if session.saved_messages:
-                    if session.saved_configuration == list(configuration):
+                    if same_configuration(session.saved_configuration, configuration):
                         restore_history(session.agent, session.saved_messages)
                         if session.saved_private:
                             session.agent.private_context = True

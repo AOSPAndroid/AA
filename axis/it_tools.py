@@ -7,6 +7,7 @@ it only reads Atlas's unresolved-target guard so both apps refuse the same PC.
 import argparse
 import base64
 from contextlib import contextmanager
+from concurrent.futures import ThreadPoolExecutor
 import datetime
 import hashlib
 import json
@@ -129,6 +130,16 @@ def computer(value):
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}", value) or ".." in value or value.endswith((".", "-")):
         raise ValueError("Use one explicit computer hostname or IPv4 address, without wildcards or paths")
     return value.upper()
+
+
+def inspection_targets(computers, view, validate=None):
+    if view not in ("preflight", "overview", "disks"):
+        raise ValueError("Bulk inspection covers preflight, overview or disks; use inspect_computer for services, processes or software")
+    if not isinstance(computers, list) or not 1 <= len(computers) <= 50:
+        raise ValueError("Supply 1 to 50 computer names")
+    validate = validate or computer
+    return list(dict.fromkeys(validate(value) for value in computers))
+
 
 
 def target_key(value):
@@ -353,21 +364,15 @@ class ITTools:
         return data
 
     def inspect_computers(self, computers, view):
-        if view not in ("preflight", "overview", "disks"):
-            raise ValueError("Bulk inspection covers preflight, overview or disks; use inspect_computer for services, processes or software")
-        if not isinstance(computers, list) or not 1 <= len(computers) <= 50:
-            raise ValueError("Supply 1 to 50 computer names")
-        seen, results = [], []
-        for raw in computers:
-            pc = globals()["computer"](raw)
-            if pc in seen:
-                continue
-            seen.append(pc)
+        targets = inspection_targets(computers, view)
+        def inspect(pc):
             try:
                 data = self.ps({"op": "inspect", "computer": pc, "view": view, "query": "", "offset": 0, "limit": 25})
-                results.append({"computer": pc, "ok": True, "data": data.get("data", data)})
+                return {"computer": pc, "ok": True, "data": data.get("data", data)}
             except Exception as error:
-                results.append({"computer": pc, "ok": False, "error": str(error)[:400]})
+                return {"computer": pc, "ok": False, "error": str(error)[:400]}
+        with ThreadPoolExecutor(max_workers=min(8, len(targets))) as pool:
+            results = list(pool.map(inspect, targets))
         return {"view": view, "count": len(results), "results": results}
 
     def root(self):

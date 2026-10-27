@@ -9,6 +9,7 @@ Axis job files from earlier versions stay readable, and an unknown one can still
 so no PC they protect is released silently.
 """
 from contextlib import contextmanager
+from concurrent.futures import ThreadPoolExecutor
 import copy
 import hashlib
 import os
@@ -19,7 +20,7 @@ from pathlib import Path, PureWindowsPath
 
 from fastapi import HTTPException
 
-from axis.it_tools import OUTPUT_SECONDS, linked, target_key
+from axis.it_tools import OUTPUT_SECONDS, linked, target_key, inspection_targets
 
 STRING = {"type": "string"}
 ACTIONS = ["Install", "Uninstall", "Repair"]
@@ -45,6 +46,9 @@ TOOLS = [
         "computer": STRING, "view": {"type": "string", "enum": VIEWS}, "query": STRING,
         "offset": {"type": "integer", "minimum": 0}, "limit": {"type": "integer", "minimum": 1, "maximum": 100}},
         ["computer", "view"]),
+    _tool("inspect_computers", "Read up to 50 explicit Windows PCs with Atlas's preflight, overview or disk checks. Uses at most eight readers, preserves target order and reports each PC's result or error. Read-only; use inspect_computer for services, processes or software.", {
+        "computers": {"type": "array", "items": STRING, "minItems": 1, "maxItems": 50},
+        "view": {"type": "string", "enum": ["preflight", "overview", "disks"]}}, ["computers", "view"]),
     _tool("find_packages", "Search Atlas's package repository. A single match includes its action-specific scripts; reuse them without another lookup. Multiple matches require choosing an exact package. Supply package and offset for more script pages. Never guess a package or script.", {
         "query": STRING, "package": STRING, "action": {"type": "string", "enum": ACTIONS},
         "offset": {"type": "integer", "minimum": 0}}),
@@ -69,6 +73,7 @@ TOOLS = [
 NAMES = {tool["function"]["name"] for tool in TOOLS}
 
 GUIDANCE = """- inspect_computer, find_packages, deploy_package, computer_action, directory_lookup and open_remote_tool run Atlas's own operations, with its checks and locks. Use them for supported work and never bypass a blocked one with run_command.
+- Use inspect_computers for a quick read of preflight, overview or disks across an explicit list of up to 50 PCs. Each PC keeps its own readings or error; services, processes and software use inspect_computer.
 - Package repository: {package_repo}. Saved tool output: {state_dir}.
 - Resolve the exact package and action-specific script with find_packages before deployment. A unique search match can include its scripts; reuse them without a second discovery call. Multiple scripts still require an unambiguous selection. Use only explicit PCs supplied by the user or found in notes/directory results.
 - If several versions match and neither the user nor a known runbook selects one, immediately ask one short version question with a few exact returned names. Do not inspect targets, browse repository folders or read scripts to guess the preferred version. Results are sorted by name, not version/date, and may be paginated.
@@ -252,6 +257,17 @@ class AtlasOperations:
         items = [{k: item.get(k) for k in SOFTWARE_FIELDS if item.get(k) not in (None, "")} for item in items if isinstance(item, dict)]
         page = _page(items, query, offset, limit, ("Name", "Publisher", "Version"))
         return dict(page, computer=pc, view=view, warnings=data.get("warnings") or [])
+
+    def inspect_computers(self, computers, view):
+        targets = inspection_targets(computers, view, self.pc)
+        def inspect(pc):
+            try:
+                return {"computer": pc, "ok": True, "data": self.inspect_computer(pc, view)}
+            except Exception as error:
+                return {"computer": pc, "ok": False, "error": str(error)[:400]}
+        with ThreadPoolExecutor(max_workers=min(8, len(targets))) as pool:
+            results = list(pool.map(inspect, targets))
+        return {"view": view, "count": len(results), "results": results}
 
     @staticmethod
     def package_name(name):

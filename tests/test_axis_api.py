@@ -395,6 +395,32 @@ class AxisAPI(unittest.TestCase):
         changed = events(self.post(message="third", session_id=identifier))
         self.assertTrue(any("settings changed" in e.get("text", "") for e in changed))
 
+    def test_saved_chats_from_before_the_thinking_toggle_keep_their_history(self):
+        identifier = events(self.post(message='first'))[0]['session_id']
+        path = Path(self.temp.name) / 'data' / 'axis' / 'chats' / (identifier + '.json')
+        saved = json.loads(path.read_text(encoding='utf-8'))
+        saved['messages'] = [{'role': 'system', 'content': 'Old system'},
+                             {'role': 'user', 'content': 'first'}, {'role': 'assistant', 'content': 'Done first'}]
+        saved['private'] = True
+        old_settings = json.loads(saved['configuration'][3])
+        old_settings['think'] = True
+        saved['configuration'][3] = json.dumps(old_settings, sort_keys=True)
+        path.write_text(json.dumps(saved), encoding='utf-8')
+        created = []
+        def factory(*args, **kwargs):
+            kwargs['web_enabled'] = False
+            with patch.object(axis_agent, 'system_facts', return_value=('Test PC', False)):
+                model = api.Agent(*args, **kwargs)
+            model.chat = Mock(return_value={'role': 'assistant', 'content': 'Done second'})
+            created.append(model)
+            return model
+        self.sessions.factory = factory
+        self.sessions.sessions.clear()
+        continued = events(self.post(message='second', session_id=identifier, think=False))
+        self.assertFalse(any('settings changed' in e.get('text', '') for e in continued))
+        self.assertEqual(created[-1].messages[1:3], saved['messages'][1:])
+        self.assertTrue(created[-1].private_context)
+
     def test_saved_chats_are_bounded(self):
         long = "x" * (api.MAX_STORED_TEXT + 50)
         with patch.object(api, "MAX_CHATS", 2):

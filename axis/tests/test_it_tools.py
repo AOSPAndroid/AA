@@ -6,6 +6,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from unittest.mock import Mock, call, patch
@@ -536,6 +537,23 @@ class ITTests(unittest.TestCase):
         result = it.read_json(path)["results"][0]
         self.assertEqual(result["state"], "reboot_verified")
         self.assertTrue(result["verified"])
+
+    def test_bulk_inspection_validates_the_whole_batch_before_contacting_a_pc(self):
+        self.backend.ps = Mock()
+        with self.assertRaises(ValueError):
+            self.backend.inspect_computers(['PC-1', 'bad name'], 'overview')
+        self.backend.ps.assert_not_called()
+
+
+    def test_bulk_reads_overlap_with_bounded_workers(self):
+        barrier = threading.Barrier(2)
+        def read(request):
+            barrier.wait(timeout=5)
+            return {'computer': request['computer'], 'data': {'fixture': True}}
+        self.backend.ps = Mock(side_effect=read)
+        result = self.backend.inspect_computers(['PC-1', 'PC-2'], 'preflight')
+        self.assertTrue(all(row['ok'] for row in result['results']), result)
+
 
 
 class AgentTests(unittest.TestCase):

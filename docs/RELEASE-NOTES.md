@@ -9,6 +9,12 @@ temporary read failures, ignores generic Name-only lists and refuses exports
 that change while being read. Oversized exports are reported without stopping
 the other imports. Shared model-join fixes also ship in standalone Axis.
 
+**Bulk PC checks.** Axis can inspect preflight, overview or disks for up to 50
+explicit PCs, using at most eight readers and reporting each PC's result or
+error. AA uses Atlas's own checks. Every target is validated before any read;
+private inbox or clipboard context still requires approval for outside targets.
+The bundled PC-health skill covers this in both AA and standalone Axis.
+
 **Import folder.** Save the users, devices, Citrix and package exports in
 `C:\AtlasXL` and Atlas imports them within a minute, each with its usual backup.
 Files are recognised by their columns. A users and devices snapshot that would
@@ -17,6 +23,7 @@ remove more than 10% waits for review in Manage Database > Import folder.
 **Quieter Axis chat.** Each tool call now collapses to a one-line summary you can
 expand for its full request and result, and **Thinking** is off by default with a
 header toggle (it resets off for each new chat). Turn it on for a hard problem.
+Existing saved chats keep their history when upgrading or changing this toggle.
 
 **Admin and Demo match.** Demo now shows the same map, desk inspector, menus and
 console pages as Admin, with changes greyed out instead of hidden or replaced.
