@@ -35,6 +35,8 @@ weights or API credentials are bundled.
 
 Deployments now wait for the installers a script starts, including ones it hands off before returning, and for Windows Installer, before reporting. The deployment shows what it is waiting for and then lists the software that was newly registered, removed or updated. More Qwen3.8 models can be selected in Axis: `35b-distill`, `27b-iq3`, `27b-abliterated`, and the 27B at 8 or 16 bits (`27b-q8`, `27b-bf16`) for PCs with a large graphics card or plenty of memory.
 
+**Manage Database → Data folder** keeps users, devices, Citrix VDI and package data current from the exports you save in one folder, for example `C:\AtlasXL`. Atlas recognises each file by its columns, imports it with the usual checks and backups about a minute after each save, and asks before a users-and-devices export that would remove many records.
+
 Use **Stop AA.bat** to stop AA's local services. Accepted remote deployment jobs
 are independent of the browser chat and must be checked before retrying.
 

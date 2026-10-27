@@ -109,6 +109,27 @@
         </section>
         <details class="atlas-live-plan-history"><summary>Recent live updates</summary><ul id="live-plan-history"></ul></details>
       </section>
+      <section class="panel atlas-live-plan" id="data-folder" aria-labelledby="data-folder-title">
+        <header class="atlas-live-plan-head"><h2 id="data-folder-title">Data folder</h2><span id="data-folder-state" role="status">Off</span></header>
+        <p>Save the ServiceNow users (<b>sys_user</b>), devices (<b>alm_asset</b>) and packages (<b>u_cmdb_software_package</b>) exports and the Citrix <b>SingleSessionMachines</b> export in one folder, as CSV or XLSX, under any name. Atlas recognises each one by its columns and, about a minute after each new save, imports it with the same checks, backups and history as the uploads below. Unchanged files are not imported again. With <b>Ask before large changes</b> on, a users-and-devices export that would remove more than 10% of users or devices, or that loses columns, waits here for you.</p>
+        <div class="atlas-live-plan-controls">
+          <label class="atlas-live-plan-folder">Exports folder<input id="data-folder-path" autocomplete="off" spellcheck="false" placeholder="C:\AtlasXL"></label>
+          <label class="atlas-live-plan-toggle"><input type="checkbox" id="data-folder-enabled"> Data folder on</label>
+          <label class="atlas-live-plan-toggle" title="Off: every users-and-devices export is applied straight away, however many records it removes"><input type="checkbox" id="data-folder-review" checked> Ask before large changes</label>
+          <button type="button" id="data-folder-save" class="primary">Save</button>
+          <button type="button" id="data-folder-check">Check now</button>
+        </div>
+        <p id="data-folder-message" role="status"></p>
+        <ul id="data-folder-kinds" class="atlas-data-folder-kinds"></ul>
+        <p id="data-folder-ignored" class="atlas-data-folder-ignored" hidden></p>
+        <section id="data-folder-held" class="atlas-live-plan-held" hidden>
+          <h3>Waiting for your review</h3>
+          <p id="data-folder-held-reason"></p>
+          <ul id="data-folder-changes"></ul>
+          <button type="button" id="data-folder-apply" class="primary">Apply this snapshot</button>
+        </section>
+        <details class="atlas-live-plan-history"><summary>Recent imports from the folder</summary><ul id="data-folder-history"></ul></details>
+      </section>
       <div class="atlas-upload-grid">
         <section class="panel atlas-upload-section" id="directory-import">
           <h2>Users &amp; devices</h2>
@@ -594,6 +615,7 @@
     <script src="/assets/desk-moves.js"></script>
     <script src="/assets/seating-excel.js"></script>
     <script src="/assets/seating-sync.js"></script>
+    <script src="/assets/data-folder.js"></script>
     <script
       type="module"
       src="/assets/atlas-interactions.js"

@@ -36,7 +36,7 @@ def main():
     with zipfile.ZipFile(args.output) as archive:
         assert archive.testzip() is None
         required = ('Start AA.bat', 'Stop AA.bat', 'aa_launcher.py', 'backend/axis_api.py',
-                    'backend/axis_operations.py', 'backend/axis_sources.py', 'frontend/assets/axis-chat.js',
+                    'backend/axis_operations.py', 'backend/axis_sources.py', 'frontend/assets/axis-chat.js', 'data_folder.py', 'frontend/assets/data-folder.js',
                     'atlas/official-index.html', 'axis/agent.py', 'axis/aa_client.py', 'axis/start.py',
                     'axis/models.json', 'axis/skill_library.py', 'axis/skills/pc-health/SKILL.md',
                     'axis/skills/package-deployment/SKILL.md', 'office_atlas.db')

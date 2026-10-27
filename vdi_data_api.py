@@ -16,6 +16,42 @@ from atlas_store import ClosingConnection
 import vdi_data as data
 
 
+def prepare(database, content, filename, full_snapshot, source=None):
+    """Validate a Citrix export (CSV or XLSX, by filename) against the current VDI data and directory."""
+    incoming, parsed = data.parse(content, filename)
+    with sqlite3.connect(database, timeout=20, factory=ClosingConnection) as con:
+        con.execute('begin')
+        report = data.report(con, incoming, parsed, full_snapshot=full_snapshot)
+        fingerprint = data.fingerprint(con)
+    return {'at': time.time(), 'rows': incoming, 'source': source or filename,
+            'report': report, 'fingerprint': fingerprint, 'full_snapshot': full_snapshot}
+
+
+def commit(database, value):
+    """Apply a validated Citrix import with a VDI-only backup and an import-history entry."""
+    at = datetime.now(timezone.utc).isoformat(); import_id = uuid.uuid4().hex
+    backups = Path(database).resolve().parent / 'backups'; backups.mkdir(parents=True, exist_ok=True)
+    backup = backups / ('vdi-data-' + import_id + '.json.gz')
+    temporary = backup.with_name(backup.name + '.tmp')
+    try:
+        with sqlite3.connect(database, timeout=20, factory=ClosingConnection) as con:
+            con.execute('begin immediate')
+            if data.fingerprint(con) != value['fingerprint']:
+                raise HTTPException(409, 'Citrix data or directory account identities changed. Validate a fresh preview.')
+            with gzip.open(temporary, 'wt', encoding='utf-8') as archive:
+                json.dump(data.backup_payload(con, at), archive, ensure_ascii=False)
+            os.replace(temporary, backup)
+            summary = data.write_rows(con, value['rows'], value['source'], at, full_snapshot=value['full_snapshot'])
+            con.execute('insert into vdi_imports values(?,?,?,?,?,?)',
+                        (import_id, at, value['source'], json.dumps(value['report']), str(backup), int(value['full_snapshot'])))
+            count = con.execute('select count(*) from vdi_devices').fetchone()[0]
+    except Exception:
+        temporary.unlink(missing_ok=True); backup.unlink(missing_ok=True)
+        raise
+    return {'ok': True, 'count': count, 'backup': backup.name, 'imported_at': at,
+            'full_snapshot': value['full_snapshot'], **summary}
+
+
 def register(app, wmi, check_token):
     staged = {}; stage_lock = threading.RLock()
     database = Path(wmi.MASTER_DB).resolve()
@@ -45,18 +81,13 @@ def register(app, wmi, check_token):
                                 'full_snapshot': bool(row[3])} if row else None}
 
     def stage(content, source, full_snapshot):
-        incoming, parsed = data.parse(content, source)
-        with connect() as con:
-            con.execute('begin')
-            report = data.report(con, incoming, parsed, full_snapshot=full_snapshot)
-            fingerprint = data.fingerprint(con)
+        value = prepare(database, content, source, full_snapshot)
         key = uuid.uuid4().hex
         clean()
         with stage_lock:
             staged.clear()
-            staged[key] = {'at': time.time(), 'rows': incoming, 'source': source,
-                           'report': report, 'fingerprint': fingerprint, 'full_snapshot': full_snapshot}
-        return {'id': key, 'source': source, 'full_snapshot': full_snapshot, 'report': report, 'expires_minutes': 60}
+            staged[key] = value
+        return {'id': key, 'source': source, 'full_snapshot': full_snapshot, 'report': value['report'], 'expires_minutes': 60}
 
     @app.post('/api/vdi-data/import/preview')
     async def preview(request: Request, full_snapshot: str = 'false'):
@@ -95,29 +126,10 @@ def register(app, wmi, check_token):
             raise HTTPException(409, 'Citrix preview expired or was replaced. Validate the export again.')
         if body['full_snapshot'] != value['full_snapshot']:
             raise HTTPException(409, 'The import mode changed. Validate a fresh Citrix preview.')
-        at = datetime.now(timezone.utc).isoformat(); import_id = uuid.uuid4().hex
-        backups = database.parent / 'backups'; backups.mkdir(parents=True, exist_ok=True)
-        backup = backups / ('vdi-data-' + import_id + '.json.gz')
-        temporary = backup.with_name(backup.name + '.tmp')
-        try:
-            with connect() as con:
-                con.execute('begin immediate')
-                if data.fingerprint(con) != value['fingerprint']:
-                    raise HTTPException(409, 'Citrix data or directory account identities changed. Validate a fresh preview.')
-                with gzip.open(temporary, 'wt', encoding='utf-8') as archive:
-                    json.dump(data.backup_payload(con, at), archive, ensure_ascii=False)
-                os.replace(temporary, backup)
-                summary = data.write_rows(con, value['rows'], value['source'], at, full_snapshot=value['full_snapshot'])
-                con.execute('insert into vdi_imports values(?,?,?,?,?,?)',
-                            (import_id, at, value['source'], json.dumps(value['report']), str(backup), int(value['full_snapshot'])))
-                count = con.execute('select count(*) from vdi_devices').fetchone()[0]
-        except Exception:
-            temporary.unlink(missing_ok=True); backup.unlink(missing_ok=True)
-            raise
+        result = commit(database, value)
         with stage_lock:
             staged.pop(key, None)
-        return {'ok': True, 'count': count, 'backup': backup.name, 'imported_at': at,
-                'full_snapshot': value['full_snapshot'], **summary}
+        return result
 
     @app.get('/api/vdi-data/record/{key:path}')
     def record(key: str):

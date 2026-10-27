@@ -3072,6 +3072,10 @@ body.atlas-database .atlas-live-plan-held { border:1px solid var(--atlas-warning
 body.atlas-database .atlas-live-plan-held h3 { margin:0 0 4px; font-size:13px; }
 body.atlas-database .atlas-live-plan-history summary { cursor:pointer; font-size:12px; font-weight:600; }
 body.atlas-database .atlas-live-plan-history .atlas-live-plan-undo { min-height:22px; padding:0 8px; font-size:11px; margin-left:4px; }
+body.atlas-database .atlas-data-folder-kinds { margin:0; padding:0; list-style:none; display:grid; gap:2px; font-size:12px; }
+body.atlas-database .atlas-data-folder-kinds li { display:grid; grid-template-columns:minmax(110px,max-content) minmax(0,1fr); gap:8px; }
+body.atlas-database .atlas-data-folder-kinds b { font-weight:600; }
+body.atlas-database .atlas-data-folder-ignored { margin:0; font-size:12px; color:var(--atlas-muted); }
 
 /* AD group comparison: who has what. Green = member, red = missing, blue = only the first person,
    amber = partly shared; nested and primary memberships use lighter teal and indigo. */

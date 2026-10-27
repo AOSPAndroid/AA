@@ -71,9 +71,27 @@ def compare(target,candidate):
   old_columns=columns(directory_exports.coverage(a));new_columns=columns(result['coverage'])
   missing=sorted(old_columns[k] for k in old_columns.keys()-new_columns.keys())
   if missing:result['warnings'].append('Columns absent from this snapshot: '+', '.join(missing))
+  # What an unattended import (the data folder) must not apply without a person looking first.
+  result['review']=[f"{label}: {result[t]['removed']:,} of {result[t]['before']:,} existing records disappear." for t,label in (('users','Users'),('machines','Devices')) if result[t]['removed']>result[t]['before']*.1]
+  if missing:result['review'].append('Columns absent from this snapshot: '+', '.join(missing))
   if directory_exports.exists(a) and not result['coverage']['original_cells']:
    result['warnings'].append('This older backup has no original export archive. Restoring it removes the current archive; stored directory fields remain.')
   return result
+
+def record_import(c,at,source,backup,report):
+ c.execute('insert into directory_import_history values(?,?,?,?,?)',(uuid.uuid4().hex,at,source,str(backup),json.dumps(report)))
+ c.execute('insert or replace into metadata values(?,?)',('directory.created_at',at))
+
+def commit_directory(database,candidate,source,report,expected,busy=None):
+ """Replace the directory with a validated candidate: backup, merge and history in one write.
+ Refuses if the directory changed since the comparison, or (busy given) jobs started meanwhile."""
+ from datetime import datetime,timezone
+ at=datetime.now(timezone.utc).isoformat()
+ def validate_current(c):
+  if fingerprint_connection(c)!=expected:raise HTTPException(409,'Directory or account links changed. Prepare a fresh preview.')
+  if busy and busy():raise HTTPException(409,'Active jobs or queues must finish first.')
+ return apply_refresh(database,candidate,Path(database).parent/'backups',before_merge=validate_current,
+                      after_merge=lambda c,backup:record_import(c,at,source,backup,report))
 
 def register_database_manager(app,wmi,check_token):
  from urllib.parse import unquote
@@ -225,14 +243,7 @@ def register_database_manager(app,wmi,check_token):
   if not s:raise HTTPException(409,'Preview expired or was replaced. Validate the file again.')
   if body.get('confirmation')!='APPLY' or body.get('full_snapshot') is not True:raise HTTPException(400,'Confirm the complete intended directory snapshot and type APPLY.')
   if busy():raise HTTPException(409,'Active jobs or queues must finish first.')
-  from datetime import datetime,timezone
-  at=datetime.now(timezone.utc).isoformat()
-  def validate_current(c):
-   if fingerprint_connection(c)!=s['fingerprint']:raise HTTPException(409,'Directory or account links changed. Prepare a fresh preview.')
-  def record_import(c,backup):
-   c.execute('insert into directory_import_history values(?,?,?,?,?)',(uuid.uuid4().hex,at,s['source'],str(backup),json.dumps(s['report'])))
-   c.execute('insert or replace into metadata values(?,?)',('directory.created_at',at))
-  backup=apply_refresh(wmi.MASTER_DB,s['candidate'],Path(wmi.MASTER_DB).parent/'backups',before_merge=validate_current,after_merge=record_import)
+  backup=commit_directory(wmi.MASTER_DB,s['candidate'],s['source'],s['report'],s['fingerprint'])
   del staged[stage_id];shutil.rmtree(s['folder'],ignore_errors=True)
   return {'ok':True,'backup':backup.name,'counts':counts(wmi.MASTER_DB)}
 
@@ -244,3 +255,4 @@ def register_database_manager(app,wmi,check_token):
  # Live floor plan: the assistants' desk-plan Excel keeps official seating current.
  from seating_sync import register as register_seating_sync
  register_seating_sync(app,wmi,check_token,busy,Path(wmi.MASTER_DB).resolve().parent/'seating-sync.json')
+ return busy

@@ -300,11 +300,14 @@ def register_atlas(app):
   return {'repository':str(path),'available':True}
 
  from database_manager import register_database_manager
- register_database_manager(app,wmi,check_token)
+ import_busy=register_database_manager(app,wmi,check_token)
  from package_data_api import register as register_package_data
  register_package_data(app,wmi,check_token)
  from vdi_data_api import register as register_vdi_data
  register_vdi_data(app,wmi,check_token)
+ # Exports saved in one folder keep users, devices, Citrix and package data current (Admin only).
+ from data_folder import register as register_data_folder
+ register_data_folder(app,wmi,check_token,import_busy,Path(wmi.MASTER_DB).resolve().parent/'data-folder.json')
 
  from official_atlas import register_official
  register_official(app,wmi,check_token)
