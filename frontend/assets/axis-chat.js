@@ -34,13 +34,13 @@
         <button type="button" id="axis-chat-close" aria-label="Close Axis chat and return to Atlas" title="Close Axis and show the desk inspector">Inspector <span aria-hidden="true">×</span></button>
       </div>
     </div>
-    <div class="axis-chat-connection"><span id="axis-chat-model">Checking model…</span><button id="axis-chat-refresh" type="button" title="Refresh model connection" aria-label="Refresh model connection">↻</button></div>
+    <div class="axis-chat-connection"><span id="axis-chat-model">Checking model…</span><button id="axis-chat-think" type="button" class="axis-chat-think" role="switch" aria-checked="false" title="Show the model's step-by-step reasoning. Off is faster and quieter; turn it on for a hard problem. Resets off for each new chat.">Thinking off</button><button id="axis-chat-refresh" type="button" title="Refresh model connection" aria-label="Refresh model connection">↻</button></div>
     <section id="axis-chat-memory" class="axis-chat-memory" aria-label="Axis memory" hidden><div class="axis-chat-memory-heading"><strong>Remembered between chats</strong><small id="axis-chat-memory-status"></small></div><ul id="axis-chat-memory-list"></ul></section>
     <div class="axis-chat-context-row"><button id="axis-chat-use-desk" type="button" disabled>Use selected desk</button><span id="axis-chat-selection">Select a desk on the map</span></div>
     <div id="axis-chat-messages" class="axis-chat-messages" role="log" aria-label="Conversation with Axis" aria-live="off" tabindex="0">
-      <div id="axis-chat-empty" class="axis-chat-empty"><strong>What do you need?</strong><p>Find a person or PC, check a machine, or start an IT task.</p><small>Thinking and tool activity appear here. Changes ask for approval.</small></div>
+      <div id="axis-chat-empty" class="axis-chat-empty"><strong>What do you need?</strong><p>Find a person or PC, check a machine, or start an IT task.</p><small>Answers and tool activity appear here. Turn on Thinking for a hard problem. Changes ask for approval.</small></div>
     </div>
-    <div id="axis-chat-activity" class="axis-chat-activity" role="status" aria-live="polite" hidden><span id="axis-chat-spinner" aria-hidden="true">/</span><span id="axis-chat-activity-text">Thinking</span></div>
+    <div id="axis-chat-activity" class="axis-chat-activity" role="status" aria-live="polite" hidden><span id="axis-chat-spinner" aria-hidden="true">/</span><span id="axis-chat-activity-text">Working</span></div>
     <form id="axis-chat-form" class="axis-chat-form">
       <div id="axis-chat-attached" class="axis-chat-attached" hidden><span></span><button type="button" title="Remove attached desk" aria-label="Remove attached desk">×</button></div>
       <label class="axis-chat-input-label" for="axis-chat-input">Message Axis</label>
@@ -55,7 +55,8 @@
     busy = false,
     attached = null,
     stream = null,
-    spinner = null;
+    spinner = null,
+    thinking = false;
   let activeText = null,
     activeKind = null,
     followTail = true,
@@ -162,6 +163,61 @@
     } catch {
       return value;
     }
+  }
+  // One-line summaries so each tool call collapses to a readable row; the full
+  // request and result stay one click away inside the card.
+  function firstString(value) {
+    if (typeof value === "string") return value;
+    if (value && typeof value === "object")
+      for (const inner of Object.values(value))
+        if (typeof inner === "string" && inner) return inner;
+    return "";
+  }
+  function toolHint(args) {
+    const a = args || {};
+    const pick =
+      a.query ||
+      a.computer ||
+      a.package ||
+      a.identity ||
+      a.id ||
+      a.job_id ||
+      (Array.isArray(a.computers) ? a.computers.join(", ") : "") ||
+      a.name ||
+      firstString(a);
+    const qualifier = a.view || a.action;
+    const text = [pick, qualifier && qualifier !== pick ? qualifier : ""]
+      .filter(Boolean)
+      .join(" · ");
+    return text.length > 80 ? text.slice(0, 79) + "…" : text;
+  }
+  function resultHint(result) {
+    try {
+      const data = typeof result === "string" ? JSON.parse(result) : result;
+      if (Array.isArray(data?.items))
+        return data.items.length + (data.items.length === 1 ? " result" : " results");
+      if (Array.isArray(data)) return data.length + " rows";
+      if (data && typeof data === "object") {
+        if (data.job_id) return "job started";
+        if (data.state) return String(data.state);
+      }
+    } catch {}
+    return "done";
+  }
+  function toolCard(name) {
+    $("#axis-chat-empty")?.remove();
+    const article = element("article", "axis-message axis-message-tool");
+    const card = element("details", "axis-tool-card");
+    const summary = document.createElement("summary");
+    summary.append(element("span", "axis-tool-name", name));
+    const hint = element("span", "axis-tool-hint", "");
+    const status = element("span", "axis-tool-status", "");
+    summary.append(hint, status);
+    const body = element("div", "axis-tool-body");
+    card.append(summary, body);
+    article.append(card);
+    messages.append(article);
+    return { article, body, hint, status };
   }
   // Desks found by Axis open on this map; selecting one gives no permission.
   function deskLinks(container, result) {
@@ -492,17 +548,18 @@
         activity(event.text);
         break;
       case "tool_start": {
-        const tool = entry(
-          "tool",
-          String(event.name || "Tool").replaceAll("_", " "),
-        );
-        tool.content.append(
+        const name = String(event.name || "tool").replaceAll("_", " ");
+        const tool = toolCard(name);
+        tool.hint.textContent = toolHint(event.args || {});
+        tool.status.textContent = "running…";
+        tool.body.append(
           element("pre", "axis-tool-arguments", print(event.args || {})),
         );
         pendingTools.push({ ...tool, name: event.name });
-        activity(
-          "Running " + String(event.name || "tool").replaceAll("_", " "),
-        );
+        activeText = null;
+        activeKind = null;
+        scrollToTail();
+        activity("Running " + name);
         break;
       }
       case "tool_result": {
@@ -512,14 +569,16 @@
         const tool =
           index >= 0
             ? pendingTools.splice(index, 1)[0]
-            : entry("tool", event.name || "Tool result");
-        tool.content.append(
+            : toolCard(String(event.name || "tool").replaceAll("_", " "));
+        tool.body.append(
           element("pre", "axis-tool-result", print(event.result)),
         );
-        if (event.name === "find_desk") deskLinks(tool.content, event.result);
-        atlasLinks(tool.content, event.name, event.result);
+        tool.status.textContent = resultHint(event.result);
+        // Actionable links stay visible below the collapsed card.
+        if (event.name === "find_desk") deskLinks(tool.article, event.result);
+        atlasLinks(tool.article, event.name, event.result);
         if (event.output_id)
-          tool.content.append(
+          tool.body.append(
             element("small", "axis-tool-saved", "/output " + event.output_id),
           );
         activeText = null;
@@ -602,6 +661,7 @@
           "/api/axis/chat",
           {
             message: text,
+            think: thinking,
             ...(sessionId ? { session_id: sessionId } : {}),
             ...(sent?.context ? { context: sent.context } : {}),
             ...(sent?.attachment ? { attachment: sent.attachment } : {}),
@@ -654,6 +714,13 @@
       $("#axis-chat-stop").disabled = false;
     }
   });
+  function setThinking(on) {
+    thinking = Boolean(on);
+    const button = $("#axis-chat-think");
+    button.setAttribute("aria-checked", String(thinking));
+    button.textContent = thinking ? "Thinking on" : "Thinking off";
+  }
+  $("#axis-chat-think").addEventListener("click", () => setThinking(!thinking));
   $("#axis-chat-reset").addEventListener("click", async () => {
     if (busy) return;
     setBusy(true);
@@ -672,6 +739,7 @@
       setAttached(null);
       activeText = null;
       activeKind = null;
+      setThinking(false); // Each new chat starts with reasoning hidden.
       entry("notice", "Axis", "New conversation.");
       input.focus();
     } catch (error) {

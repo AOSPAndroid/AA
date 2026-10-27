@@ -53,8 +53,11 @@ If the model is missing, the map still opens and chat explains how to start it.
 - **Desks from chat:** ask where someone sits or which desk a PC is at. Axis
   reads the floor-plan seating (stored plan, not who is in today), and each desk
   it finds has a **Show on map** button that selects it without leaving the chat.
-- **Visible work:** answers, thinking and tool activity stream into the panel.
-  Actions display an approval with the actual command or target.
+- **Visible work:** answers and tool activity stream into the panel; each tool
+  call collapses to one line you can expand for its full request and result.
+  Actions display an approval with the actual command or target. **Thinking** is
+  off by default for quick, quiet answers; the header toggle shows the model's
+  reasoning for a hard problem and resets off with each new chat.
 - **One engine:** Axis's Windows work is Atlas's own work. A deployment Axis
   starts is an Atlas deployment, with Atlas's checks, per-PC lock and
   unknown-outcome guard. It appears in the Deployments drawer and in history,

@@ -31,7 +31,13 @@ class FakeAgent:
         self.prefetched = []
         self.answer_shown = False
         self.approved = None
+        self.think = args[4] if len(args) > 4 else False
+        self.think_log = []
         self.instances.append(self)
+
+    def set_thinking(self, enabled):
+        self.think = bool(enabled)
+        self.think_log.append(self.think)
 
     def run(self, message, prefetched=()):
         self.messages.append(message)
@@ -139,6 +145,19 @@ class AxisAPI(unittest.TestCase):
         self.post(message="separate")
         self.assertEqual(len(FakeAgent.instances), 2)
         self.assertEqual(FakeAgent.instances[1].messages, ["separate"])
+
+    def test_thinking_is_off_by_default_and_toggles_per_turn_without_a_reset(self):
+        identifier = events(self.post(message="one"))[0]["session_id"]
+        agent = FakeAgent.instances[0]
+        self.assertIs(agent.args[4], False)  # The browser agent is built with thinking off.
+        self.assertEqual(agent.think_log, [False])
+        self.post(message="two", think=True, session_id=identifier)
+        self.assertEqual(agent.think_log, [False, True])
+        self.post(message="three", think=False, session_id=identifier)
+        # Toggling never starts a fresh conversation.
+        self.assertEqual(len(FakeAgent.instances), 1)
+        self.assertEqual(agent.think_log, [False, True, False])
+        self.assertEqual(agent.messages, ["one", "two", "three"])
 
     def test_changed_db_starts_fresh_history_and_attached_context_is_reference(self):
         identifier = events(self.post(message="one"))[0]["session_id"]
