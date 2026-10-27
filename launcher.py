@@ -74,7 +74,7 @@ def run(open_browser=True):
     specs=servers()
     try:import fastapi,uvicorn  # noqa: F401 -- verify dependencies can actually import
     except ImportError:
-        print('Dependencies missing. Run Install_Dependencies.bat using this same Python.');return 1
+        print('Dependencies missing. Run windows\\Install_Dependencies.bat using this same Python.');return 1
     for directory in ('logs','data'):(ROOT/directory).mkdir(exist_ok=True)
     # Existing servers keep their database until explicitly stopped.
     if not any(running(spec,read_record(spec['mode'])) for spec in specs):

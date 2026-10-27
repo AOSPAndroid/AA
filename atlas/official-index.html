@@ -8,16 +8,18 @@
     <script defer src="/assets/atlas-app.js"></script>
     <script src="/assets/client.js"></script>
     <script defer src="/assets/axis-chat.js"></script>
+    <script src="/assets/readonly-console.js"></script>
+    <link rel="stylesheet" href="/assets/readonly-console.css" />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>AA · Atlas + Axis</title>
+    <title>Atlas · Map</title>
     <link rel="stylesheet" href="style.css?v=8" />
     <link rel="stylesheet" href="operations.css?v=2" />
     <link rel="stylesheet" href="official.css?v=78" />
     <link rel="stylesheet" href="/assets/machine-health.css" />
     <link rel="stylesheet" href="/assets/atlas-shell.css" />
     <link rel="stylesheet" href="/assets/catalogue.css" />
-    <script src="/assets/machine-health.js?v=2"></script>
+    <script src="/assets/machine-health.js?v=3"></script>
     <link rel="stylesheet" href="/assets/knowledge-base.css" />
     <link rel="stylesheet" href="/assets/atlas-interactions.css" />
     <link rel="stylesheet" href="/assets/design-system.css" />
@@ -30,7 +32,7 @@
           alt=""
           width="30"
           height="32"
-        /><span>AA</span><span class="atlas-admin-badge">Admin</span></a
+        /><span>Atlas</span><span class="atlas-admin-badge">Admin</span></a
       >
       <div class="atlas-primary-nav" aria-label="Atlas sections">
         <a href="/" aria-current="page" data-atlas-icon="map">Map</a
@@ -221,6 +223,7 @@
       </aside>
     </div>
     <div id="toast" role="status" aria-live="polite"></div>
+    <button type="button" id="axis-chat-toggle" class="axis-ask">Ask Axis</button>
     <script type="module" src="official-app.js?v=105"></script>
     <script
       type="module"

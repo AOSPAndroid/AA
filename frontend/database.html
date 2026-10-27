@@ -89,6 +89,27 @@
       <div id="message" role="status" aria-live="polite">
         Loading database status…
       </div>
+      <section class="panel atlas-live-plan" id="import-folder" aria-labelledby="import-folder-title">
+        <header class="atlas-live-plan-head"><h2 id="import-folder-title">Import folder</h2><span id="import-folder-state" role="status">Checking</span></header>
+        <p>Save the exports here and Atlas imports them within a minute: users (<b>sys_user</b>), devices (<b>alm_asset</b>), Citrix VDIs (<b>SingleSessionMachines</b>) and packages (<b>u_cmdb_software_package</b>), as .csv or .xlsx. Atlas recognises each file by its columns and uses the newest of each kind, with the same backup and history as the sections below. With <b>Ask before large removals</b> on, a users &amp; devices snapshot that removes more than 10% of either waits here for you.</p>
+        <div class="atlas-live-plan-controls">
+          <label class="atlas-live-plan-folder">Folder<input id="import-folder-path" autocomplete="off" spellcheck="false" placeholder="C:\AtlasXL"></label>
+          <label class="atlas-live-plan-toggle"><input type="checkbox" id="import-folder-enabled" checked> Watch this folder</label>
+          <label class="atlas-live-plan-toggle" title="Off: every users and devices snapshot is applied straight away"><input type="checkbox" id="import-folder-review" checked> Ask before large removals</label>
+          <button type="button" id="import-folder-save" class="primary">Save</button>
+          <button type="button" id="import-folder-check">Check now</button>
+        </div>
+        <p id="import-folder-message" role="status"></p>
+        <ul id="import-folder-files" class="atlas-import-folder-files"></ul>
+        <section id="import-folder-held" class="atlas-live-plan-held" hidden>
+          <h3>Waiting for your review</h3>
+          <p id="import-folder-held-reason"></p>
+          <ul id="import-folder-held-counts"></ul>
+          <button type="button" id="import-folder-apply" class="primary">Back up and apply</button>
+          <button type="button" id="import-folder-skip">Skip these files</button>
+        </section>
+        <details class="atlas-live-plan-history"><summary>Recent folder imports</summary><ul id="import-folder-history"></ul></details>
+      </section>
       <section class="panel atlas-live-plan" id="live-plan" aria-labelledby="live-plan-title">
         <header class="atlas-live-plan-head"><h2 id="live-plan-title">Live floor plan</h2><span id="live-plan-state" role="status">Off</span></header>
         <p>Atlas reads the assistants' desk plan (Excel boxes such as <b>Christophe Duriez 02R015079</b>, <b>Credit Sales 02R016079</b> or <b>Open 03R016079</b>) from a synced folder, and the map updates within a minute of each save, in Admin and Demo. The Excel is the authority: what it says is applied as written, with a backup, and anything Atlas could not link is listed as a note. With <b>Ask before large changes</b> on, a save that changes many desks waits here for you first. Desks the plan does not mention are left as they are.</p>
@@ -594,6 +615,7 @@
     <script src="/assets/desk-moves.js"></script>
     <script src="/assets/seating-excel.js"></script>
     <script src="/assets/seating-sync.js"></script>
+    <script src="/assets/import-folder.js"></script>
     <script
       type="module"
       src="/assets/atlas-interactions.js"

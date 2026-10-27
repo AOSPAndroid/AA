@@ -70,7 +70,7 @@ def export_workbook(db,layout="previous"):
   records,links=snapshot(c);users=dict(c.execute('select canonical_key,user_id from users'))
  records={id:r for id,r in records.items() if r.get('layout','previous')==layout}
  rows=[[r['id'],r['floor'],r['name'],r['team'],users.get(links.get(r['id']),''),r['occupancy'],r['kind'],r['x'],r['y'],r['angle'],r['revision'],''] for r in sorted(records.values(),key=lambda r:r['id'])]
- template=Path(__file__).parent/'desk_moves_template.xlsx';out=io.BytesIO()
+ template=Path(__file__).parent/'templates'/'desk_moves_template.xlsx';out=io.BytesIO()
  with zipfile.ZipFile(template) as z,zipfile.ZipFile(out,'w',zipfile.ZIP_DEFLATED) as target:
   sheet=dict(workbook_parts(template))['Desk moves'];xml=ET.fromstring(z.read(sheet));data=xml.find(NS+'sheetData');styles={x.attrib['r'].rstrip('0123456789'):x.attrib.get('s') for x in data[1]}
   for row in list(data)[1:]:data.remove(row)

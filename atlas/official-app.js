@@ -9,9 +9,9 @@ import { installMapCursor } from "./map-cursor.js?v=5";
 import { openSiteInfo } from "./site-info.js?v=1";
 const readOnly =
   document.querySelector('meta[name="atlas-mode"]')?.content === "viewer";
-const { createOperations } = readOnly
-  ? { createOperations: (await import("./viewer.js")).createViewerOperations }
-  : await import("./operations.js?v=3");
+// Demo runs the same operations as Admin; the shared read-only layer greys out
+// changes and answers Admin-only reads locally.
+const { createOperations } = await import("./operations.js?v=4");
 const $ = (s) => document.querySelector(s),
   $$ = (s) => [...document.querySelectorAll(s)],
   esc = (s) =>
@@ -401,7 +401,7 @@ try {
     previousRecords = state.legacy || [];
     previousMappings = state.mappings || {};
     token = state.token;
-    databaseReady = true;
+    databaseReady = !state.read_only;
   }
 } catch {}
 const operations = createOperations({
@@ -769,30 +769,6 @@ function renderDetail() {
   if (!selected) return;
   const r = selected;
   $("#detail").classList.add("open");
-  if (readOnly) {
-    $("#detail").innerHTML =
-      `<div class="record-head"><button id="close-detail" aria-label="Close inspector" style="float:right">×</button><span class="eyebrow">READ ONLY · L${r.floor}</span><h2>${esc(r.name === "Unconfirmed desk" ? r.id : r.name)}</h2><p>${esc(r.id)} · ${esc(r.team)}</p></div><dl class="viewer-fields">${[
-        ["Occupancy", r.occupancy],
-        ["Asset", r.asset],
-        ["Hostname", r.hostname],
-        ["Outlet", r.outlet],
-        ["Notes", r.notes],
-      ]
-        .filter(([, v]) => v)
-        .map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`)
-        .join("")}</dl><div id="ops-context"></div>`;
-    $("#close-detail").onclick = () => {
-      $("#detail").classList.remove("open");
-      selected = null;
-      window.dispatchEvent(new Event("atlas:selection"));
-      operations.clear();
-      $("#detail").innerHTML =
-        '<div class="empty-detail">Select a desk to inspect its record.</div>';
-      search();
-    };
-    operations.select(r);
-    return;
-  }
 
   $("#detail").innerHTML =
     `<div class="record-head"><button id="close-detail" style="float:right" aria-label="Close inspector">×</button><span class="eyebrow">DESK REGISTER · L${r.floor}</span><h2>${esc(r.name === "Unconfirmed desk" ? r.id : r.name)}</h2><p>${esc(r.id)} · ${esc(r.team)}</p><span class="badge">${r.verified ? "User verified" : "Needs on-site verification"}</span></div>
@@ -831,7 +807,7 @@ function renderDetail() {
  <button class="primary" type="submit">Save to database</button><button id="reposition" type="button">Reposition desk</button>
  ${r.kind === "desk" ? '<button id="move-person" type="button">Move occupant…</button><button id="vacate" type="button">Leaver / mark vacant…</button>' : ""}</fieldset>
  <button id="history" type="button">View history</button><div id="history-list"></div>
- <small>${databaseReady ? "SQLite connected · edits survive restarts." : "Read-only preview · launch the Python app to edit."} Official desk codes; both views share the same desk identities and names. Occupants need on-site verification. Occupancy represents the seating register, not live presence.</small></form></details>`;
+ <small>${databaseReady ? "SQLite connected · edits survive restarts." : readOnly ? "Demo · read only. Editing requires Atlas Admin." : "Read-only preview · launch the Python app to edit."} Official desk codes; both views share the same desk identities and names. Occupants need on-site verification. Occupancy represents the seating register, not live presence.</small></form></details>`;
   $("#close-detail").onclick = () => {
     $("#detail").classList.remove("open");
     selected = null;
@@ -1229,12 +1205,13 @@ storageBadge.textContent = readOnly
     : "Read-only preview · use Python app for persistent editing";
 document.querySelector(".directory-foot").prepend(storageBadge);
 const backup = document.createElement("button");
+backup.id = "backup-db";
 backup.textContent = "Back up .db";
 backup.onclick = () => {
   if (databaseReady) window.location.href = "/api/backup";
   else toast("Launch the Python app to back up its database");
 };
-if (!readOnly) document.querySelector("#atlasMoreActions").append(backup);
+document.querySelector("#atlasMoreActions").append(backup);
 const refresh = document.createElement("button");
 refresh.textContent = "Refresh";
 refresh.title = "Refresh records";
@@ -2689,7 +2666,6 @@ function deskMenu(e, r) {
   menu.className = "desk-menu";
   menu.setAttribute("role", "menu");
   menu.innerHTML = `<strong>${esc(r.id)} · ${esc(r.name === "Unconfirmed desk" ? r.id : r.name)}</strong><button data-action="edit" role="menuitem">Edit desk / joiner</button><button data-action="move" role="menuitem">Move occupant…</button><button data-action="vacate" role="menuitem">Leaver / mark vacant…</button><button data-action="rotate" role="menuitem">Rotate desk 90°</button><button data-action="history" role="menuitem">View history</button>`;
-  if (readOnly) menu.replaceChildren();
   const groupsButton = document.createElement("button");
   groupsButton.type = "button";
   groupsButton.textContent = "See groups";
@@ -2927,11 +2903,6 @@ setView(view);
   const { installCommandPalette } = await import("./command-palette.js");
   const { commandUrl, MAP_COMMANDS, COMMANDS } =
     await import("./command-registry.js");
-  const viewerHelp = () => {
-    const { body } = AtlasUI.dialog("Keyboard shortcuts");
-    body.innerHTML =
-      "<p><kbd>Ctrl+K</kbd> / <kbd>Cmd+K</kbd> — Search Atlas</p><p><kbd>/</kbd> — Focus map search</p><p><kbd>Enter</kbd> — Locate a search result</p><p><kbd>↑</kbd> <kbd>↓</kbd> — Navigate palette results</p><p><kbd>Esc</kbd> — Close a dialog</p><p>Use person:, machine:, desk: or &gt; to narrow palette results.</p>";
-  };
   const handlers = {
     "remote-registry": async () =>
       (await import("./service-actions.js")).openRemoteRegistry(
@@ -2941,14 +2912,8 @@ setView(view);
     contacts: () => openSiteInfo("contacts"),
     atlas: () =>
       document.querySelector("#viewport").scrollIntoView({ block: "nearest" }),
-    lookup: () =>
-      readOnly
-        ? operations.openLookup()
-        : atlasMapNavigate(commandUrl("lookup")),
-    catalogue: () =>
-      readOnly
-        ? atlasMapNavigate("/installer?command=catalogue")
-        : $("#ops-catalog").click(),
+    lookup: () => atlasMapNavigate(commandUrl("lookup")),
+    catalogue: () => $("#ops-catalog").click(),
     settings: () => $("#ops-settings").click(),
     database: () => atlasMapNavigate("/manage-database"),
     view: () => $("#three-d-toggle").click(),
@@ -2959,7 +2924,6 @@ setView(view);
     vdi: () => openSiteInfo("vdi"),
     animations: () =>
       document.querySelector(".atlas-motion-toggle input").click(),
-    ...(readOnly ? { shortcuts: viewerHelp } : {}),
   };
   const runCommand = (id) => {
     if (
@@ -2992,35 +2956,18 @@ setView(view);
     runCommand,
     triggerParent: document.querySelector(".header-right"),
     openPerson: (value) =>
-      readOnly
-        ? operations.openPerson(value)
-        : atlasMapNavigate(
-            "/installer?" + new URLSearchParams({ person: value }),
-          ),
+      atlasMapNavigate("/installer?" + new URLSearchParams({ person: value })),
     openMachine: (value) =>
-      readOnly
-        ? operations.openMachine(value)
-        : atlasMapNavigate(
-            "/installer?" + new URLSearchParams({ machine: value }),
-          ),
+      atlasMapNavigate("/installer?" + new URLSearchParams({ machine: value })),
   });
   const params = new URLSearchParams(location.search),
     desk = params.get("desk"),
     command = params.get("command");
   if (desk && records.some((r) => r.id === desk)) selectRecord(desk);
-  if (
-    command &&
-    (readOnly
-      ? COMMANDS.some((c) => c.id === command && c.viewer)
-      : MAP_COMMANDS.has(command))
-  ) {
+  if (command && MAP_COMMANDS.has(command)) {
     const url = new URL(location.href);
     url.searchParams.delete("command");
     history.replaceState(null, "", url);
     runCommand(command);
   }
-  if (readOnly && params.get("person"))
-    operations.openPerson(params.get("person"));
-  else if (readOnly && params.get("machine"))
-    operations.openMachine(params.get("machine"));
 }

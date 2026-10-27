@@ -14,6 +14,8 @@ def isolate_backend_database():
     os.environ.setdefault('ATLAS_COMPANION_DIR', tempfile.mkdtemp(prefix='atlas-companion-test-'))
     # Atlas checks Axis jobs and takes the shared PC locks; never use the checkout's real Axis state.
     os.environ.setdefault('AA_AXIS_STATE', tempfile.mkdtemp(prefix='aa-axis-state-test-'))
+    # The import folder never reads a real C:\AtlasXL in tests.
+    os.environ.setdefault('ATLAS_IMPORT_FOLDER', tempfile.mkdtemp(prefix='atlas-import-folder-test-'))
     if os.environ.get('ATLAS_DB_PATH'):
         return Path(os.environ['ATLAS_DB_PATH'])
     _runtime_fixture = tempfile.TemporaryDirectory(prefix='atlas-backend-test-', ignore_cleanup_errors=True)

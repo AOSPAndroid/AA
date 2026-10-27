@@ -28,6 +28,9 @@ export function createOperations({
     userSearchVersion = 0;
   const host = () => document.querySelector("#ops-panel");
   async function api(url, options = {}) {
+    // Demo: Admin-only reads are answered locally and changes are refused.
+    const local = window.AtlasReadOnly?.read(url, options);
+    if (local) return local.data;
     const response = await fetch(url, {
       ...options,
       headers: {
@@ -89,7 +92,7 @@ export function createOperations({
     }
   }
   function render(g) {
-    const { desk, user, match_method, deployments } = current;
+    const { desk, user, match_method, deployments = [] } = current;
     const explanation = {
       "name-match": "Matched by plan name · verify the person",
       "unconfirmed-name-match": "Directory match · seating is unconfirmed",

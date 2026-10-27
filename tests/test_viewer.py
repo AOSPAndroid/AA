@@ -32,10 +32,10 @@ class ViewerTests(unittest.TestCase):
         before=hashlib.sha256(self.db.read_bytes()).digest()
         for path in ['/api/performance/PC', '/api/performance/PC?kind=diagnose', '/api/performance/PC/threads/42?created=x&name=app.exe']:
             self.assertEqual(self.client.get(path).status_code,404,path)
-        paths=['/api/save','/api/move','/api/vacate','/api/deploy','/api/kill','/api/services','/api/services/stop','/api/services/start','/api/services/restart','/api/reboot','/api/ops/settings','/api/database/apply/x','/api/open-tool/cmd/PC','/api/official/map-occupant','/api/axis/chat','/api/axis/approve','/api/axis/cancel','/api/axis/reset']
+        paths=['/api/save','/api/move','/api/vacate','/api/deploy','/api/kill','/api/services','/api/services/stop','/api/services/start','/api/services/restart','/api/reboot','/api/ops/settings','/api/database/apply/x','/api/open-tool/cmd/PC','/api/official/map-occupant','/api/desks/D1/link','/api/desks/D1/deploy','/api/script-library/runs','/api/axis/chat','/api/axis/approve','/api/axis/cancel','/api/axis/reset']
         for method in ('POST','PUT','PATCH','DELETE'):
             for path in paths:self.assertEqual(self.client.request(method,path,json={}).status_code,403,(method,path))
-        for path in ['/api/processes/PC?kind=gpu','/api/preflight/PC','/api/overview/PC','/api/v28/software/PC','/api/access/PC','/api/backup','/api/package-script','/api/ops/settings','/manage-database','/office_atlas.db','/config.json','/api/docs','/openapi.json','/operations.js','/.git/config','/%2e%2e/config.json']:
+        for path in ['/api/processes/PC?kind=gpu','/api/preflight/PC','/api/overview/PC','/api/v28/software/PC','/api/access/PC','/api/backup','/api/package-script','/api/ops/settings','/manage-database','/office_atlas.db','/config.json','/api/docs','/openapi.json','/viewer.js','/viewer.css','/api/script-library/runs','/.git/config','/%2e%2e/config.json']:
             self.assertEqual(self.client.get(path).status_code,404,path)
         self.assertEqual(self.client.get('/api/axis/status').status_code,404)
         self.assertEqual(self.client.get('/assets/axis-chat.js').status_code,404)
@@ -43,7 +43,8 @@ class ViewerTests(unittest.TestCase):
     def test_full_console_is_visible_but_execution_is_blocked(self):
         import re
         html=self.client.get('/installer?mode=admin').text
-        self.assertNotIn('axis-chat',html,'Axis chat stays in the local Admin app')
+        self.assertNotIn('/assets/axis-chat',html,'Axis chat stays in the local Admin app')
+        self.assertIn('id="axis-chat-toggle"',html,'Demo shows the same Ask Axis button, greyed out by the read-only layer')
         self.assertIn('content="viewer"',html)
         self.assertIn('atlas-demo-badge',html)
         self.assertEqual(self.client.get('/assets/desktop.html').status_code, 404, 'The Desktop layout was removed')
@@ -60,6 +61,13 @@ class ViewerTests(unittest.TestCase):
         for path in ('/api/palette/desks','/api/master/status','/api/master/resolve/nobody'):
             self.assertEqual(self.client.get(path).status_code,200,path)
 
+    def test_scripts_page_lists_built_ins_only(self):
+        from script_library import BUILTIN
+        data=self.client.get('/api/script-library').json()
+        self.assertEqual([s['id'] for s in data['builtin']],[s['id'] for s in BUILTIN])
+        self.assertEqual(data['saved'],[],'Saved scripts stay in the local Admin app')
+        self.assertTrue(data['export_helpers'])
+
     def test_machine_inspector_uses_stored_relationships_only(self):
         before=hashlib.sha256(self.db.read_bytes()).digest()
         with viewer.connect() as con:
@@ -71,9 +79,11 @@ class ViewerTests(unittest.TestCase):
         self.assertEqual(self.client.get('/api/machine/PC;BAD').status_code,400)
         self.assertEqual(before,hashlib.sha256(self.db.read_bytes()).digest())
     def test_assets_and_untrusted_mode_override(self):
-        home=self.client.get('/?mode=admin');self.assertIn('content="viewer"',home.text);self.assertNotIn('/assets/machine-health',home.text)
-        self.assertNotIn('/assets/axis-chat.js',home.text)
-        for path in ['/site-info.js','/viewer.js','/viewer.css','/map-furniture.js','/map-amenities.js','/map-plan-details.js','/official-app.js','/camera-motion.js','/map-cursor.js','/official-data.json','/style.css','/operations.css','/official.css','/studio-floor-2.svg','/assets/atlas-shell.css','/assets/barclays-eagle.svg']:
+        home=self.client.get('/?mode=admin');self.assertIn('content="viewer"',home.text)
+        # The same map page as Admin, greyed out by the shared read-only layer; Axis chat stays in Admin.
+        self.assertIn('/assets/readonly-console.js',home.text);self.assertNotIn('/assets/axis-chat.js',home.text)
+        self.assertIn('id="axis-chat-toggle"',home.text);self.assertIn('<span>Atlas</span><span class="atlas-demo-badge">Demo</span>',home.text)
+        for path in ['/site-info.js','/operations.js','/assets/readonly-console.js','/assets/client.js','/assets/machine-health.js','/map-furniture.js','/map-amenities.js','/map-plan-details.js','/official-app.js','/camera-motion.js','/map-cursor.js','/official-data.json','/style.css','/operations.css','/official.css','/studio-floor-2.svg','/assets/atlas-shell.css','/assets/barclays-eagle.svg']:
             self.assertEqual(self.client.get(path).status_code,200,path)
         self.assertEqual(self.client.post('/api/save',headers={'X-Atlas-Token':'anything','X-Forwarded-For':'127.0.0.1'}).status_code,403)
 

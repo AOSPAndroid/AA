@@ -16,21 +16,22 @@ for(const readonly of [false,true]){
   if(url.includes('official-data.json'))data={...source,records:[desk]};
   else if(url==='/api/official/state')data={records:[desk],legacy:[],mappings:{},read_only:readonly};
   else if(url.endsWith('/context'))data={desk,user,candidates:[user],machines,match_method:'confirmed',deployments:[]};
-  else if(url.startsWith('/api/catalog'))data={items:[]};
+  else if(url.startsWith('/api/catalog')&&!readonly)data={items:[]};
   else if(url==='/api/session')data={token:'fixture'};
   else throw Error('Unexpected request: '+url);
   return{ok:true,json:async()=>data};
  }});
  const {w}=f;
- if(readonly){const meta=w.document.createElement('meta');meta.name='atlas-mode';meta.content='viewer';w.document.head.append(meta);}
+ if(readonly){const meta=w.document.createElement('meta');meta.name='atlas-mode';meta.content='viewer';w.document.head.append(meta);
+  f.run(fs.readFileSync(root+'/frontend/assets/readonly-console.js','utf8'));if(!w.document.body.classList.contains('atlas-readonly-console'))w.document.dispatchEvent(new w.Event('DOMContentLoaded'));}
  w.HTMLCanvasElement.prototype.getContext=()=>null;w.requestAnimationFrame=()=>1;w.cancelAnimationFrame=()=>{};
  const api=await f.map('\nexport {operations};');
- const host=w.document.createElement('div');host.id=readonly?'ops-context':'ops-panel';w.document.querySelector('#detail').replaceChildren(host);
+ const host=w.document.createElement('div');host.id='ops-panel';w.document.querySelector('#detail').replaceChildren(host);
  await api.operations.select(desk);
  const phone=w.document.querySelector('[data-machine-kind=iphone]');
  assert(phone);assert(phone.textContent.includes('iPhone'));assert(phone.textContent.includes('Last used: 2026-10-02'));assert(phone.textContent.includes('In Use'));
- if(readonly)assert.equal(phone.hasAttribute('data-ad-identity'),false,'A phone does not offer computer groups');
- else{
+ assert.equal(phone.querySelector('.ops-machine').hasAttribute('data-ad-identity'),false,'A phone does not offer computer groups');
+ {
   assert(phone.querySelector('input').disabled,'A phone is not a deployment target');
   phone.querySelector('.ops-machine').dispatchEvent(new w.MouseEvent('contextmenu',{bubbles:true,cancelable:true}));
   const menu=w.document.querySelector('.atlas-ad-context');assert(menu);for(const cmd of ['ad-groups','ad-compare','specs','remote-registry','admin','deploy'])assert(menu.querySelector(`[data-cmd=${cmd}]`).disabled,cmd);assert(!menu.querySelector('[data-cmd=inventory]').disabled);assert(!menu.querySelector('[data-cmd=copy]').disabled);w.AtlasContext.close();

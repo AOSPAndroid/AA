@@ -10,11 +10,11 @@ Atlas's map and tools, with Axis chat in the same application.
 2. Put your existing full GGUF model in the `AA` folder or its `axis` folder.
    The model files remain separate; you do not need to download them again.
 3. Run **Start AA.bat** under your DSK account.
-4. Use the Atlas map and the **Axis** chat panel in the same browser window.
+4. Use the Atlas map, and **Ask Axis** (bottom right) for chat, in the same browser window.
 
 Python 3.12 and Atlas's existing Python dependencies are required. The launcher
 prefers `C:\devhome\tools\python3.12\current\python.exe`. If this Python does not
-have Atlas's packages, run `Install_Dependencies.bat` once. The Windows download
+have Atlas's packages, run `windows\Install_Dependencies.bat` once. The Windows download
 includes CPU and Vulkan llama.cpp runtimes, but no model weights or API keys.
 
 The model catalogue also includes `flash-abliterated`. Select it with
@@ -31,14 +31,15 @@ If the model is missing, the map still opens and chat explains how to start it.
 
 ## One workspace
 
-- **Map first:** the Atlas map stays on the homepage; the chat panel can be closed
-  to return to the desk inspector.
+- **Map first:** the Atlas map and desk inspector open on the homepage. The chat
+  opens from **Ask Axis** and can be closed to return to the inspector.
 - **Shared directory:** Axis reads the database Atlas is actually using and uses
   the same configured package repository.
 - **Selected desk:** explicitly attach a desk to the chat when useful. Selection
   gives Axis context; changes still require approval.
-- **Chat on every page:** the **Axis** button opens the same chat on the console
-  pages. On Workspace, **Use current target** attaches the target PC.
+- **Chat on every page:** the floating **Ask Axis** button in the bottom-right
+  corner opens the same chat on the map and every console page. On Workspace,
+  **Use current target** attaches the target PC.
 - **Clipboard page:** the Clipboard sits beside Workspace and Live Inbox. Each
   capture lists the machines, people, desks, tickets and IP addresses Atlas
   recognises, with their actions.
@@ -88,8 +89,14 @@ If the model is missing, the map still opens and chat explains how to start it.
   restart and continues where it stopped. The local Admin backend keeps the 20
   most recent chats in `data/axis/chats`; nothing is stored in the browser.
   Decisions show as history, so a saved approval can never be answered again.
-- **Viewer stays read-only:** Axis execution is available only on the local
-  Admin interface, not the LAN Viewer.
+- **Import folder:** save the users, devices, Citrix and package exports in
+  `C:\AtlasXL` and Atlas updates its database within a minute, with a backup
+  first. A users and devices snapshot that would remove more than 10% waits for
+  your review in Manage Database. See the [database update guide](docs/database-update-guide.md#easiest-the-import-folder).
+- **Demo is Admin, greyed out:** the LAN Viewer (Demo) shows the same map,
+  inspector, menus and console pages as Admin. Changes, live checks, deployment,
+  Clipboard, Live Inbox collection and **Ask Axis** are visible but disabled;
+  Axis execution is available only on the local Admin interface.
 
 The Axis terminal, `axis\Start Agent.bat`, is another window onto the same
 Axis: start AA first, and the terminal streams the Admin backend's chat, answers
@@ -97,7 +104,7 @@ approvals in the window and runs nothing itself. `--resume` continues the
 latest chat, including one started on the map.
 
 AA is a separate merged version. Existing Atlas and Axis installations remain
-usable. The imported Atlas guide is [README-ATLAS.md](README-ATLAS.md), and the
+usable. The imported Atlas guide is [README-ATLAS.md](docs/README-ATLAS.md), and the
 Axis terminal guide is [axis/README.md](axis/README.md).
 
 ## Existing data and configuration
@@ -139,5 +146,5 @@ python -m unittest discover -s axis/tests -v
 ```
 
 Tests use disposable databases and simulated Windows operations. See
-[SOURCES.md](SOURCES.md) for the imported commits. The release includes
+[SOURCES.md](docs/SOURCES.md) for the imported commits. The release includes
 `BUNDLE-COMMIT.txt` and a SHA-256 checksum to identify and verify its source.

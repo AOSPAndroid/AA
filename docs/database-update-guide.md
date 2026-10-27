@@ -15,6 +15,24 @@ See [Updating AA](updating-atlas.md) for the complete steps, including preservin
 - Automatic import backups: `backups/` beside the active database, normally `data/backups/`.
 - Calendar, Notes and Reminders: browser-local storage, separate from SQLite.
 
+## Easiest: the import folder
+
+Save the exports in **`C:\AtlasXL`** and Atlas imports them by itself within a minute. No upload, preview or `APPLY` is needed for a normal update.
+
+| Export | Example file | Import |
+| --- | --- | --- |
+| Users | `sys_user.csv` | Users & devices, together with the devices export |
+| Devices | `alm_asset.csv` | Users & devices, together with the users export |
+| Citrix VDIs | `SingleSessionMachines.csv` (or `.xlsx`) | Citrix VDI data, default mode: VDIs in the file are replaced, others kept |
+| Packages | `u_cmdb_software_package.csv` | Package data: rows are added or updated, none removed |
+
+- Atlas recognises each file by its columns, so names such as `SingleSessionMachines (1).csv` work. When several files are the same kind, the newest one is used. Other files in the folder are listed and left alone.
+- Each import is the same as the matching Manage Database section, with the same backup in `backups/` and the same import history and restore. Users and devices go first, so Citrix links match the new directory.
+- **Users and devices are a complete snapshot**, as described below: people and devices missing from the exports disappear from directory search. With **Ask before large removals** on (the default), a snapshot that removes more than 10% of the users or devices waits in **Manage Database > Import folder** with its counts and warnings; choose **Back up and apply** or **Skip these files**. Atlas also waits while deployments or queue jobs run, and for a file saved less than 30 seconds ago.
+- A file Atlas cannot import is shown with the reason and is not read again until you save it again. **Check now** retries straight away.
+- Imported files are read again only once they change. Overwrite the files with new exports, or add new ones; you do not need to delete anything.
+- Change the folder, or turn the folder off, in **Manage Database > Import folder**. The setting is kept in `import-folder.json` beside the database. Demo and hosted Preview never import.
+
 ## Recommended: Admin import
 
 After updating Atlas, restart local Admin and Demo before importing so both load the current workbook support.
@@ -53,7 +71,7 @@ Validation covers the original directory template and the users/devices export, 
 
 ## Standalone refresh
 
-Finish active jobs, then drag the intended new `.xlsx` workbook, or the users and devices exports together, onto **Refresh-Directory.bat**. It stops both local services, validates the file, displays counts and asks for `APPLY`. A full backup is saved beside the active database in `backups/`, normally `data/backups/`. Start either edition again afterwards, even if you cancelled the import.
+Finish active jobs, then drag the intended new `.xlsx` workbook, or the users and devices exports together, onto **windows\Refresh-Directory.bat**. It stops both local services, validates the file, displays counts and asks for `APPLY`. A full backup is saved beside the active database in `backups/`, normally `data/backups/`. Start either edition again afterwards, even if you cancelled the import.
 
 Always supply the new file. With no file argument, this script uses the older bundled `database040926.xlsx`.
 

@@ -9,15 +9,18 @@
   const actions = header?.querySelector(".atlas-header-actions");
   if (!actions || !window.AtlasClient) return;
 
-  const button = document.createElement("button");
-  button.id = "axis-chat-toggle";
-  button.type = "button";
-  button.textContent = "Axis chat";
+  // The page carries the floating Ask Axis button (Demo shows it disabled), so
+  // the shared shell never moves it into More.
+  let button = document.querySelector("#axis-chat-toggle");
+  if (!button) {
+    button = document.createElement("button");
+    button.id = "axis-chat-toggle";
+    button.type = "button";
+    button.className = "axis-ask";
+    button.textContent = "Ask Axis";
+    document.body.append(button);
+  }
   button.setAttribute("aria-controls", "axis-chat");
-  // The shared shell moves secondary actions into More, so chat lives in the
-  // primary navigation and remains reachable after its panel is closed.
-  (header.querySelector(".atlas-primary-nav") || header).append(button);
-  header.classList.add("axis-chat-header");
   const panel = document.createElement("aside");
   panel.id = "axis-chat";
   panel.className = "axis-chat";
@@ -88,8 +91,8 @@
       if (focus) input.focus();
     }
   }
-  // Beside the map by default on wide screens; on console pages only when the operator opened it.
-  let initiallyOpen = onMap && window.innerWidth > 760;
+  // Closed until the operator asks Axis, so Admin opens on the same map and inspector as Demo.
+  let initiallyOpen = false;
   try {
     const savedOpen = localStorage.getItem(openKey);
     if (savedOpen !== null) initiallyOpen = savedOpen === "yes";

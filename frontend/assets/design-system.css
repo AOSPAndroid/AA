@@ -1913,7 +1913,6 @@ body.atlas-console #workspace.active {
   grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
   gap:8px; align-items:start;
 }
-body.atlas-console #workspace > .atlas-access-note { grid-column:1/-1; margin:0; }
 /* Menus use viewport placement and the browser top layer where available. */
 body.atlas-console .toolmenu-content { position:fixed; inset:auto; margin:0; min-width:min(230px,calc(100vw - 16px)); max-width:calc(100vw - 16px); max-height:calc(100dvh - 16px); overflow-y:auto; overscroll-behavior:contain; }
 body.atlas-console #workspace .lookup-column { max-height:none; overflow:visible; scrollbar-gutter:auto; padding:8px; border:1px solid var(--atlas-line); border-radius:var(--atlas-panel-radius); background:var(--atlas-surface); }
@@ -3072,6 +3071,11 @@ body.atlas-database .atlas-live-plan-held { border:1px solid var(--atlas-warning
 body.atlas-database .atlas-live-plan-held h3 { margin:0 0 4px; font-size:13px; }
 body.atlas-database .atlas-live-plan-history summary { cursor:pointer; font-size:12px; font-weight:600; }
 body.atlas-database .atlas-live-plan-history .atlas-live-plan-undo { min-height:22px; padding:0 8px; font-size:11px; margin-left:4px; }
+/* Import folder: the exports found, older copies and other files muted. */
+body.atlas-database .atlas-import-folder-files { margin:0; padding-left:18px; font-size:12px; max-height:220px; overflow:auto; }
+body.atlas-database .atlas-import-folder-files:empty { display:none; }
+body.atlas-database .atlas-import-folder-files [data-muted] { color:var(--atlas-muted); }
+body.atlas-database .atlas-live-plan-held button + button { margin-left:6px; }
 
 /* AD group comparison: who has what. Green = member, red = missing, blue = only the first person,
    amber = partly shared; nested and primary memberships use lighter teal and indigo. */
@@ -3422,14 +3426,19 @@ body.axis-chat-open #detail { visibility: hidden; }
 .axis-chat-attached { justify-content: space-between; margin-bottom: 8px; padding: 3px 8px; background: var(--atlas-surface-subtle); border: 1px solid var(--atlas-line); border-radius: var(--atlas-control-radius); font-size: 11px; }
 .axis-chat-attached span { min-width: 0; overflow-wrap: anywhere; }
 .axis-chat-attached button { border: 0; background: transparent; padding: 0 3px; flex: 0 0 auto; }
-body:is(.atlas-map, .atlas-console) #axis-chat-toggle[aria-expanded="true"] { color: var(--atlas-accent); border-color: var(--atlas-accent); }
-body:is(.atlas-map, .atlas-console) #axis-chat-toggle { min-height: 28px; padding: 4px 7px; font-size: 12px; white-space: nowrap; }
+/* Ask Axis floats bottom-right on every page; the open panel takes its place. Demo shows it disabled. */
+body:is(.atlas-map, .atlas-console) #axis-chat-toggle.axis-ask { position: fixed; z-index: 46; right: 16px; bottom: 16px; min-height: 36px; padding: 7px 16px; border: 1px solid var(--atlas-accent); border-radius: var(--atlas-panel-radius); background: var(--atlas-accent); color: #fff; font: 600 13px/1.2 var(--atlas-font); white-space: nowrap; box-shadow: var(--atlas-overlay-shadow); cursor: pointer; }
+body:is(.atlas-map, .atlas-console) #axis-chat-toggle.axis-ask:hover:not(:disabled, [aria-disabled="true"]) { filter: brightness(.92); }
+body:is(.atlas-map, .atlas-console) #axis-chat-toggle.axis-ask:focus-visible { outline: 2px solid var(--atlas-focus); outline-offset: 2px; }
+body.axis-chat-open #axis-chat-toggle.axis-ask { display: none; }
+/* Room below the inspector and page content so the floating button never covers their last controls. */
+body.atlas-map #detail { padding-bottom: 64px; }
+body.atlas-console > main { padding-bottom: 64px; }
 /* Console pages make room for Axis on wide screens; narrower ones show it over the page. */
 @media (min-width: 1151px) { body.atlas-console.axis-chat-open > main { width: auto; margin-right: 380px; } }
 /* Beside the open chat, Live Inbox takes the layouts it uses on a screen 380px narrower (its rules at 1280px and 950px). */
 @media (min-width: 1151px) and (max-width: 1660px) { body.atlas-console.axis-chat-open .inbox-grid:has(> .inbox-work:not([hidden])) { grid-template-columns:minmax(300px,.9fr) minmax(380px,1.1fr); } body.atlas-console.axis-chat-open .inbox-grid:has(> .inbox-work:not([hidden])) > .inbox-mail-list { display:none; } }
 @media (min-width: 1151px) and (max-width: 1330px) { body.atlas-console.axis-chat-open .inbox-grid, body.atlas-console.axis-chat-open .inbox-grid:has(> .inbox-work:not([hidden])) { grid-template-columns:minmax(0,1fr); } body.atlas-console.axis-chat-open :is(.inbox-context, .inbox-work) { position:static; max-height:none; overflow:visible; } body.atlas-console.axis-chat-open .inbox-mail-list > ul { max-height:300px; } }
-body .axis-chat-header .atlas-primary-nav { flex-wrap: wrap; }
 html[data-theme="dark"] .axis-chat { --axis-user: #c9a4f0; --axis-answer: #6bcedb; }
 @media (max-width: 1150px) { .axis-chat { box-shadow: -12px 0 28px rgb(0 0 0 / .14); } }
 @media (max-width: 560px) {
@@ -3445,7 +3454,6 @@ html[data-theme="dark"] .axis-chat { --axis-user: #c9a4f0; --axis-answer: #6bced
 :where(html[data-theme="dark"]) .atlas-export-fields small{color:var(--atlas-text)}
 :where(html[data-theme="dark"]) .atlas-request-loading{background:var(--atlas-surface);border-color:var(--atlas-line);color:var(--atlas-focus)}
 :where(html[data-theme="dark"]) .atlas-loading-inline::before{border-color:var(--atlas-line)}
-:where(html[data-theme="dark"]) .atlas-access-note{border-color:var(--atlas-line);background:var(--atlas-selected);color:var(--atlas-focus)}
 :where(html[data-theme="dark"]) button,:where(html[data-theme="dark"]) input,:where(html[data-theme="dark"]) select,:where(html[data-theme="dark"]) textarea{background:var(--atlas-surface)}
 :where(html[data-theme="dark"]) button:hover{background:var(--atlas-selected);border-color:var(--atlas-line)}
 :where(html[data-theme="dark"]) body > aside:first-of-type{background:var(--atlas-surface)}

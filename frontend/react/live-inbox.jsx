@@ -72,7 +72,7 @@ export function LiveInbox() {
   const [notifications, setNotifications] = useState(null);
   const [selected, setSelected] = useState(null), [chosen, setChosen] = useState(null), [detail, setDetail] = useState(null);
   const [error, setError] = useState(""), [detailError, setDetailError] = useState(""), [pending, setPending] = useState(0);
-  const [loaded, setLoaded] = useState(false), [older, setOlder] = useState(false), [refresh, setRefresh] = useState(0);
+  const [loaded, setLoaded] = useState(readonly), [older, setOlder] = useState(false), [refresh, setRefresh] = useState(0);
   const cursor = useRef(0), initialized = useRef(false), session = useRef(0), selection = useRef(selected);
   selection.current = selected;
   useEffect(() => {
@@ -144,17 +144,17 @@ export function LiveInbox() {
     } catch (failure) { if (token === session.current) setError(failure.message); }
     finally { setOlder(false); }
   }
-  if (readonly) return <EmptyInbox title="Live inbox is available in Atlas Admin">Open Atlas Admin on the Windows PC running Outlook and Teams. Email and notification previews stay in the local queue and are not shared with Demo or Preview.</EmptyInbox>;
+  // Demo shows the same page with nothing collected and its controls greyed out.
   const live = watcher?.running && !watcher.stale && ["watching", "scanning"].includes(watcher.state) && !error;
-  const stateLabel = error ? "Connection interrupted" : watcher?.stale ? "Outlook check is taking longer" : states[watcher?.state] || "Connecting…";
+  const stateLabel = readonly ? "Outlook · Atlas Admin only" : error ? "Connection interrupted" : watcher?.stale ? "Outlook check is taking longer" : states[watcher?.state] || "Connecting…";
   const notificationsLive = notifications?.running && !notifications.stale && notifications.state === "watching" && !error;
-  const notificationLabel = error ? "Connection interrupted" : notifications?.stale ? "Notification listener is not responding" : notificationStates[notifications?.state] || "Notifications not connected";
+  const notificationLabel = readonly ? "Notifications · Atlas Admin only" : error ? "Connection interrupted" : notifications?.stale ? "Notification listener is not responding" : notificationStates[notifications?.state] || "Notifications not connected";
   const match = detail?.match, user = match?.user, message = detail?.message;
   const mentioned = (detail?.analysis?.machines || []).filter(machine => !machine.linked);
   return <div className="live-inbox">
     <div className="inbox-toolbar">
       <div role="status" aria-live="polite"><Badge variant={live ? "default" : "secondary"} data-tone={live ? "good" : error || watcher?.stale || watcher?.state === "error" ? "bad" : undefined} data-inbox-status>{stateLabel}</Badge><Badge variant={notificationsLive ? "default" : "secondary"} data-tone={notificationsLive ? "good" : error || notifications?.stale || ["error", "permission_required"].includes(notifications?.state) ? "bad" : undefined} data-notification-status>{notificationLabel}</Badge><span className="inbox-muted">{total.toLocaleString()} collected · {watcher?.config?.mailbox || "Default Inbox"}{watcher?.config?.subfolder ? " / " + watcher.config.subfolder : ""}</span></div>
-      <Button variant="outline" size="sm" onClick={() => setRefresh(value => value + 1)}><RefreshCw data-icon="inline-start" />Refresh now</Button>
+      <Button variant="outline" size="sm" disabled={readonly} title={readonly ? window.AtlasReadOnly.reason : undefined} onClick={() => setRefresh(value => value + 1)}><RefreshCw data-icon="inline-start" />Refresh now</Button>
     </div>
     {error && <p role="alert" className="inbox-error">{error} Retrying automatically; displayed messages may be out of date.</p>}
     <InboxControls active={visible} onChange={() => setRefresh(value => value + 1)}>
@@ -172,7 +172,7 @@ export function LiveInbox() {
     <div className="inbox-grid">
       <div className="inbox-mail-list">
         <div className="inbox-list-heading"><h2>Incoming messages</h2>{pending > 0 && <Button variant="secondary" size="sm" onClick={() => { choose(items[0].id); setPending(0); }}>Show newest ({pending})</Button>}</div>
-        {!loaded ? <Skeleton className="inbox-loading" /> : !items.length ? <EmptyInbox title="Waiting for incoming messages">Emails and notification previews appear when their collectors are connected. Collection begins when each collector first starts.</EmptyInbox> : <ul aria-label="Collected messages">{items.map(item => <li key={item.id}>
+        {!loaded ? <Skeleton className="inbox-loading" /> : !items.length ? <EmptyInbox title="Waiting for incoming messages">{readonly ? "Emails and notification previews stay in Atlas Admin on the support PC; Demo and Preview never receive them." : "Emails and notification previews appear when their collectors are connected. Collection begins when each collector first starts."}</EmptyInbox> : <ul aria-label="Collected messages">{items.map(item => <li key={item.id}>
           <Button variant="ghost" className="inbox-mail-row" aria-current={selected === item.id ? "true" : undefined} onClick={() => choose(item.id)} data-mail-id={item.id}>
             <span className="inbox-mail-top"><strong>{item.sender_name || item.sender_address || "Sender not supplied"}</strong><time dateTime={item.received_at}>{date(item.received_at)}</time></span>
             <span className="inbox-subject">{item.content_kind === "notification" ? item.preview || "(No message preview)" : item.subject || "(No subject)"}</span>

@@ -161,7 +161,7 @@
       if (found.image) await screenshot(found.image);
       else announce(await store(found.text, source), quiet);
     } catch (error) {
-      if (!quiet) status(error.name === "NotAllowedError" ? "The browser blocked the clipboard. Allow it from the address bar, or run Allow-Atlas-Clipboard.bat. Ctrl+V in Atlas always works." : error.message, "bad");
+      if (!quiet) status(error.name === "NotAllowedError" ? "The browser blocked the clipboard. Allow it from the address bar, or run windows\\Allow-Atlas-Clipboard.bat. Ctrl+V in Atlas always works." : error.message, "bad");
     } finally { busy = false; $("clipboardCapture").disabled = false; }
   }
   /** Called by page() whenever the Clipboard page is shown. */
@@ -273,7 +273,7 @@
       ? `<span class="status-ok">Companion connected</span><span>${esc(c.user)} · ${c.settings.clipboard ? "every copy is captured, even with Atlas closed" : "clipboard capture is off"}${c.clipboard?.paused ? " · paused from the tray" : ""}</span><label><input type="checkbox" id="companionClipboard" ${c.settings.clipboard ? "checked" : ""}> Capture my clipboard</label><small>${esc(mail)}</small>`
       : c.known
         ? `<span class="status-warn">Companion not running</span><span>Start <b>Start-Atlas-Companion.bat</b> as yourself (not as administrator). Last seen ${esc(when(c.last_seen))}.</span>`
-        : `<span class="clipboard-chip">Companion not set up</span><span>Run <b>Install-Atlas-Companion.bat</b> once as yourself to capture every copy from your normal account, even with Atlas closed.</span>`;
+        : `<span class="clipboard-chip">Companion not set up</span><span>Run <b>windows\\Install-Atlas-Companion.bat</b> once as yourself to capture every copy from your normal account, even with Atlas closed.</span>`;
     const box = $("companionClipboard");
     if (box) box.onchange = () => json("/api/companion/settings", { clipboard: box.checked }).then((next) => { companion = next; renderCompanion(); }, (error) => status(error.message, "bad"));
     $("clipboardAuto").disabled = covered();
@@ -294,11 +294,8 @@
     }
     setTimeout(watch, $("clipboard").classList.contains("active") ? 5000 : 15000);
   }
-  if (window.AtlasReadOnly) {
-    $("clipboardToggle").hidden = true;
-    document.querySelector('[data-page="clipboard"]')?.setAttribute("hidden", "");
-    return;
-  }
+  // Demo shows Clipboard greyed out (readonly-console.js) and never reads the history.
+  if (window.AtlasReadOnly) return;
   load();
   watch();
   window.AtlasClipboard = { open, shown, capture, load, item: (id) => items.find((x) => x.id === id) };

@@ -93,15 +93,37 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     },
   });
   const { w } = f;
+  const navigated = [];
+  w.AtlasNavigate = (url) => (navigated.push(url), true);
   const meta = w.document.createElement("meta");
   meta.name = "atlas-mode";
   meta.content = "viewer";
   w.document.head.append(meta);
+  f.run(fs.readFileSync(path.join(root, "frontend/assets/readonly-console.js"), "utf8"));
+  if (!w.document.body.classList.contains("atlas-readonly-console"))
+    w.document.dispatchEvent(new w.Event("DOMContentLoaded"));
   w.HTMLCanvasElement.prototype.getContext = () => null;
   // This test exercises UI routes and controls; map rendering has its own suites.
   w.requestAnimationFrame = () => 1;
   w.cancelAnimationFrame = () => {};
   await f.map();
+  await sleep(0);
+  const $ = (selector) => w.document.querySelector(selector);
+  const greyed = (selector) => {
+    const el = $(selector);
+    assert(el, selector);
+    assert.equal(el.getAttribute("aria-disabled"), "true", selector);
+    if ("disabled" in el) assert(el.disabled, selector);
+  };
+  // Demo is the Admin page: same brand, header actions and Ask Axis, with changes greyed out.
+  assert.equal($(".atlas-brand span").textContent, "Atlas");
+  for (const selector of ["#axis-chat-toggle", "#import", "#ops-import-atlas", "#ops-settings", "#ops-history", "#backup-db", 'a[href="/manage-database"]'])
+    greyed(selector);
+  for (const selector of ["#export", "#ops-catalog"])
+    assert.equal($(selector).getAttribute("aria-disabled"), null, selector);
+  $("#ops-settings").click();
+  $("#axis-chat-toggle").click();
+  assert.equal($("#axis-chat"), null, "Axis chat never opens in Demo");
   const mount = w.document.querySelector(".atlas-palette-mount"),
     rootEl = mount.shadowRoot,
     trigger = rootEl.querySelector("button"),
@@ -138,12 +160,31 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   type("person:Alice");
   await sleep(220);
   key("Enter");
-  await sleep(20);
-  assert(
-    w.document.querySelector("#detail").textContent.includes("Alice Example"),
-  );
-  assert(w.document.querySelector("#ops-context .atlas-person"));
-  assert(!w.document.querySelector("#record-form"));
+  await sleep(40);
+  // The Admin desk inspector, with its edits and deployment greyed out.
+  assert($("#detail").textContent.includes("Alice Example"));
+  assert($("#ops-panel .atlas-person"), "directory person card");
+  assert($("#record-form fieldset").disabled, "desk record is read only");
+  for (const selector of ["#map-previous", "#previous-person", "#record-form button.primary", "#record-form #history", "#ops-deploy", "#ops-preview"])
+    greyed(selector);
+  assert($("#record-form").textContent.includes("Demo · read only"));
+  assert($("#ops-package-status").textContent.includes("Windows Admin"), "package share answered locally");
+  // A control the app re-enables stays greyed out.
+  $("#ops-deploy").disabled = false;
+  await sleep(0);
+  greyed("#ops-deploy");
+  $("#record-form button.primary").click();
+  $("#ops-deploy").click();
+  // Desk menu: the same items, greyed out.
+  const result = $("#results [data-record]");
+  result.dispatchEvent(new w.MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 20, clientY: 20 }));
+  await sleep(0);
+  const menuItems = [...w.document.querySelectorAll(".desk-menu [data-action]")];
+  assert.deepEqual(menuItems.map((b) => b.dataset.action), ["edit", "move", "vacate", "rotate", "history"]);
+  assert(menuItems.every((b) => b.disabled && b.getAttribute("aria-disabled") === "true"));
+  menuItems[3].click();
+  w.document.querySelector(".desk-menu")?.remove();
+  // People without a mapped desk and machines open in the console, as in Admin.
   trigger.focus();
   trigger.click();
   await sleep(0);
@@ -151,13 +192,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   await sleep(220);
   key("Enter");
   await sleep(20);
-  let dialog = w.document.querySelector(".viewer-lookup-dialog");
-  assert(dialog.open);
-  assert(dialog.textContent.includes("Bob Unmapped"));
-  assert.equal(w.location.pathname, "/");
-  dialog.close();
-  await sleep(0);
-  assert.equal(rootEl.activeElement, trigger, "shared dialog returns focus");
+  assert(navigated.some((url) => url.startsWith("/installer?person=")), navigated.join("\n"));
   trigger.focus();
   trigger.click();
   await sleep(0);
@@ -165,47 +200,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   await sleep(220);
   key("Enter");
   await sleep(20);
-  dialog = w.document.querySelector(".viewer-lookup-dialog");
-  assert(dialog.textContent.includes("Fixture laptop"));
-  assert(dialog.textContent.includes("Assigned to user"));
-  const details = dialog.querySelector(".atlas-machine-details");
-  assert(details.open);
-  assert.equal(details.querySelector("summary").textContent, "Device details");
-  assert(details.textContent.includes("SERIAL-1"));
-  assert(details.textContent.includes("CI-1"));
-  assert(details.textContent.includes("Fixture discovery"));
-  let copied = "";
-  Object.defineProperty(w.navigator, "clipboard", {
-    value: {
-      writeText: async (value) => {
-        copied = value;
-      },
-    },
-    configurable: true,
-  });
-  details.open = false;
-  dialog.querySelector("[data-copy-report]").click();
-  await sleep(0);
-  assert(
-    copied.includes("Serial number: SERIAL-1"),
-    "copy includes collapsed inventory",
-  );
-  assert(copied.includes("Correlation ID: CI-1"));
-  dialog.querySelector("[data-person]").click();
-  await sleep(20);
-  assert(dialog.textContent.includes("Alice Example"));
-  // Closing a lookup invalidates even a transport that ignores AbortSignal.
-  const search = dialog.querySelector("input");
-  search.value = "slow";
-  dialog
-    .querySelector("form")
-    .dispatchEvent(new w.Event("submit", { bubbles: true, cancelable: true }));
-  dialog.close();
-  w.document.querySelector("#viewer-lookup").click();
-  const reopened = w.document.querySelector(".viewer-lookup-dialog");
-  await sleep(400);
-  assert.equal(reopened.querySelector(".viewer-results").textContent, "");
-  reopened.close();
+  assert(navigated.includes("/installer?machine=PC-1"), navigated.join("\n"));
   const motion = w.document.querySelector(".atlas-motion-toggle input"),
     before = motion.checked;
   trigger.focus();
@@ -219,14 +214,15 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     requests.every(
       ([url, method]) =>
         method === "GET" &&
-        !/session|preflight|software-tools|deploy|ops\/settings/.test(url),
+        !/session|preflight|software-tools|deploy|ops\/settings|catalog|history|axis/.test(url),
     ),
+    JSON.stringify(requests),
   );
   assert.equal(f.errors.length, 0, f.errors.join("\n"));
   await sleep(0);
   w.close();
   console.log(
-    "PASS: viewer uses shared palette, safe commands, person/desk/machine navigation, shared cards/dialogs, focus return, stale cancellation and animation switch without privileged requests",
+    "PASS: Demo map is the Admin page with changes, deployment, desk menu and Ask Axis greyed out, the shared palette and console navigation, and no privileged requests",
   );
 })().catch((error) => {
   console.error(error);

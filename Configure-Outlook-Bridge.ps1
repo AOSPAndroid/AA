@@ -112,7 +112,7 @@ if (Test-Path -LiteralPath $directory) {
 Write-Host ''
 Write-Host 'In BOTH PowerShell windows, before launching the relevant process:'
 Write-Host ("`$env:ATLAS_MAIL_DIR = '" + $directory.Replace("'", "''") + "'")
-Write-Host "Normal window ($mailAccount): run Install-Inbox-Collectors.bat once, then start collectors from Atlas Live Inbox."
+Write-Host "Normal window ($mailAccount): run windows\Install-Inbox-Collectors.bat once, then start collectors from Atlas Live Inbox."
 Write-Host "Elevated window ($atlasAccount): restart Atlas using its usual launcher."
 Write-Host 'Keep the watcher at the same elevation level as Outlook. Stop/status commands belong in the normal window.'
 [pscustomobject]@{ Directory = $directory; MailAccount = $mailAccount; AtlasAccount = $atlasAccount; Applied = $applied }

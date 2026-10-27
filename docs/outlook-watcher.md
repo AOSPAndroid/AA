@@ -17,7 +17,7 @@ For the integrated GUI and automatic BAT startup, use the
 [Live Inbox setup guide](inbox-integration.md). The steps below are the standalone
 workflow; the main GUI supervises the same watcher after integration is configured.
 
-1. Run **Install-Inbox-Collectors.bat** once on the Outlook PC. This installs the
+1. Run **windows\Install-Inbox-Collectors.bat** once on the Outlook PC. This installs the
    optional pywin32 dependency into the Python selected by `Python_Settings.bat`
    (Teams notifications are skipped without a package; email still works).
 2. Open classic Outlook normally and allow the mailbox to synchronize.

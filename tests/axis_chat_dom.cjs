@@ -177,7 +177,7 @@ test("Viewer never creates chat controls or requests the Axis backend", async (t
   assert.equal(f.w.localStorage.length, 0);
 });
 
-test("Axis can be reopened after the real shared shell organizes header actions", async (t) => {
+test("Ask Axis floats outside the header the real shared shell organizes", async (t) => {
   for (const shellAlreadyReady of [false, true]) {
     const dom = new JSDOM(
       fs.readFileSync(
@@ -217,15 +217,19 @@ test("Axis can be reopened after the real shared shell organizes header actions"
       w.document.querySelector(".atlas-unified-header"),
       "real shell must initialize",
     );
-    assert(
-      toggle.closest(".atlas-primary-nav"),
-      "chat stays alongside primary navigation",
-    );
     assert.equal(
-      toggle.closest(".atlas-header-menu"),
-      null,
-      "chat never enters collapsed More menu",
+      w.document.querySelectorAll("#axis-chat-toggle").length,
+      1,
+      "the page's Ask Axis button is reused, not duplicated",
     );
+    assert.equal(toggle.textContent, "Ask Axis");
+    assert(toggle.classList.contains("axis-ask"));
+    assert.equal(toggle.closest(".atlas-app-header"), null, "Ask Axis floats outside the header");
+    assert.equal(toggle.getAttribute("aria-controls"), "axis-chat");
+    assert.equal(panel.hidden, true, "Closed until the operator asks Axis, like Demo");
+    toggle.click();
+    assert.equal(panel.hidden, false);
+    assert(w.document.body.classList.contains("axis-chat-open"));
     w.document.querySelector("#axis-chat-close").click();
     assert.equal(panel.hidden, true);
     toggle.click();

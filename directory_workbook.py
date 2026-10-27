@@ -261,5 +261,5 @@ def build(src,out):
         candidate.unlink(missing_ok=True)
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--source',default='database040926.xlsx');p.add_argument('--db',default='wmi_packager_master.db');a=p.parse_args();build(a.source,a.db)
+    p=argparse.ArgumentParser();p.add_argument('--source',default='templates/database040926.xlsx');p.add_argument('--db',default='wmi_packager_master.db');a=p.parse_args();build(a.source,a.db)
 if __name__=='__main__':main()

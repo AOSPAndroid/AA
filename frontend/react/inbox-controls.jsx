@@ -10,6 +10,8 @@ const labels = { running: "Collector task connected", attention: "Collector need
 const sources = [["outlook", "Email watcher"], ["notifications", "Notification watcher"]];
 // Watcher switches stay in view; the rarely used setup folds away once collectors are connected.
 export function InboxControls({ active, onChange, children }) {
+  // Demo never reads or changes the collectors; the switches and setup stay visible but disabled.
+  const readonly = !!window.AtlasReadOnly;
   const [control, setControl] = useState(null), [error, setError] = useState(""), [busy, setBusy] = useState(false);
   const [readError, setReadError] = useState("");
   const [editing, setEditing] = useState(false), [setupOpen, setSetupOpen] = useState(null);
@@ -17,7 +19,7 @@ export function InboxControls({ active, onChange, children }) {
   const version = useRef(0), working = useRef(false), mounted = useRef(true);
   useEffect(() => () => { mounted.current = false; }, []);
   useEffect(() => {
-    if (!active) return;
+    if (!active || readonly) return;
     let current = true, timer;
     const abort = new AbortController();
     async function poll() {
@@ -59,7 +61,7 @@ export function InboxControls({ active, onChange, children }) {
     {Object.entries(control?.errors || {}).map(([source, message]) => <Alert key={source}><AlertDescription><strong>{source === "outlook" ? "Outlook emails" : "Notification listener"}</strong>{message}</AlertDescription></Alert>)}
     {configured && control.pending && desired.running && <p role="status" className="inbox-muted">Start requested. Waiting for the collector task in your signed-in mail account.</p>}
     <details className="inbox-setup" open={setupOpen ?? attention} onToggle={event => setSetupOpen(event.currentTarget.open)}>
-      <summary><span role="status"><Badge variant="outline" data-tone={control?.state === "running" ? "good" : ["error", "unresponsive", "attention"].includes(control?.state) ? "bad" : undefined}>{control ? labels[control.state] || "Connecting collectors" : "Checking collector setup…"}</Badge></span><span>Collectors and alerts</span>{configured && <span className="inbox-muted">{control.mail_user}</span>}</summary>
+      <summary><span role="status"><Badge variant="outline" data-tone={control?.state === "running" ? "good" : ["error", "unresponsive", "attention"].includes(control?.state) ? "bad" : undefined}>{readonly ? "Atlas Admin only" : control ? labels[control.state] || "Connecting collectors" : "Checking collector setup…"}</Badge></span><span>Collectors and alerts</span>{configured && <span className="inbox-muted">{control.mail_user}</span>}</summary>
       {configured && <div className="inbox-control-actions">
         <Button size="sm" variant="outline" disabled={busy} onClick={() => send({ action: "start" })}>Start collectors</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={() => send({ action: "stop" })}>Stop collectors</Button>
@@ -79,11 +81,11 @@ export function InboxControls({ active, onChange, children }) {
         {control.agent_running && <p className="inbox-muted">Stop collectors before changing the account or Python path.</p>}
       </div> : <form className="inbox-connection" onSubmit={event => { event.preventDefault(); send({ mail_user: mailUser.trim(), python: python.trim() || control?.default_python || null }, true); }}>
         <FieldGroup className="inbox-setup-fields">
-          <Field data-disabled={busy}><FieldLabel htmlFor="inbox-mail-user">Outlook / Teams Windows account</FieldLabel><Input id="inbox-mail-user" autoComplete="off" placeholder="DOMAIN\username" required value={mailUser} disabled={busy} onChange={event => setMailUser(event.target.value)} /><FieldDescription>Use the normal Windows account, not its email address.</FieldDescription></Field>
-          <Field data-disabled={busy}><FieldLabel htmlFor="inbox-python">Python available to that account</FieldLabel><Input id="inbox-python" autoComplete="off" placeholder={control?.default_python || "C:\\Python312\\python.exe"} value={python} disabled={busy} onChange={event => setPython(event.target.value)} /><FieldDescription>Leave blank to use Atlas’s Python. Both accounts must be able to read the Atlas folder.</FieldDescription></Field>
+          <Field data-disabled={busy}><FieldLabel htmlFor="inbox-mail-user">Outlook / Teams Windows account</FieldLabel><Input id="inbox-mail-user" autoComplete="off" placeholder="DOMAIN\username" required value={mailUser} disabled={busy || readonly} onChange={event => setMailUser(event.target.value)} /><FieldDescription>Use the normal Windows account, not its email address.</FieldDescription></Field>
+          <Field data-disabled={busy}><FieldLabel htmlFor="inbox-python">Python available to that account</FieldLabel><Input id="inbox-python" autoComplete="off" placeholder={control?.default_python || "C:\\Python312\\python.exe"} value={python} disabled={busy || readonly} onChange={event => setPython(event.target.value)} /><FieldDescription>Leave blank to use Atlas’s Python. Both accounts must be able to read the Atlas folder.</FieldDescription></Field>
         </FieldGroup>
         <p>Run Atlas elevated for this setup. It creates a private queue and a task that runs with your normal account’s existing sign-in.</p>
-        <p>In that normal account, run <strong>Install-Inbox-Collectors.bat</strong> once for the Outlook dependency and the approved notification package. No Outlook app needs to be open during setup.</p>
+        <p>In that normal account, run <strong>windows\Install-Inbox-Collectors.bat</strong> once for the Outlook dependency and the approved notification package. No Outlook app needs to be open during setup.</p>
         <div className="inbox-control-actions"><Button type="submit" size="sm" disabled={busy || !control}>{busy ? "Connecting…" : editing ? "Save and start collectors" : "Connect and start collectors"}</Button>
           {editing && <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => setEditing(false)}>Cancel</Button>}</div>
       </form>}

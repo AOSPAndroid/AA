@@ -16,7 +16,7 @@ them to Atlas Admin on this PC. Atlas keeps doing the admin work; the Companion 
 1. Start Atlas Admin as usual (elevated). On start it writes the Companion's connection file to
    `%ProgramData%\Atlas\Companion\connection.json`: the local address and a Companion key.
 2. In your normal account (not "Run as administrator"), double-click
-   **Install-Atlas-Companion.bat** in the Atlas folder. It installs pywin32 for your account
+   **windows\Install-Atlas-Companion.bat** in the Atlas folder. It installs pywin32 for your account
    (Python 3.12 must be runnable by that account, see `Python_Settings.bat`) and asks whether the
    Companion should start when you sign in. It then starts the Companion.
 3. Look for the clipboard icon in the notification area. In Atlas, the **Clipboard** drawer

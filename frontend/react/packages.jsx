@@ -190,14 +190,13 @@ export function Packages() {
             >
               Refresh
             </Button>
-            {!readonly && (
-              <a
-                className="atlas-return"
-                href="/manage-database#package-data-import"
-              >
-                Upload package data
-              </a>
-            )}
+            {/* Demo shows it greyed out (readonly-console.js). */}
+            <a
+              className="atlas-return"
+              href="/manage-database#package-data-import"
+            >
+              Upload package data
+            </a>
           </div>
           <p className="package-counts" role="status" aria-live="polite">
             {busy
@@ -437,13 +436,16 @@ export function Packages() {
                       packaging state is unknown.
                     </p>
                   )}
-                  {!readonly &&
-                    selected.source_present &&
-                    !selected.ambiguous && (
-                      <button type="button" onClick={inspect} disabled={busy}>
-                        Inspect source scripts
-                      </button>
-                    )}
+                  {selected.source_present && !selected.ambiguous && (
+                    <button
+                      type="button"
+                      onClick={inspect}
+                      disabled={busy || readonly}
+                      title={readonly ? window.AtlasReadOnly.reason : undefined}
+                    >
+                      Inspect source scripts
+                    </button>
+                  )}
                   {!selected.source_present && !readonly && (
                     <p className="package-source-note">
                       Metadata only. Deployment needs an existing package folder
