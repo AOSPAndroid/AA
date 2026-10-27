@@ -93,6 +93,23 @@ class ImportFolderTests(unittest.TestCase):
         with self.assertRaises(HTTPException):
             self.watcher.apply_held(held['id'])
         self.busy = False
+        # A job that starts between the check and the write still stops the import.
+        from database_manager import apply_directory as real_apply
+        import database_manager
+        def starts_job(*args, **kwargs):
+            self.busy = True
+            try:
+                return real_apply(*args, **kwargs)
+            finally:
+                self.busy = False
+        database_manager.apply_directory = starts_job
+        try:
+            with self.assertRaises(HTTPException):
+                self.watcher.apply_held(held['id'])
+        finally:
+            database_manager.apply_directory = real_apply
+        self.assertEqual(self.count('select count(*) from users'), before)
+        held = self.watcher.check()['held']
         summary = self.watcher.apply_held(held['id'])
         self.assertEqual(summary['groups']['directory']['result'], 'applied')
         self.assertEqual(self.count('select count(*) from users'), 2)

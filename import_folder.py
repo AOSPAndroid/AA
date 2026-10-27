@@ -328,7 +328,8 @@ class ImportFolder:
 
     def apply_directory_candidate(self, candidate, name, report, expected, signature, files, counts, apply_directory):
         try:
-            backup = apply_directory(self.db, candidate, name, report, expected)
+            # Not behind the HTTP mutation gate: jobs are checked again inside the write.
+            backup = apply_directory(self.db, candidate, name, report, expected, busy=self.busy)
         except HTTPException as error:
             self.state['groups']['directory'] = {'result': 'waiting', 'message': f'{error.detail} Trying again.', 'at': now(), 'files': files}
             return False
@@ -359,7 +360,7 @@ class ImportFolder:
             finally:
                 self.drop_held()
             if not applied:
-                raise HTTPException(409, 'The directory changed since this review. Atlas prepares a fresh one on the next check.')
+                raise HTTPException(409, self.state['groups']['directory']['message'] + ' Atlas prepares a fresh review on the next check.')
             return self.finish()
 
     def skip_held(self, expected_id):

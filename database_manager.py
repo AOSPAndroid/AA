@@ -77,12 +77,14 @@ def compare(target,candidate):
 
 HISTORY_SCHEMA='create table if not exists directory_import_history(id text primary key,at text,source text,backup text,report text)'
 
-def apply_directory(db,candidate,source,report,expected):
- """Back up, then merge a prepared candidate; refused when the directory changed since `expected`."""
+def apply_directory(db,candidate,source,report,expected,busy=None):
+ """Back up, then merge a prepared candidate; refused when the directory changed since `expected`.
+ `busy` is checked again inside the write, for callers outside the HTTP mutation gate."""
  from datetime import datetime,timezone
  at=datetime.now(timezone.utc).isoformat()
  def validate_current(c):
   if fingerprint_connection(c)!=expected:raise HTTPException(409,'Directory or account links changed. Prepare a fresh preview.')
+  if busy and busy():raise HTTPException(409,'Active jobs or queues must finish first.')
  def record_import(c,backup):
   c.execute(HISTORY_SCHEMA)
   c.execute('insert into directory_import_history values(?,?,?,?,?)',(uuid.uuid4().hex,at,source,str(backup),json.dumps(report)))
