@@ -53,6 +53,10 @@ TOOLS = [
     tool("computer_action", "Change a Windows PC after approval. For service_start/stop/restart use name and the services snapshot ID; for process_stop use pid and the processes snapshot ID. Re-reads identity and verifies the outcome. enable_remote_registry explicitly enables/starts RemoteRegistry. reboot returns a monitored job. cleanup_packages deletes only this agent's staging folder.", {
         "computer": STRING, "action": {"type": "string", "enum": ["service_start", "service_stop", "service_restart", "process_stop", "enable_remote_registry", "reboot", "cleanup_packages"]},
         "name": STRING, "pid": {"type": "integer", "minimum": 5}, "snapshot": STRING}, ["computer", "action"]),
+    tool("bulk_service_action", "Start, stop or restart one Windows service by name across several PCs after a single approval that lists them. Each PC is checked and verified on its own; a PC that fails (service missing, protected or unreachable) never stops the others. Protected system services are refused. No snapshot is needed — the service is matched by name on each PC. For one PC bound to its inspect snapshot use computer_action; for more complex bulk changes run a saved script.", {
+        "computers": {"type": "array", "items": STRING, "minItems": 1, "maxItems": 50},
+        "action": {"type": "string", "enum": ["service_start", "service_stop", "service_restart"]},
+        "name": STRING}, ["computers", "action", "name"]),
     tool("directory_lookup", "Read an exact Active Directory user, computer or group, including group membership. Requires the ActiveDirectory PowerShell module (RSAT). Does not change accounts or group membership.", {
         "kind": {"type": "string", "enum": ["user", "computer", "group"]},
         "identity": STRING, "server": STRING}, ["kind", "identity"]),
@@ -613,6 +617,35 @@ class ITTools:
                 return self.ps(request, timeout=90)
             except Exception as error:
                 raise UnknownOutcome("%s: %s. Inspect current state before retrying." % (action, error)) from error
+
+    def bulk_service_action(self, computers, action, name):
+        if action not in ("service_start", "service_stop", "service_restart"):
+            raise ValueError("Bulk actions cover service_start, service_stop or service_restart")
+        if not isinstance(computers, list) or not 1 <= len(computers) <= 50:
+            raise ValueError("Supply 1 to 50 computer names")
+        name = text(name, "service name")
+        pcs = []
+        for raw in computers:
+            pc = globals()["computer"](raw)
+            if pc not in pcs:
+                pcs.append(pc)
+        listing = ", ".join(pcs) if len(pcs) <= 10 else "%s and %d more" % (", ".join(pcs[:10]), len(pcs) - 10)
+        if not self.confirm("%s %s on %d PCs: %s" % (action, name, len(pcs), listing)):
+            return {"state": "declined"}
+        results = []
+        for pc in pcs:
+            # Each PC is independent: one failure (unreachable, missing or protected service) never stops the rest.
+            try:
+                self.ensure_available(pc)
+                with target_lock(self.state, pc):
+                    self.ensure_available(pc)
+                    data = self.ps({"op": action, "computer": pc, "name": name}, timeout=90)
+                results.append({"computer": pc, "ok": True, "verified": bool(data.get("verified")),
+                                "state": (data.get("after") or {}).get("State")})
+            except Exception as error:
+                results.append({"computer": pc, "ok": False, "error": str(error)[:400]})
+        return {"action": action, "name": name, "count": len(results),
+                "succeeded": sum(1 for row in results if row["ok"]), "results": results}
 
     def directory_lookup(self, kind, identity, server=""):
         if kind not in ("user", "computer", "group"):

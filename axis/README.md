@@ -93,6 +93,7 @@ The model gets these tools:
 | `deploy_package` | Install, uninstall or repair through the selected package script; full, copy-only or execute-existing modes; up to 200 explicit PCs, processed in order. |
 | `it_job_status` | Saved per-PC outcomes, exit codes and logs, with bounded waits; inspect unknown outcomes before releasing a target for another attempt. |
 | `computer_action` | Verified service start/stop/restart, checked process termination, explicit RemoteRegistry enable/start, monitored reboot, and cleanup of this agent's package staging only. |
+| `bulk_service_action` | Start, stop or restart one service by name across up to 50 PCs after one combined approval; each PC verified independently, protected services refused, failures isolated. |
 | `directory_lookup` | Exact AD user/computer/group lookup and membership; read-only. |
 | `open_remote_tool` | RDP, Remote Assistance, Computer Management, Event Viewer, administrative share, temp or package folder. Opens the UI; does not automate a remote session. |
 | `read_tool_output` | Read the full saved output when a result was too long for the conversation. |
