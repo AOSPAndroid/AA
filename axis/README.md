@@ -88,6 +88,7 @@ The model gets these tools:
 | Tool | What it does |
 | --- | --- |
 | `inspect_computer` | Preflight, OS/user/memory, disks, services, processes and machine-wide software registrations; paginated results. |
+| `inspect_computers` | Read many PCs at once — preflight, overview or disks — one row per PC with its readings or error; up to 50 PCs, read-only. |
 | `find_packages` | Search package folders and discover `.ps1`/`.vbs` scripts ending in `_i`/`_install`/`_installs`, `_u`/`_uninstall`/`_uninstalls`, or `_r`/`_repair`/`_repairs`. A unique search match includes its action scripts in the same result; multiple matches still need a choice. |
 | `deploy_package` | Install, uninstall or repair through the selected package script; full, copy-only or execute-existing modes; up to 200 explicit PCs, processed in order. |
 | `it_job_status` | Saved per-PC outcomes, exit codes and logs, with bounded waits; inspect unknown outcomes before releasing a target for another attempt. |

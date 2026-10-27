@@ -33,6 +33,9 @@ TOOLS = [
         "computer": STRING, "view": {"type": "string", "enum": ["preflight", "overview", "disks", "services", "processes", "software"]},
         "query": STRING, "offset": {"type": "integer", "minimum": 0},
         "limit": {"type": "integer", "minimum": 1, "maximum": 100}}, ["computer", "view"]),
+    tool("inspect_computers", "Read many Windows PCs at once for a quick picture: preflight (ping, admin share, logged-on user), overview (CPU, memory, uptime) or disks (free space). Returns one row per PC with its readings or its error; an unreachable PC never stops the others. Read-only. For services, processes or software, use inspect_computer on one PC.", {
+        "computers": {"type": "array", "items": STRING, "minItems": 1, "maxItems": 50},
+        "view": {"type": "string", "enum": ["preflight", "overview", "disks"]}}, ["computers", "view"]),
     tool("find_packages", "Search the configured package repository. A single match includes its action-specific scripts; reuse them without another lookup. Multiple matches require choosing an exact package. Supply package and offset for more script pages. Never guess a package or script.", {
         "query": STRING, "package": STRING,
         "action": {"type": "string", "enum": ["Install", "Uninstall", "Repair"]},
@@ -348,6 +351,24 @@ class ITTools:
                        {"computer": pc, "view": view, "created": time.time(), "items": data.get("items", [])})
             data["snapshot"] = snapshot
         return data
+
+    def inspect_computers(self, computers, view):
+        if view not in ("preflight", "overview", "disks"):
+            raise ValueError("Bulk inspection covers preflight, overview or disks; use inspect_computer for services, processes or software")
+        if not isinstance(computers, list) or not 1 <= len(computers) <= 50:
+            raise ValueError("Supply 1 to 50 computer names")
+        seen, results = [], []
+        for raw in computers:
+            pc = globals()["computer"](raw)
+            if pc in seen:
+                continue
+            seen.append(pc)
+            try:
+                data = self.ps({"op": "inspect", "computer": pc, "view": view, "query": "", "offset": 0, "limit": 25})
+                results.append({"computer": pc, "ok": True, "data": data.get("data", data)})
+            except Exception as error:
+                results.append({"computer": pc, "ok": False, "error": str(error)[:400]})
+        return {"view": view, "count": len(results), "results": results}
 
     def root(self):
         if not self.repository.is_dir():

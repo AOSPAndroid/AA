@@ -195,6 +195,36 @@ class ITTests(unittest.TestCase):
         self.assertNotIn("verified", result)
         self.assertNotIn("application_verified", result)
 
+    def test_inspect_computers_reads_each_pc_and_isolates_failures(self):
+        def ps(request, timeout=60):
+            pc = request["computer"]
+            self.assertEqual(request["view"], "overview")
+            if pc == "PC-2":
+                raise RuntimeError("PC-2 is unreachable")
+            return {"ok": True, "computer": pc, "data": {"Cpu": 12, "MemoryFreeMB": 2048}}
+        self.backend.ps = Mock(side_effect=ps)
+        # Duplicates collapse; case is normalised; one failure does not stop the rest.
+        result = self.backend.inspect_computers(["pc-1", "PC-2", "PC-1", "pc-3"], "overview")
+        self.assertEqual(result["view"], "overview")
+        self.assertEqual([(row["computer"], row["ok"]) for row in result["results"]],
+                         [("PC-1", True), ("PC-2", False), ("PC-3", True)])
+        self.assertEqual(result["count"], 3)
+        self.assertEqual(result["results"][0]["data"], {"Cpu": 12, "MemoryFreeMB": 2048})
+        self.assertIn("unreachable", result["results"][1]["error"])
+        self.assertEqual(self.backend.ps.call_count, 3)
+
+    def test_inspect_computers_rejects_bad_view_count_and_name(self):
+        self.backend.ps = Mock()
+        with self.assertRaises(ValueError):
+            self.backend.inspect_computers(["PC-1"], "services")
+        with self.assertRaises(ValueError):
+            self.backend.inspect_computers([], "overview")
+        with self.assertRaises(ValueError):
+            self.backend.inspect_computers(["PC-" + str(n) for n in range(51)], "overview")
+        with self.assertRaises(ValueError):
+            self.backend.inspect_computers(["bad name"], "overview")
+        self.backend.ps.assert_not_called()
+
     def test_snapshot_is_bound_to_target_view_and_lifetime(self):
         self.backend.ps = Mock(return_value={"ok": True, "computer": "PC-1", "items": [{"Name": "Spooler"}]})
         snap = self.backend.inspect_computer("pc-1", "services")["snapshot"]
