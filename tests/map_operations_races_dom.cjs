@@ -118,6 +118,9 @@ const packages = ["A", "B"].map((folder) => ({
       meta.name = "atlas-mode";
       meta.content = "viewer";
       d.head.append(meta);
+      f.run(fs.readFileSync(path.join(root, "frontend/assets/readonly-console.js"), "utf8"));
+      if (!d.body.classList.contains("atlas-readonly-console"))
+        d.dispatchEvent(new w.Event("DOMContentLoaded"));
     }
     w.HTMLCanvasElement.prototype.getContext = () => null;
     w.requestAnimationFrame = () => 1;
@@ -144,10 +147,14 @@ const packages = ["A", "B"].map((folder) => ({
     if (readonly) {
       map.selectRecord(desks[0].id);
       await settle();
-      assert(d.querySelector("#ops-context"));
-      assert(
-        !d.querySelector("#ops-deploy, #ops-preview, #ops-package, #history"),
-      );
+      // Demo renders the Admin inspector with its actions greyed out.
+      assert(d.querySelector("#ops-panel .ops-machines"));
+      for (const id of ["ops-deploy", "ops-preview", "history"]) {
+        const button = d.getElementById(id);
+        assert(button.disabled && button.getAttribute("aria-disabled") === "true", id);
+        button.click();
+      }
+      await settle();
       assert(
         !requests.some((url) =>
           /^\/api\/(catalog|scripts|package-script|deploy|history)/.test(url),

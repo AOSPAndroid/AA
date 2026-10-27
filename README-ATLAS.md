@@ -74,7 +74,7 @@ All three versions share the current map and full console: Workspace, Remote Adm
 
 **Deployment, live metrics/health, remote tools and PsExec execution are greyed out** with an explanation: use Atlas Admin from an elevated Windows account. Demo remains read-only even if its host is elevated; its server has no remote execution routes and rejects all writes. The hosted preview has no Windows backend. Neither starts scans or commands when browsing. Real metrics, package-share contents, deployment history and terminal transcripts are not fabricated or copied into the preview.
 
-Admin and Demo use the same console source. The hosted preview receives those same assets while retaining its private directory snapshot and existing owner-only access.
+Admin and Demo are 1:1: the same map page, desk inspector, desk menu, header actions and console pages. Demo greys out what needs Admin instead of hiding it, including desk edits, Database, imports, backups, package settings, Clipboard and Live Inbox collection. Admin and Demo use the same console source. The hosted preview receives those same assets while retaining its private directory snapshot and existing owner-only access.
 
 ## Map previews
 

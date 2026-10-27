@@ -1,4 +1,5 @@
-/* Presentation mode only. The viewer server independently rejects remote operations. */
+/* Demo presentation for the map and console: the same pages as Admin, with changes, live checks and
+   Axis greyed out rather than hidden. The viewer server independently rejects remote operations. */
 (() => {
   if (document.querySelector('meta[name="atlas-mode"]')?.content !== "viewer")
     return;
@@ -60,9 +61,28 @@
     '#machineMenu [data-cmd]:not([data-readonly-allowed]):not([data-cmd="target"]):not([data-cmd="copy"]):not([data-cmd="details"]):not([data-cmd="admin"]):not([data-cmd="report"])',
     "#catalog-edit input",
     "#catalog-edit button",
-    'a[href="/manage-database"]',
+    'a[href^="/manage-database"]',
     "#openDatabase",
     "#refreshDirectory",
+    '[data-page="clipboard"]',
+    "#clipboardToggle",
+    "#axis-chat-toggle",
+    // Map header, desk inspector and desk menu.
+    "#ops-audit",
+    "#ops-settings",
+    "#ops-history",
+    "#import",
+    "#ops-import-atlas",
+    "#backup-db",
+    "#add",
+    "#map-previous",
+    "#previous-person",
+    "#record-form button",
+    "[data-link-user]",
+    "#ops-preview",
+    "#ops-deploy",
+    "[data-health-refresh]",
+    ".desk-menu [data-action]",
   ].join(",");
   // Empty local views: never enumerate a share, query a machine, or expose Admin history.
   const local = {
@@ -83,7 +103,7 @@
     "/api/operations/recovery": { targets: [] },
   };
   const stored =
-    /^\/api\/(?:package-data|health|capabilities|master\/status|master\/resolve\/[^/]+|search|user\/[^/]+|machine\/[^/]+|directory\/record|vdi-data\/record\/[^/]+|palette\/desks|palette\/person\/[^/]+|desks\/[^/]+\/context)$/;
+    /^\/api\/(?:package-data|health|capabilities|master\/status|master\/resolve\/[^/]+|search|user\/[^/]+|machine\/[^/]+|directory\/record|vdi-data\/record\/[^/]+|palette\/desks|palette\/person\/[^/]+|desks\/[^/]+\/context|script-library)$/;
   function read(url, options = {}) {
     const parsed = new URL(url, location.href);
     if (
@@ -117,41 +137,16 @@
   );
   document.addEventListener("DOMContentLoaded", () => {
     document.body.classList.add("atlas-readonly-console");
-    for (const [selector, text] of [
-      [
-        "#workspace",
-        "Browse users and stored machine details. Live health and deployment require elevated Atlas Admin.",
-      ],
-      [
-        "#admin .performance-panel",
-        "Explore Overview, CPU, GPU and Memory. Live scans and remote actions are disabled here; run Atlas Admin from an elevated Windows account to use them.",
-      ],
-      [
-        "#bulk",
-        "Deployment controls are shown for reference. Executing deployments requires elevated Atlas Admin.",
-      ],
-      [
-        "#history",
-        "Deployment history is not shared in this version. View local run history in Atlas Admin.",
-      ],
-      [
-        "#psexec",
-        "Browse commands, fill in options and copy the command. Running it and receiving terminal output requires elevated Atlas Admin.",
-      ],
-      ["#deploymentPanel", "Deployment requires elevated Atlas Admin."],
-    ]) {
-      const host = document.querySelector(selector);
-      if (!host) continue;
-      const note = document.createElement("p");
-      note.className = "atlas-access-note";
-      note.textContent = text;
-      host.prepend(note);
-    }
-    document.querySelector("#autoDeployments").checked = false;
-    document.querySelector("#pxHost").textContent =
-      "Read-only · remote execution disabled";
+    const autoDeployments = document.querySelector("#autoDeployments");
+    if (autoDeployments) autoDeployments.checked = false;
+    const pxHost = document.querySelector("#pxHost");
+    if (pxHost) pxHost.textContent = "Read-only · remote execution disabled";
     enforce();
-    new MutationObserver(enforce).observe(document.body, {
+    // Map name tags move constantly and never hold a blocked control.
+    new MutationObserver((records) => {
+      if (records.some((r) => !r.target.closest?.("#map-labels, #label-lines")))
+        enforce();
+    }).observe(document.body, {
       subtree: true,
       childList: true,
       attributes: true,

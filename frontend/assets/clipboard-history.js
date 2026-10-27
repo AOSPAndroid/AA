@@ -294,11 +294,8 @@
     }
     setTimeout(watch, $("clipboard").classList.contains("active") ? 5000 : 15000);
   }
-  if (window.AtlasReadOnly) {
-    $("clipboardToggle").hidden = true;
-    document.querySelector('[data-page="clipboard"]')?.setAttribute("hidden", "");
-    return;
-  }
+  // Demo shows Clipboard greyed out (readonly-console.js) and never reads the history.
+  if (window.AtlasReadOnly) return;
   load();
   watch();
   window.AtlasClipboard = { open, shown, capture, load, item: (id) => items.find((x) => x.id === id) };

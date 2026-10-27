@@ -20,6 +20,8 @@ const DELAY = 3;
 
 /** Read text from the operator's own window, screen or clipboard and analyse it like an email. */
 export function ScreenReader() {
+  // Demo shows the bar with its buttons disabled: reading the screen needs the local Admin app.
+  const readonly = !!window.AtlasReadOnly;
   const [busy, setBusy] = useState(""), [countdown, setCountdown] = useState(0), [error, setError] = useState("");
   const [result, setResult] = useState(null), [title, setTitle] = useState(""), [text, setText] = useState(""), [serial, setSerial] = useState(0);
   const [permission, setPermission] = useState("");
@@ -85,7 +87,7 @@ export function ScreenReader() {
   useEffect(() => {
     async function onPaste(event) {
       const page = root.current?.closest(".page");
-      if (!page?.classList.contains("active") || editable(event.target) || busy) return;
+      if (!page?.classList.contains("active") || editable(event.target) || busy || readonly) return;
       const data = event.clipboardData;
       const file = [...(data?.files || [])].find((item) => item.type.startsWith("image/"));
       const value = data?.getData("text/plain") || htmlText(data?.getData("text/html") || "");
@@ -111,9 +113,9 @@ export function ScreenReader() {
   return <section className="screen-reader" aria-label="Read from screen" ref={root}>
     <div className="screen-reader-bar">
       <strong><ScanText aria-hidden="true" />Read from screen</strong>
-      <Button size="sm" variant="outline" disabled={!!busy} onClick={() => read("window")}>Window in {DELAY} s</Button>
-      <Button size="sm" variant="outline" disabled={!!busy} onClick={() => read("screen")}>Whole screen in {DELAY} s</Button>
-      <Button size="sm" variant="outline" disabled={!!busy} onClick={clipboard} title="Text or a Win+Shift+S screenshot">Clipboard</Button>
+      <Button size="sm" variant="outline" disabled={!!busy || readonly} title={readonly ? window.AtlasReadOnly.reason : undefined} onClick={() => read("window")}>Window in {DELAY} s</Button>
+      <Button size="sm" variant="outline" disabled={!!busy || readonly} title={readonly ? window.AtlasReadOnly.reason : undefined} onClick={() => read("screen")}>Whole screen in {DELAY} s</Button>
+      <Button size="sm" variant="outline" disabled={!!busy || readonly} onClick={clipboard} title={readonly ? window.AtlasReadOnly.reason : "Text or a Win+Shift+S screenshot"}>Clipboard</Button>
       {permission && <Badge variant="outline" className="screen-reader-permission" data-tone={{ granted: "good", denied: "bad" }[permission] || ""} title={permission === "denied" ? BLOCKED : ""}>{permissionLabels[permission] || permission}</Badge>}
       <span className="inbox-muted" role="status" aria-live="polite">{busy && busy !== "analyse" && busy !== "clipboard"
         ? countdown > 0 ? `Switch to the ticket or chat now… ${countdown}` : "Reading text…"

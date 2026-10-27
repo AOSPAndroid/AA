@@ -10,7 +10,7 @@ Atlas's map and tools, with Axis chat in the same application.
 2. Put your existing full GGUF model in the `AA` folder or its `axis` folder.
    The model files remain separate; you do not need to download them again.
 3. Run **Start AA.bat** under your DSK account.
-4. Use the Atlas map and the **Axis** chat panel in the same browser window.
+4. Use the Atlas map, and **Ask Axis** (bottom right) for chat, in the same browser window.
 
 Python 3.12 and Atlas's existing Python dependencies are required. The launcher
 prefers `C:\devhome\tools\python3.12\current\python.exe`. If this Python does not
@@ -31,14 +31,15 @@ If the model is missing, the map still opens and chat explains how to start it.
 
 ## One workspace
 
-- **Map first:** the Atlas map stays on the homepage; the chat panel can be closed
-  to return to the desk inspector.
+- **Map first:** the Atlas map and desk inspector open on the homepage. The chat
+  opens from **Ask Axis** and can be closed to return to the inspector.
 - **Shared directory:** Axis reads the database Atlas is actually using and uses
   the same configured package repository.
 - **Selected desk:** explicitly attach a desk to the chat when useful. Selection
   gives Axis context; changes still require approval.
-- **Chat on every page:** the **Axis** button opens the same chat on the console
-  pages. On Workspace, **Use current target** attaches the target PC.
+- **Chat on every page:** the floating **Ask Axis** button in the bottom-right
+  corner opens the same chat on the map and every console page. On Workspace,
+  **Use current target** attaches the target PC.
 - **Clipboard page:** the Clipboard sits beside Workspace and Live Inbox. Each
   capture lists the machines, people, desks, tickets and IP addresses Atlas
   recognises, with their actions.
@@ -88,8 +89,10 @@ If the model is missing, the map still opens and chat explains how to start it.
   restart and continues where it stopped. The local Admin backend keeps the 20
   most recent chats in `data/axis/chats`; nothing is stored in the browser.
   Decisions show as history, so a saved approval can never be answered again.
-- **Viewer stays read-only:** Axis execution is available only on the local
-  Admin interface, not the LAN Viewer.
+- **Demo is Admin, greyed out:** the LAN Viewer (Demo) shows the same map,
+  inspector, menus and console pages as Admin. Changes, live checks, deployment,
+  Clipboard, Live Inbox collection and **Ask Axis** are visible but disabled;
+  Axis execution is available only on the local Admin interface.
 
 The Axis terminal, `axis\Start Agent.bat`, is another window onto the same
 Axis: start AA first, and the terminal streams the Admin backend's chat, answers

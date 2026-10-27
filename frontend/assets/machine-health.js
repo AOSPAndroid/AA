@@ -121,7 +121,9 @@
     render(host, pc, isCurrent, false);
   }
   function quick(host, pc, isCurrent = () => true) {
-    if (!host?.isConnected || !isCurrent() || window.AtlasReadOnly) return;
+    if (!host?.isConnected || !isCurrent()) return;
+    // Demo shows the same card with no checks; its Scan health is greyed out.
+    if (window.AtlasReadOnly) return mount(host, pc, isCurrent);
     const previous = snapshots.get(host);
     if (
       previous?.pc === pc &&

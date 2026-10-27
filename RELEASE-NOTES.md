@@ -2,6 +2,12 @@
 
 Atlas's map and Axis chat in one application.
 
+**Admin and Demo match.** Demo now shows the same map, desk inspector, menus and
+console pages as Admin, with changes greyed out instead of hidden or replaced.
+The top left reads **Atlas**, and **Ask Axis** is a floating button in the
+bottom-right corner of every page (greyed out in Demo). The chat opens when you
+ask Axis; the map opens on the desk inspector.
+
 Download **aa-windows.zip**, extract it, place your existing full model in `AA`
 or `AA/axis`, then run **Start AA.bat** under your DSK account. Python 3.12 and
 Atlas's existing dependencies are required; use `Install_Dependencies.bat` if

@@ -413,10 +413,11 @@ const { fixture, root } = require("./ui_fixture.cjs");
         "viewer right-click still inspects the desk",
       );
       const menu = w.document.querySelector(".desk-menu");
-      assert(menu, "viewer right-click exposes the stored-directory group lookup");
-      assert.equal(menu.querySelectorAll("button").length, 1);
+      assert(menu, "viewer right-click opens the same desk menu as Admin");
       assert.equal(menu.querySelector("button").textContent, "See groups");
-      assert.equal(menu.querySelector("[data-action]"), null, "viewer has no desk editing actions");
+      // readonly-console.js greys out these actions (viewer_dom.cjs); mutate() refuses them regardless.
+      assert.equal(menu.querySelectorAll("[data-action]").length, 5, "viewer shows the Admin desk actions");
+      menu.remove();
     } else {
       assert(
         w.document.querySelector(".desk-menu"),
@@ -560,7 +561,7 @@ const { fixture, root } = require("./ui_fixture.cjs");
     const manual = t.state(); viewport.clientWidth = 800; resize(); step(600);
     close(t.state(), manual); // Resizing must not undo a user's focused/panned view.
     await new Promise(setImmediate);
-    const machineHost=w.document.querySelector(readOnly ? '#ops-context [data-machine-list]' : '.ops-machines');
+    const machineHost=w.document.querySelector('.ops-machines');
     assert(machineHost, 'Both map modes expose filterable linked machines');
     const shown=()=>[...machineHost.querySelectorAll('[data-machine-kind]:not([hidden])')].map(row=>row.dataset.machineKind);
     machineHost.querySelector('[data-kind="kiosk"]').click();

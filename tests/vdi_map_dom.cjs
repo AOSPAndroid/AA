@@ -99,6 +99,9 @@ const response = (data) => ({ ok: true, json: async () => data });
         meta.name = "atlas-mode";
         meta.content = "viewer";
         d.head.append(meta);
+        f.run(fs.readFileSync(root + "/frontend/assets/readonly-console.js", "utf8"));
+        if (!d.body.classList.contains("atlas-readonly-console"))
+          d.dispatchEvent(new w.Event("DOMContentLoaded"));
       }
       w.HTMLCanvasElement.prototype.getContext = () => null;
       w.requestAnimationFrame = () => 1;
@@ -116,7 +119,7 @@ const response = (data) => ({ ok: true, json: async () => data });
       await settle();
       assert.equal(d.documentElement.dataset.atlasDisplay, display);
       assert.equal(quickChecks.length, 0, "Imported state cannot start a health check");
-      const host = d.getElementById(readonly ? "ops-context" : "ops-panel");
+      const host = d.getElementById("ops-panel");
       const card = host.querySelector('[data-machine-kind="vdi"]');
       assert(card, "VDI is rendered beside physical devices");
       assert(card.textContent.includes("VDI"));
@@ -133,7 +136,7 @@ const response = (data) => ({ ok: true, json: async () => data });
       assert.equal(card.hidden, false);
       assert.equal(host.querySelector('[data-machine-kind="laptop"]').hidden, true);
       assert.equal(quickChecks.length, 0, "Filtering VDI snapshots does not probe machines");
-      const targetCard = readonly ? card : card.querySelector(".ops-machine");
+      const targetCard = card.querySelector(".ops-machine");
       const openActions = () => {
         targetCard.dispatchEvent(new w.MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
         const menu = d.querySelector(".atlas-ad-context");
@@ -151,30 +154,26 @@ const response = (data) => ({ ok: true, json: async () => data });
       assert.equal(route.searchParams.get("adidentity"), vdi.name);
       assert.equal(route.searchParams.get("command"), "ad-open");
       if (readonly) {
-        assert(!d.querySelector("#ops-deploy, #ops-package, #history, #record-form"));
-        const deskPerson = host.querySelector("[data-person]");
-        assert.equal(deskPerson.dataset.person, user.canonical_key);
-        deskPerson.click();
+        // Demo renders the Admin inspector: the VDI can be chosen, its card shows, nothing is checked.
+        for (const id of ["ops-deploy", "history"])
+          assert.equal(d.getElementById(id).getAttribute("aria-disabled"), "true", id);
+        const radio = card.querySelector('input[name="ops-machine"]');
+        radio.checked = true;
+        radio.dispatchEvent(new w.Event("change", { bubbles: true }));
+        assert.equal(map.operations.getTarget(), vdi.name);
+        const healthHost = d.getElementById("ops-target-health");
+        assert.equal(healthHost.querySelector(":scope > p").textContent, w.AtlasUI.machineSnapshotNote(vdi));
+        const scan = healthHost.querySelector("[data-health-refresh]");
         await settle();
-        let lookup = d.querySelector(".viewer-lookup-dialog");
-        assert(lookup.open);
-        assert.equal(requests.at(-1), "/api/user/uid%3Afict.vdi", "Desk profile click uses its canonical key");
-        assert(lookup.querySelector('[data-machine-kind="vdi"]'));
-        lookup.close();
-        card.querySelector("[data-machine]").click();
-        await settle();
-        lookup = d.querySelector(".viewer-lookup-dialog");
-        assert(lookup.open);
-        assert(lookup.querySelector(".atlas-machine-details").open);
-        assert(lookup.textContent.includes(other.name), "Shared VDI preserves its linked users");
-        const linkedPerson = lookup.querySelector("[data-person]");
-        assert.equal(linkedPerson.dataset.person, user.canonical_key);
-        linkedPerson.click();
-        await settle();
-        assert.equal(requests.at(-1), "/api/user/uid%3Afict.vdi", "Machine profile click uses its canonical key");
-        assert(lookup.textContent.includes(user.name));
-        assert(lookup.querySelector('[data-machine-kind="vdi"]'), "Person profile retains its VDI assignment");
-        assert.equal(quickChecks.length, 0, "Readonly VDI inspection never invokes Windows health");
+        assert.equal(scan.getAttribute("aria-disabled"), "true", "Scan health is greyed out");
+        scan.click();
+        const physical = host.querySelector('[data-machine-kind="laptop"] input');
+        physical.checked = true;
+        physical.dispatchEvent(new w.Event("change", { bubbles: true }));
+        await new Promise(resolve => setTimeout(resolve, 300));
+        assert(healthHost.querySelector("[data-health-refresh]"), "Physical PCs show the same health card");
+        assert.deepEqual(quickChecks, [laptop.name]);
+        assert.equal(requests.filter(url => url.startsWith("/api/machine-health/")).length, 0, "Readonly inspection never invokes Windows health");
       } else {
         const radio = card.querySelector('input[name="ops-machine"]');
         assert.equal(radio.disabled, false, "VDI remains a Windows support target even if imported registration is Unregistered");

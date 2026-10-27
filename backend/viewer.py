@@ -142,6 +142,13 @@ def user(uid: str):
         desks=person_desks(con,person)
         return {'user': person, 'machines': linked_machines(con, person['id']), 'desks':[d['id'] for d in desks], 'desk_matches':desks}
 
+@app.get('/api/script-library')
+def script_library():
+    # Built-in scripts ship with Atlas; saved scripts and runs stay in the local Admin app.
+    from script_library import BUILTIN, EXPORT_HELPERS, HELPERS, MAX_TARGETS
+    return {'builtin': BUILTIN, 'saved': [], 'helpers': HELPERS.strip(), 'export_helpers': EXPORT_HELPERS.strip(), 'max_targets': MAX_TARGETS}
+
+
 @app.get('/api/vdi-data/record/{key:path}')
 def vdi_record(key:str):
     from vdi_data import record
@@ -193,10 +200,10 @@ prewarm(ATLAS / 'official-data.json', ATLAS / 'studio-floor-2.svg')
 
 @app.get('/')
 def home():
-    html = (ATLAS / 'official-index.html').read_text(encoding='utf-8')
-    html = re.sub(r'<(?:script|link)\b[^>]*(?:src|href)="/assets/(?:machine-health|client|axis-chat)[^"]*"[^>]*>(?:</script>)?', '', html)
+    # Same page as Admin: the read-only layer greys out changes. Axis chat stays in local Admin.
+    html = re.sub(r'<script\b[^>]*src="/assets/axis-chat[^"]*"[^>]*></script>\s*', '', (ATLAS / 'official-index.html').read_text(encoding='utf-8'))
     # The mode is supplied by this server, never by a URL or browser preference.
-    html = html.replace('<head>', '<head><meta name="atlas-mode" content="viewer"><link rel="stylesheet" href="/viewer.css">')
+    html = html.replace('<head>', '<head><meta name="atlas-mode" content="viewer">')
     html = html.replace('<span class="atlas-admin-badge">Admin</span>', '<span class="atlas-demo-badge">Demo</span>', 1)
     html = html.replace('aria-label="Atlas Admin home"', 'aria-label="Atlas Demo home"', 1)
     return HTMLResponse(html)
@@ -228,7 +235,7 @@ def shared_asset(filename:str, request:Request):
 
 @app.get('/{filename}')
 def asset(filename: str, request: Request):
-    allowed = {'catalogue.js','service-actions.js','site-info.js','command-palette.js', 'command-palette.css', 'command-registry.js', 'map-furniture.js','map-amenities.js','map-plan-details.js','official-app.js','camera-motion.js','map-cursor.js', 'official-data.json', 'official.css', 'style.css', 'operations.css', 'viewer.js', 'viewer.css'}
+    allowed = {'catalogue.js','service-actions.js','site-info.js','command-palette.js', 'command-palette.css', 'command-registry.js', 'map-furniture.js','map-amenities.js','map-plan-details.js','official-app.js','camera-motion.js','map-cursor.js', 'official-data.json', 'official.css', 'style.css', 'operations.css', 'operations.js'}
     if filename not in allowed and not re.fullmatch(r'(official-floor-(-1|[0-8])\.(jpg|pdf)|studio-floor-(-1|[0-8])\.svg)', filename):
         raise HTTPException(404, 'Not available in the shared viewer')
     return cached_file(request, ATLAS / filename)

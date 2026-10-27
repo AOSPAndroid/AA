@@ -185,9 +185,16 @@ const response = data => ({ ok: true, status: 200, json: async () => data });
   viewer.w.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
   viewer.w.document.getElementById('inbox').classList.add('active');
   viewer.run(fs.readFileSync('frontend/assets/atlas-interactions.js', 'utf8'));
-  await until(() => /available in Atlas Admin/.test(viewer.w.document.getElementById('liveInbox').textContent));
+  // Demo shows the Admin layout with nothing collected and every control greyed out.
+  const page = viewer.w.document.getElementById('liveInbox');
+  await until(() => /Waiting for incoming messages/.test(page.textContent));
+  assert.match(page.textContent, /Outlook · Atlas Admin only/);
+  assert.match(page.textContent, /Select a message/);
   assert(!viewer.w.document.querySelector('[data-mail-id]'));
-  assert(![...viewer.w.document.querySelectorAll('button')].some(b => b.textContent === 'Ask Axis'));
+  for (const label of ['Refresh now', 'Window in 3 s', 'Whole screen in 3 s', 'Clipboard'])
+    assert([...page.querySelectorAll('button')].find(b => b.textContent.includes(label)).disabled, label);
+  assert([...page.querySelectorAll('[role=switch]')].every(s => s.disabled), 'Watcher switches are greyed out');
+  assert(![...page.querySelectorAll('button')].some(b => b.textContent === 'Ask Axis'), 'No per-message Ask Axis in Demo');
   assert.deepEqual(viewer.errors, []); viewer.w.dispatchEvent(new viewer.w.Event('pagehide')); viewer.w.close();
   console.log('PASS: live arrivals, stable selection, Seen before (safe marks, article and request links), sender/device lookup, ambiguity, safe text, stale responses, disconnect recovery, hidden-page polling and private viewer boundary');
 })().catch(error => { console.error(error); process.exit(1); });
