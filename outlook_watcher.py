@@ -231,7 +231,7 @@ def windows_dependencies():
         import win32api
         import win32com.client
     except ImportError as error:
-        raise ValueError('Run Install-Inbox-Collectors.bat first (pywin32 is missing).') from error
+        raise ValueError('Run windows\\Install-Inbox-Collectors.bat first (pywin32 is missing).') from error
     return pythoncom, win32api, win32com.client
 
 

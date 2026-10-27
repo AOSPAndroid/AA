@@ -71,7 +71,7 @@ Validation covers the original directory template and the users/devices export, 
 
 ## Standalone refresh
 
-Finish active jobs, then drag the intended new `.xlsx` workbook, or the users and devices exports together, onto **Refresh-Directory.bat**. It stops both local services, validates the file, displays counts and asks for `APPLY`. A full backup is saved beside the active database in `backups/`, normally `data/backups/`. Start either edition again afterwards, even if you cancelled the import.
+Finish active jobs, then drag the intended new `.xlsx` workbook, or the users and devices exports together, onto **windows\Refresh-Directory.bat**. It stops both local services, validates the file, displays counts and asks for `APPLY`. A full backup is saved beside the active database in `backups/`, normally `data/backups/`. Start either edition again afterwards, even if you cancelled the import.
 
 Always supply the new file. With no file argument, this script uses the older bundled `database040926.xlsx`.
 

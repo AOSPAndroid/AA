@@ -7,7 +7,7 @@ import { RequestCard, MachineActions } from "./inbox-request";
 
 const sourceLabels = { window: "Window in front", screen: "Whole screen", clipboard: "Clipboard", image: "Screenshot" };
 const permissionLabels = { granted: "Clipboard allowed", denied: "Clipboard blocked", prompt: "Clipboard: asks once" };
-const BLOCKED = "Clipboard blocked: allow it in the address bar or run Allow-Atlas-Clipboard.bat. Ctrl+V always works.";
+const BLOCKED = "Clipboard blocked: allow it in the address bar or run windows\\Allow-Atlas-Clipboard.bat. Ctrl+V always works.";
 const editable = (node) => node?.closest?.("input,textarea,select,[contenteditable]");
 /** Plain text from copied HTML (Teams, Outlook and web pages put both on the clipboard). */
 function htmlText(html) {

@@ -34,7 +34,7 @@ def apply_refresh(target,candidate,backup_folder,*,before_merge=None,after_merge
  merge_directory(target,candidate,before_merge=backup_current,after_merge=finish);return backup
 
 def main():
- p=argparse.ArgumentParser(description=__doc__);p.add_argument('--source',type=Path,default=ROOT/'database040926.xlsx',help='One users/devices workbook, or the users export');p.add_argument('--devices',type=Path,help='The devices export, when users and devices are two files (.xlsx or .csv, either order)');p.add_argument('--check-only',action='store_true');args=p.parse_args()
+ p=argparse.ArgumentParser(description=__doc__);p.add_argument('--source',type=Path,default=ROOT/'templates'/'database040926.xlsx',help='One users/devices workbook, or the users export');p.add_argument('--devices',type=Path,help='The devices export, when users and devices are two files (.xlsx or .csv, either order)');p.add_argument('--check-only',action='store_true');args=p.parse_args()
  from runtime_paths import database_path
  target=database_path()
  with tempfile.TemporaryDirectory() as tmp:

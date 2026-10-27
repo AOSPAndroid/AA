@@ -71,8 +71,8 @@ jobs:
         run: |
           set -euo pipefail
           if ! gh release view "$TAG" > /dev/null 2>&1; then
-            gh release create "$TAG" --target "$GITHUB_SHA" --title "AA for Windows" --notes-file RELEASE-NOTES.md --latest=false
+            gh release create "$TAG" --target "$GITHUB_SHA" --title "AA for Windows" --notes-file docs/RELEASE-NOTES.md --latest=false
           fi
           gh release upload "$TAG" aa-windows.zip aa-windows.zip.sha256 --clobber
-          gh release edit "$TAG" --title "AA for Windows" --notes-file RELEASE-NOTES.md
+          gh release edit "$TAG" --title "AA for Windows" --notes-file docs/RELEASE-NOTES.md
           gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/$TAG" -f sha="$GITHUB_SHA" -F force=true > /dev/null

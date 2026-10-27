@@ -665,7 +665,7 @@ def acknowledge_recovery(pc:str,body:dict):
 
 @app.get('/api/database-freshness')
 def database_freshness():
-    excel=ROOT/'database040926.xlsx'
+    excel=ROOT/'templates'/'database040926.xlsx'
     db=DB
     return {'database_exists':db.exists(),'excel_exists':excel.exists(),'database_modified':datetime.fromtimestamp(db.stat().st_mtime).isoformat(sep=' ',timespec='seconds') if db.exists() else '', 'excel_modified':datetime.fromtimestamp(excel.stat().st_mtime).isoformat(sep=' ',timespec='seconds') if excel.exists() else '', 'excel_newer':bool(excel.exists() and db.exists() and excel.stat().st_mtime>db.stat().st_mtime), 'database_size':db.stat().st_size if db.exists() else 0}
 

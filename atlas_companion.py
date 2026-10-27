@@ -312,7 +312,7 @@ def main():
     try:
         import win32gui  # noqa: F401
     except ImportError:
-        message_box('pywin32 is missing for this account. Run Install-Atlas-Companion.bat once, then start the Companion again.')
+        message_box('pywin32 is missing for this account. Run windows\\Install-Atlas-Companion.bat once, then start the Companion again.')
         return 1
     import outlook_watcher
     try:

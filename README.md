@@ -14,7 +14,7 @@ Atlas's map and tools, with Axis chat in the same application.
 
 Python 3.12 and Atlas's existing Python dependencies are required. The launcher
 prefers `C:\devhome\tools\python3.12\current\python.exe`. If this Python does not
-have Atlas's packages, run `Install_Dependencies.bat` once. The Windows download
+have Atlas's packages, run `windows\Install_Dependencies.bat` once. The Windows download
 includes CPU and Vulkan llama.cpp runtimes, but no model weights or API keys.
 
 The model catalogue also includes `flash-abliterated`. Select it with
@@ -104,7 +104,7 @@ approvals in the window and runs nothing itself. `--resume` continues the
 latest chat, including one started on the map.
 
 AA is a separate merged version. Existing Atlas and Axis installations remain
-usable. The imported Atlas guide is [README-ATLAS.md](README-ATLAS.md), and the
+usable. The imported Atlas guide is [README-ATLAS.md](docs/README-ATLAS.md), and the
 Axis terminal guide is [axis/README.md](axis/README.md).
 
 ## Existing data and configuration
@@ -146,5 +146,5 @@ python -m unittest discover -s axis/tests -v
 ```
 
 Tests use disposable databases and simulated Windows operations. See
-[SOURCES.md](SOURCES.md) for the imported commits. The release includes
+[SOURCES.md](docs/SOURCES.md) for the imported commits. The release includes
 `BUNDLE-COMMIT.txt` and a SHA-256 checksum to identify and verify its source.

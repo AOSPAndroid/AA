@@ -137,11 +137,11 @@ phone call you typed up), use **Read from screen** at the top of Live Inbox:
 - **Ctrl+V** anywhere on the Live Inbox page (outside a text box) does the
   same with whatever you paste: text or a screenshot. It needs no permission.
 
-To stop the browser asking at all, double-click **Allow-Atlas-Clipboard.bat**
+To stop the browser asking at all, double-click **windows\Allow-Atlas-Clipboard.bat**
 as yourself (the account you browse with, not "Run as administrator" with
 another account) and restart Edge. It adds `http://127.0.0.1:8770` and
 `http://localhost:8770` to the per-user `ClipboardAllowedForUrls` policy of Edge
-and Chrome, keeping any entries already there; `Allow-Atlas-Clipboard.bat remove`
+and Chrome, keeping any entries already there; `windows\Allow-Atlas-Clipboard.bat remove`
 undoes it. If your company sets that policy for the whole PC, its setting wins.
 
 The text is read with Windows' built-in text recognition (Windows.Media.Ocr),
@@ -175,10 +175,10 @@ share a name, choose the right one.
    Use Python 3.12+ that the normal account can run. A Python installed only under
    the elevated account's private profile may not be accessible.
 2. In the normal Outlook/Teams account (`x01426046`), run
-   `Install-Inbox-Collectors.bat "C:\Approved\Atlas.NotificationListener.msix"`
+   `windows\Install-Inbox-Collectors.bat "C:\Approved\Atlas.NotificationListener.msix"`
    with your approved, signed package. This installs pywin32 for classic Outlook
    and registers the notification package for that Windows account. Run without a package,
-   `Install-Inbox-Collectors.bat` sets up email and reports Teams notifications as
+   `windows\Install-Inbox-Collectors.bat` sets up email and reports Teams notifications as
    skipped; add the package later to enable them.
    `WMI_PYTHON` can select the Python used by these BAT files.
 3. Open Atlas from the usual elevated PowerShell (`x01426046_dsk`). In Live Inbox,

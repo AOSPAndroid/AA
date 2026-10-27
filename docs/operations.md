@@ -56,7 +56,7 @@ Recognised moves and swaps carry occupants and account links. Desk geometry, equ
 
 For a normal update, finish active jobs, stop both servers and preserve `data/office_atlas.db`, the rest of the `data` directory and `config.json`, as described in the main README. Keep a separate backup before replacing an installation. The root `office_atlas.db` is the distributed seed; normal launches use the persistent runtime database.
 
-**Refresh-Directory.bat** is the standalone directory recovery/import path. Finish all jobs, then drag a complete `.xlsx` export onto it. The script stops this installation's servers before preparing the refresh. With no supplied file it uses the bundled `database040926.xlsx`. Review user, machine and relationship counts; type `APPLY` only for the intended complete export. A full backup is created in the active database's adjacent `backups/` directory (normally `data/backups/`) before replacement. Start Atlas again afterwards. Do not run a direct CLI refresh concurrently with a server using the same database.
+**windows\Refresh-Directory.bat** is the standalone directory recovery/import path. Finish all jobs, then drag a complete `.xlsx` export onto it. The script stops this installation's servers before preparing the refresh. With no supplied file it uses the bundled `database040926.xlsx`. Review user, machine and relationship counts; type `APPLY` only for the intended complete export. A full backup is created in the active database's adjacent `backups/` directory (normally `data/backups/`) before replacement. Start Atlas again afterwards. Do not run a direct CLI refresh concurrently with a server using the same database.
 
 For validation without applying an import:
 

@@ -85,7 +85,7 @@ export function InboxControls({ active, onChange, children }) {
           <Field data-disabled={busy}><FieldLabel htmlFor="inbox-python">Python available to that account</FieldLabel><Input id="inbox-python" autoComplete="off" placeholder={control?.default_python || "C:\\Python312\\python.exe"} value={python} disabled={busy || readonly} onChange={event => setPython(event.target.value)} /><FieldDescription>Leave blank to use Atlas’s Python. Both accounts must be able to read the Atlas folder.</FieldDescription></Field>
         </FieldGroup>
         <p>Run Atlas elevated for this setup. It creates a private queue and a task that runs with your normal account’s existing sign-in.</p>
-        <p>In that normal account, run <strong>Install-Inbox-Collectors.bat</strong> once for the Outlook dependency and the approved notification package. No Outlook app needs to be open during setup.</p>
+        <p>In that normal account, run <strong>windows\Install-Inbox-Collectors.bat</strong> once for the Outlook dependency and the approved notification package. No Outlook app needs to be open during setup.</p>
         <div className="inbox-control-actions"><Button type="submit" size="sm" disabled={busy || !control}>{busy ? "Connecting…" : editing ? "Save and start collectors" : "Connect and start collectors"}</Button>
           {editing && <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => setEditing(false)}>Cancel</Button>}</div>
       </form>}

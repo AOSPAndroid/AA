@@ -15,7 +15,7 @@ ask Axis; the map opens on the desk inspector.
 
 Download **aa-windows.zip**, extract it, place your existing full model in `AA`
 or `AA/axis`, then run **Start AA.bat** under your DSK account. Python 3.12 and
-Atlas's existing dependencies are required; use `Install_Dependencies.bat` if
+Atlas's existing dependencies are required; use `windows\Install_Dependencies.bat` if
 they are missing. CPU and Vulkan llama.cpp runtimes are included.
 
 The local Admin map and console pages include Axis chat with visible thinking,

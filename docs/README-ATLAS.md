@@ -1,33 +1,33 @@
 > **Atlas reference for AA:** This is the imported standalone Atlas guide. Use
-> [AA's launch instructions](README.md#start) and [AA's update guide](docs/updating-atlas.md)
+> [AA's launch instructions](../README.md#start) and [AA's update guide](updating-atlas.md)
 > for this combined application. The standalone launch, updater and hosted Preview
 > instructions below do not replace AA's workflow; `Update-Atlas.bat` is disabled here.
 
 ## Live Inbox with Outlook and Teams
 
-**[Live Inbox setup](docs/inbox-integration.md)** connects incoming Outlook emails and Teams/Outlook notification previews to the existing Atlas GUI, sender lookup and linked machines. Configure the normal mail account once in Atlas Admin > Live Inbox. All local Start BAT files then launch the collectors through its limited interactive Windows task; Stop BAT files request graceful shutdown. Start/Stop, source switches and listener settings are also in the GUI.
+**[Live Inbox setup](inbox-integration.md)** connects incoming Outlook emails and Teams/Outlook notification previews to the existing Atlas GUI, sender lookup and linked machines. Configure the normal mail account once in Atlas Admin > Live Inbox. All local Start BAT files then launch the collectors through its limited interactive Windows task; Stop BAT files request graceful shutdown. Start/Stop, source switches and listener settings are also in the GUI.
 
-Run **[Install-Inbox-Collectors.bat](Install-Inbox-Collectors.bat)** once in the normal mail account with an approved signed notification package. Windows notification consent is still required. The repo includes the build source, a compiled development folder and an unsigned MSIX for the approved signing process. Demo and Preview never receive email or notification data.
+Run **[windows\Install-Inbox-Collectors.bat](../windows/Install-Inbox-Collectors.bat)** once in the normal mail account with an approved signed notification package. Windows notification consent is still required. The repo includes the build source, a compiled development folder and an unsigned MSIX for the approved signing process. Demo and Preview never receive email or notification data.
 
 ## Launch Admin, Demo and Preview
 
-Double-click **[Start-All-Atlas.bat](Start-All-Atlas.bat)** to start the local services once and open three browser tabs: Admin, Demo and the hosted Preview (which needs internet access).
+Double-click **[Start-All-Atlas.bat](../Start-All-Atlas.bat)** to start the local services once and open three browser tabs: Admin, Demo and the hosted Preview (which needs internet access).
 
-**[Stop-All-Atlas.bat](Stop-All-Atlas.bat)** stops both local servers. Finish active jobs first. It leaves browser tabs open and does not unpublish hosted Preview.
+**[Stop-All-Atlas.bat](../Stop-All-Atlas.bat)** stops both local servers. Finish active jobs first. It leaves browser tabs open and does not unpublish hosted Preview.
 
 ## Quick start and stop
 
 | Start Admin + Demo | Stop local services |
 | --- | --- |
-| [Start-Office-Atlas.bat](Start-Office-Atlas.bat) | [Stop-All-Atlas.bat](Stop-All-Atlas.bat) |
+| [Start-Office-Atlas.bat](../Start-Office-Atlas.bat) | [Stop-All-Atlas.bat](../Stop-All-Atlas.bat) |
 
 Start runs Admin and Demo. Stop stops both; finish queue jobs first. Hosted Preview stays online. (The optional Desktop layout with a dock and draggable windows was removed; old Desktop shortcuts open normal Atlas.)
 
-**[Database update guide](docs/database-update-guide.md)** covers imports, backups, recovery, seating and hosted Preview updates.
+**[Database update guide](database-update-guide.md)** covers imports, backups, recovery, seating and hosted Preview updates.
 
-**[Update-Atlas.bat](Update-Atlas.bat)** updates this installation from GitHub while preserving its data and settings. Install Git for Windows once, finish active jobs, then run it from your existing Atlas folder. [Update instructions](docs/updating-atlas.md) cover ZIP installations, backups and checks.
+**[Update-Atlas.bat](../Update-Atlas.bat)** updates this installation from GitHub while preserving its data and settings. Install Git for Windows once, finish active jobs, then run it from your existing Atlas folder. [Update instructions](updating-atlas.md) cover ZIP installations, backups and checks.
 
-**[Latest code audit](docs/code-audit-2026-10-06.md)** records the confirmed fixes, regression coverage and large-directory measurements.
+**[Latest code audit](code-audit-2026-10-06.md)** records the confirmed fixes, regression coverage and large-directory measurements.
 
 # Atlas 7.0.0
 
@@ -39,23 +39,23 @@ The **map** helps you explore floors and seating in 2D or 3D. The **IT console**
 
 ## What Atlas can do
 
-**Live Inbox:** emails and Teams/Outlook notification previews, matched sender records and linked machines inside the main Atlas GUI. Start/Stop collectors, choose sources and open listener settings from the same screen. The message comes first with the machines and people it names highlighted; people named in the email ("DUPONT Marie", emails, account IDs) are matched to Atlas with their desk and PCs. Their record, health, performance (with End process), AD groups with "same access as" comparison, deployment, software, services, articles, MSRA/C$ and reboot run in a tools column beside the message, and anyone else is one lookup away, without leaving Live Inbox. See [the message and its people](docs/inbox-integration.md#the-message-and-the-people-in-it) and [request tools](docs/inbox-integration.md#request-tools-everything-beside-the-message). Suggested fixes are not yet included.
+**Live Inbox:** emails and Teams/Outlook notification previews, matched sender records and linked machines inside the main Atlas GUI. Start/Stop collectors, choose sources and open listener settings from the same screen. The message comes first with the machines and people it names highlighted; people named in the email ("DUPONT Marie", emails, account IDs) are matched to Atlas with their desk and PCs. Their record, health, performance (with End process), AD groups with "same access as" comparison, deployment, software, services, articles, MSRA/C$ and reboot run in a tools column beside the message, and anyone else is one lookup away, without leaving Live Inbox. See [the message and its people](inbox-integration.md#the-message-and-the-people-in-it) and [request tools](inbox-integration.md#request-tools-everything-beside-the-message). Suggested fixes are not yet included.
 
-**New to the performance tools?** Read the [Remote Admin performance guide](docs/REMOTE_ADMIN_PERFORMANCE.md) for what each CPU, GPU, Memory and Overview button does, how to interpret the results, and a practical slowness investigation workflow. All scans require an explicit button click.
+**New to the performance tools?** Read the [Remote Admin performance guide](REMOTE_ADMIN_PERFORMANCE.md) for what each CPU, GPU, Memory and Overview button does, how to interpret the results, and a practical slowness investigation workflow. All scans require an explicit button click.
 
-**Atlas Companion:** a small tray app you run in your normal Windows account (Atlas Admin stays elevated). It sends every clipboard copy to the clipboard history, even with Atlas closed, skipping copies password managers mark private, and reads classic Outlook mail for Live Inbox when Email watcher is on. Run **Install-Atlas-Companion.bat** once as yourself; then it starts at sign-in or with **Start-Atlas-Companion.bat**. [Details](docs/companion.md).
+**Atlas Companion:** a small tray app you run in your normal Windows account (Atlas Admin stays elevated). It sends every clipboard copy to the clipboard history, even with Atlas closed, skipping copies password managers mark private, and reads classic Outlook mail for Live Inbox when Email watcher is on. Run **windows\Install-Atlas-Companion.bat** once as yourself; then it starts at sign-in or with **Start-Atlas-Companion.bat**. [Details](companion.md).
 
 **Clipboard history:** the **Clipboard** button in the header keeps what you copy into Atlas (Capture clipboard, Ctrl+V on any page outside text boxes, the Live Inbox clipboard reader and, when the browser allows the clipboard, automatically as you come back to Atlas). Each item is enriched from the database: machines with their user, model and inventory status, people (by email, account or unique name), desks with their occupant, ticket numbers and IP addresses, plus copied names Atlas does not know. Coloured chips summarise each item; its tables give **Select**, **Open** and a right-click menu with the usual tools, and bulk actions for lists: **Bulk deploy**, **Run a script**, **Ping all**, copy names/users/emails. Copying the same text again moves it to the top. The last 300 items are kept in `data/clipboard-history.json` (or the database folder); **Delete** or **Clear** removes them.
 
 **Retry and re-queue deployments:** every deployment now saves its full request (package, script, action, fresh copy, threads). A failed run shows **Retry**, **Add to queue** and **Copy log** under its progress in the Deploy panel; **Add to queue** and **Open queue** sit under the Install button; failed cards in the Deployments drawer and failed rows in **History** have **Retry**, and any single deployment can be queued again with its original options.
 
-**Read from screen and clipboard:** at the top of Live Inbox, **Clipboard** reads copied text or a Win+Shift+S screenshot (text recognition) through the browser, and **Ctrl+V** on the page does the same with no permission. Run **Allow-Atlas-Clipboard.bat** once, as yourself, so Edge and Chrome stop asking. [Details](docs/inbox-integration.md#read-from-screen).
+**Read from screen and clipboard:** at the top of Live Inbox, **Clipboard** reads copied text or a Win+Shift+S screenshot (text recognition) through the browser, and **Ctrl+V** on the page does the same with no permission. Run **windows\Allow-Atlas-Clipboard.bat** once, as yourself, so Edge and Chrome stop asking. [Details](inbox-integration.md#read-from-screen).
 
-**Live floor plan:** Point **Manage Database > Live floor plan** at the folder holding the assistants' desk-plan Excel (for example the OneDrive-synced `02_Current_plan`). Atlas reads boxes such as `Christophe Duriez 02R015079`, `Credit Sales 02R016079` or `Open 03R016079` every minute, links names to directory people, fixes codes missing their leading zero, and updates official seating with a backup; Admin and Demo maps refresh on their own. Large or unclear changes wait for review. [Details](docs/database-update-guide.md#live-floor-plan-the-assistants-excel).
+**Live floor plan:** Point **Manage Database > Live floor plan** at the folder holding the assistants' desk-plan Excel (for example the OneDrive-synced `02_Current_plan`). Atlas reads boxes such as `Christophe Duriez 02R015079`, `Credit Sales 02R016079` or `Open 03R016079` every minute, links names to directory people, fixes codes missing their leading zero, and updates official seating with a backup; Admin and Demo maps refresh on their own. Large or unclear changes wait for review. [Details](database-update-guide.md#live-floor-plan-the-assistants-excel).
 
 **Scripts:** Open **Scripts** in the IT console sidebar to run PowerShell scripts against a list of machines. The page opens on **Online check** and runs nothing until clicked. Paste the machines (from Excel, comma or line separated), pick a script, review its values and click **Run**; each result line shows green (OK), red (failed) or amber (warning) with a count at the top. Built-ins: stop and disable services, enable and start services, check services, stop processes by name, online check, uptime, disk space, who is logged on, find installed software, Group Policy update and restart. Service and software names start blank and must be supplied explicitly. **Duplicate** a built-in, or use **New script** / **Import .ps1**, to save your own; saved scripts live in `data/scripts.json` (or the configured database folder). **Download .ps1** includes the helper functions: built-ins accept `-Computers` and their task parameters, while custom scripts retain their own parameter blocks and normal PowerShell prompts. Atlas adds the machines as `$Computers` (and `Read-Host` answers with them inside Atlas), checks every machine name first, and asks before running built-ins that change machines or custom scripts marked **Changes machines**. Scripts run on the Atlas host with the Atlas account's rights, up to 30 minutes.
 
-**PsTools terminal:** Open **Scripts → PsTools commands** in the admin IT console for 72 templates covering PsExec and the adjacent Sysinternals tools, including Excel, sessions, diagnostics, networking, services, printing and repairs. Select a target and click **Run** to see live output and exit status in Atlas. Remote Command Prompt supports typed follow-up commands. Runs use the Atlas host account and your existing PsExec in `C:\Data`; repairs require target confirmation. Includes Stop, recent transcripts, favourites and optional command copying. Nothing starts automatically. [Setup, terminal controls and PsExec commands](docs/PSEXEC.md).
+**PsTools terminal:** Open **Scripts → PsTools commands** in the admin IT console for 72 templates covering PsExec and the adjacent Sysinternals tools, including Excel, sessions, diagnostics, networking, services, printing and repairs. Select a target and click **Run** to see live output and exit status in Atlas. Remote Command Prompt supports typed follow-up commands. Runs use the Atlas host account and your existing PsExec in `C:\Data`; repairs require target confirmation. Includes Stop, recent transcripts, favourites and optional command copying. Nothing starts automatically. [Setup, terminal controls and PsExec commands](PSEXEC.md).
 
 | Area | Capabilities |
 | --- | --- |
@@ -82,18 +82,18 @@ These are screenshots of the Atlas renderer using **entirely fictional floors an
 
 | 2D floor navigation | 3D floor exploration |
 | --- | --- |
-| ![Atlas 2D map with a fictional floor, sample desks and name tags disabled](docs/images/atlas-map-2d.jpg) | ![Atlas 3D map with a fictional floor, sample desks and name tags disabled](docs/images/atlas-map-3d.jpg) |
+| ![Atlas 2D map with a fictional floor, sample desks and name tags disabled](images/atlas-map-2d.jpg) | ![Atlas 3D map with a fictional floor, sample desks and name tags disabled](images/atlas-map-3d.jpg) |
 
-[How the screenshots are produced](docs/images/README.md) · [How to run Atlas](#how-to-run-windows) · [Configuration and updates](#configuration-and-updates)
+[How the screenshots are produced](images/README.md) · [How to run Atlas](#how-to-run-windows) · [Configuration and updates](#configuration-and-updates)
 
 ## How to run (Windows)
 
 ### First-time setup
 
 1. On this GitHub repository, select the **main** branch, then **Code → Download ZIP**.
-2. Right-click the downloaded ZIP and choose **Extract All**. Open the extracted folder containing `Install_Dependencies.bat` and `Start-Office-Atlas.bat`. Keep all files and subfolders together and run the scripts from the extracted folder.
+2. Right-click the downloaded ZIP and choose **Extract All**. Open the extracted folder containing `windows\Install_Dependencies.bat` and `Start-Office-Atlas.bat`. Keep all files and subfolders together and run the scripts from the extracted folder.
 3. Install **Python 3.12** if it is not already installed, including the Python launcher (`py`). `Python_Settings.bat` detects it through `py -3.12`. If your organisation provides Python elsewhere, set `WMI_PYTHON` to that interpreter's full executable path.
-4. Double-click **`Install_Dependencies.bat`**. Wait for **Dependencies installed** and press a key to close the window. This installs the Python packages listed in `requirements.txt` and needs access to your configured Python package index.
+4. Double-click **`windows\Install_Dependencies.bat`**. Wait for **Dependencies installed** and press a key to close the window. This installs the Python packages listed in `requirements.txt` and needs access to your configured Python package index.
 5. Double-click **`Start-Office-Atlas.bat`**. It starts both the admin tool and the read-only viewer, then opens two browser tabs.
 
 **Normal startup: `Start-Office-Atlas.bat`.** Dependency installation is needed for the first setup, after changing Python, or when an update changes `requirements.txt`.
@@ -122,7 +122,7 @@ To change ports, set `ATLAS_ADMIN_PORT` and `ATLAS_VIEWER_PORT` before launching
 ### If startup fails
 
 - **Python 3.12 not found:** install Python 3.12 with the launcher, or configure `WMI_PYTHON` as described above.
-- **Dependency installation failed / Dependencies missing:** rerun `Install_Dependencies.bat` and check its error message; dependencies must be installed for the same Python that starts Atlas.
+- **Dependency installation failed / Dependencies missing:** rerun `windows\Install_Dependencies.bat` and check its error message; dependencies must be installed for the same Python that starts Atlas.
 - **Startup failed / port occupied:** check the startup log named in the error. If this folder has an unresponsive Atlas server, run `Stop-All-Atlas.bat` before starting again. If another application uses the port, choose different Atlas ports.
 - **Browser tabs did not open:** try `http://127.0.0.1:8770` for admin or `http://127.0.0.1:8771` for the viewer after a successful startup.
 
@@ -201,7 +201,7 @@ The demo shares the person/machine inspector, date display and field searches. I
 
 ## Package states and ownership
 
-Open **Packages** in the console, command palette or with `Alt+6`. Upload the ServiceNow CSV in **Database > Package data**. See [the package data guide](docs/packages.md) for headers, matching and update behavior.
+Open **Packages** in the console, command palette or with `Alt+6`. Upload the ServiceNow CSV in **Database > Package data**. See [the package data guide](packages.md) for headers, matching and update behavior.
 
 ## Configuration and updates
 
@@ -209,11 +209,11 @@ The default package repository is the synced **EPP_PACKAGE_REPO_BetaPackages - B
 
 Leave `package_repository` blank in `config.json` (as in `config.example.json`), or omit `config.json`, to use automatic detection. An explicit repository saved through admin **Settings** takes precedence; `WMI_PACKAGE_REPO` overrides both. These defaults do not sign in to SharePoint or create its OneDrive shortcut. Local configuration, logs, process records and SQLite journal files are ignored by Git.
 
-To update application code, finish active jobs and run **[Update-Atlas.bat](Update-Atlas.bat)** from this existing folder. It backs up the installation, preserves local data/configuration, and converts a downloaded ZIP folder into a Git checkout on its first run. Later updates require a clean tracked source tree and fast-forward history. Install Git for Windows and verify access to the GitHub repository first; no user/device reimport is needed. [Updating Atlas](docs/updating-atlas.md) explains the process and `--check` / `--no-start` options.
+To update application code, finish active jobs and run **[Update-Atlas.bat](../Update-Atlas.bat)** from this existing folder. It backs up the installation, preserves local data/configuration, and converts a downloaded ZIP folder into a Git checkout on its first run. Later updates require a clean tracked source tree and fast-forward history. Install Git for Windows and verify access to the GitHub repository first; no user/device reimport is needed. [Updating Atlas](updating-atlas.md) explains the process and `--check` / `--no-start` options.
 
 The launcher copies the distributed `office_atlas.db` seed into ignored `data/office_atlas.db` only once, using SQLite backup. Subsequent launches keep the runtime database. Set `ATLAS_DB_PATH` to use another existing Atlas database. Preserve the entire `data/` directory, backups and `config.json` if moving to another checkout; never replace live records with the repository seed. Use the admin database manager for supported directory refreshes.
 
-See [IT operations and imports](docs/operations.md) for deployment modes, software repair/uninstall, directory replacement, seating Excel sync and backup workflows.
+See [IT operations and imports](operations.md) for deployment modes, software repair/uninstall, directory replacement, seating Excel sync and backup workflows.
 
 ## Development
 
@@ -235,7 +235,7 @@ The source tree also retains inputs and maintenance tools that are needed to rep
 - `database040926.xlsx`, `atlas/data.json` and `atlas/visual-seating-matches.json` support the initial directory and previous-seating migration. The Excel templates remain available from Manage Database.
 - `tools/build_official_3d.py` extracts geometry into `atlas/official-data.json`; `tools/build_studio_plans.py` generates the current `atlas/studio-floor-*.svg` backgrounds from the retained official PDFs. These optional build tools require PyMuPDF and rewrite their outputs; normal startup does not run them.
 - The [floor-plan review](FLOOR_PLAN_AUDIT.md) covers all ten original plans, the reviewed furniture/stair/amenity corrections, source-coordinate checks and remaining physical-layout uncertainties. Run the correction generators after rebuilding the base geometry; normal startup loads their checked-in results without parsing PDFs.
-- `scripts/serve_documentation_preview.py` generates the fictional map used for the [documentation screenshots](docs/images/README.md).
+- `scripts/serve_documentation_preview.py` generates the fictional map used for the [documentation screenshots](images/README.md).
 
 ## Optimization changes
 
@@ -338,7 +338,7 @@ The activity feed reads existing server state; it never starts a remote scan. Sl
 
 ### Moving the databases to another drive
 
-Run **Stop-All-Atlas.bat**, then **Move-Databases.bat**. It moves the Atlas database and the Knowledge Base database to `F:\Atlas\DB` (or to a folder you give it, for example `Move-Databases.bat G:\AtlasData`) and records the folder as `database_folder` in `config.json`. Each copy must pass an integrity check and match the original's row counts before Atlas switches to it; existing files are never overwritten, and the old files are kept in `data\backups\before-database-move-...` until you delete them. If the drive is missing when Atlas starts, Atlas stops with a message instead of opening an empty database. To go back, remove `database_folder` from `config.json` and return the files to `data`.
+Run **Stop-All-Atlas.bat**, then **windows\Move-Databases.bat**. It moves the Atlas database and the Knowledge Base database to `F:\Atlas\DB` (or to a folder you give it, for example `windows\Move-Databases.bat G:\AtlasData`) and records the folder as `database_folder` in `config.json`. Each copy must pass an integrity check and match the original's row counts before Atlas switches to it; existing files are never overwritten, and the old files are kept in `data\backups\before-database-move-...` until you delete them. If the drive is missing when Atlas starts, Atlas stops with a message instead of opening an empty database. To go back, remove `database_folder` from `config.json` and return the files to `data`.
 
 ### Deployment kits in Queue
 
