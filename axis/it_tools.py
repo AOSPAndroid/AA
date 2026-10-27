@@ -53,7 +53,7 @@ TOOLS = [
     tool("computer_action", "Change a Windows PC after approval. For service_start/stop/restart use name and the services snapshot ID; for process_stop use pid and the processes snapshot ID. Re-reads identity and verifies the outcome. enable_remote_registry explicitly enables/starts RemoteRegistry. reboot returns a monitored job. cleanup_packages deletes only this agent's staging folder.", {
         "computer": STRING, "action": {"type": "string", "enum": ["service_start", "service_stop", "service_restart", "process_stop", "enable_remote_registry", "reboot", "cleanup_packages"]},
         "name": STRING, "pid": {"type": "integer", "minimum": 5}, "snapshot": STRING}, ["computer", "action"]),
-    tool("bulk_service_action", "Start, stop or restart one Windows service by name across several PCs after a single approval that lists them. Each PC is checked and verified on its own; a PC that fails (service missing, protected or unreachable) never stops the others. Protected system services are refused. No snapshot is needed — the service is matched by name on each PC. For one PC bound to its inspect snapshot use computer_action; for more complex bulk changes run a saved script.", {
+    tool("bulk_service_action", "Start, stop or restart one Windows service by name across several PCs after a single approval that lists them. Each PC is checked and verified on its own; a PC that fails (service missing, protected or unreachable) never stops the others. Protected system services are refused. The current service identity is inspected under each target's lock before changing it; no external snapshot is needed. For one PC bound to its inspect snapshot use computer_action; for more complex bulk changes run a saved script.", {
         "computers": {"type": "array", "items": STRING, "minItems": 1, "maxItems": 50},
         "action": {"type": "string", "enum": ["service_start", "service_stop", "service_restart"]},
         "name": STRING}, ["computers", "action", "name"]),
@@ -136,13 +136,21 @@ def computer(value):
     return value.upper()
 
 
-def inspection_targets(computers, view, validate=None):
-    if view not in ("preflight", "overview", "disks"):
-        raise ValueError("Bulk inspection covers preflight, overview or disks; use inspect_computer for services, processes or software")
+def computer_targets(computers, validate=None):
     if not isinstance(computers, list) or not 1 <= len(computers) <= 50:
         raise ValueError("Supply 1 to 50 computer names")
     validate = validate or computer
     return list(dict.fromkeys(validate(value) for value in computers))
+
+def inspection_targets(computers, view, validate=None):
+    if view not in ("preflight", "overview", "disks"):
+        raise ValueError("Bulk inspection covers preflight, overview or disks; use inspect_computer for services, processes or software")
+    return computer_targets(computers, validate)
+
+def service_targets(computers, action, name, validate=None):
+    if action not in ("service_start", "service_stop", "service_restart"):
+        raise ValueError("Bulk actions cover service_start, service_stop or service_restart")
+    return computer_targets(computers, validate), text(name, "service name")
 
 
 
@@ -619,31 +627,35 @@ class ITTools:
                 raise UnknownOutcome("%s: %s. Inspect current state before retrying." % (action, error)) from error
 
     def bulk_service_action(self, computers, action, name):
-        if action not in ("service_start", "service_stop", "service_restart"):
-            raise ValueError("Bulk actions cover service_start, service_stop or service_restart")
-        if not isinstance(computers, list) or not 1 <= len(computers) <= 50:
-            raise ValueError("Supply 1 to 50 computer names")
-        name = text(name, "service name")
-        pcs = []
-        for raw in computers:
-            pc = globals()["computer"](raw)
-            if pc not in pcs:
-                pcs.append(pc)
-        listing = ", ".join(pcs) if len(pcs) <= 10 else "%s and %d more" % (", ".join(pcs[:10]), len(pcs) - 10)
-        if not self.confirm("%s %s on %d PCs: %s" % (action, name, len(pcs), listing)):
+        pcs, name = service_targets(computers, action, name)
+        if not self.confirm("%s %s on %d PCs: %s" % (action, name, len(pcs), ", ".join(pcs))):
             return {"state": "declined"}
         results = []
         for pc in pcs:
-            # Each PC is independent: one failure (unreachable, missing or protected service) never stops the rest.
+            attempted = False
             try:
                 self.ensure_available(pc)
                 with target_lock(self.state, pc):
                     self.ensure_available(pc)
-                    data = self.ps({"op": action, "computer": pc, "name": name}, timeout=90)
-                results.append({"computer": pc, "ok": True, "verified": bool(data.get("verified")),
-                                "state": (data.get("after") or {}).get("State")})
+                    current = self.ps({"op": "inspect", "computer": pc, "view": "services", "query": name,
+                                       "offset": 0, "limit": 100})
+                    matches = [item for item in current.get("items", []) if str(item.get("Name", "")).casefold() == name.casefold()]
+                    if len(matches) != 1:
+                        raise ValueError("The exact service was not found; no service was changed")
+                    attempted = True
+                    data = self.ps({"op": action, "computer": pc, "name": name, "expected": matches[0]}, timeout=90)
+                wanted = "Stopped" if action == "service_stop" else "Running"
+                state = (data.get("after") or {}).get("State")
+                verified = data.get("verified") is True and state == wanted
+                row = {"computer": pc, "ok": verified, "verified": verified, "state": state,
+                       "outcome": "verified" if verified else "unknown"}
+                if not verified:
+                    row["error"] = "Service change was not verified. Inspect current state before retrying."
+                results.append(row)
             except Exception as error:
-                results.append({"computer": pc, "ok": False, "error": str(error)[:400]})
+                results.append({"computer": pc, "ok": False, "verified": False,
+                                "outcome": "unknown" if attempted else "not_started",
+                                "error": str(error)[:400] + (". Inspect current state before retrying." if attempted else "")})
         return {"action": action, "name": name, "count": len(results),
                 "succeeded": sum(1 for row in results if row["ok"]), "results": results}
 

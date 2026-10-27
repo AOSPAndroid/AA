@@ -15,6 +15,12 @@ error. AA uses Atlas's own checks. Every target is validated before any read;
 private inbox or clipboard context still requires approval for outside targets.
 The bundled PC-health skill covers this in both AA and standalone Axis.
 
+**Bulk service actions.** Start, stop or restart one named service on up to 50
+explicit PCs after one approval listing every target. Each PC keeps its own
+lock, service-identity and protected-service checks. Pending or unknown changes
+are reported separately and never counted as successes. AA uses Atlas's service
+controls; the same workflow and regression coverage ship in standalone Axis.
+
 **Import folder.** Save the users, devices, Citrix and package exports in
 `C:\AtlasXL` and Atlas imports them within a minute, each with its usual backup.
 Files are recognised by their columns. A users and devices snapshot that would
@@ -24,6 +30,7 @@ remove more than 10% waits for review in Manage Database > Import folder.
 expand for its full request and result, and **Thinking** is off by default with a
 header toggle (it resets off for each new chat). Turn it on for a hard problem.
 Existing saved chats keep their history when upgrading or changing this toggle.
+Collapsed tool cards show errors and batch results without opening their details.
 
 **Admin and Demo match.** Demo now shows the same map, desk inspector, menus and
 console pages as Admin, with changes greyed out instead of hidden or replaced.

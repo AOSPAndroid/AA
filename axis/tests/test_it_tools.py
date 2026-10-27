@@ -229,9 +229,11 @@ class ITTests(unittest.TestCase):
 
     def test_bulk_service_action_one_approval_per_pc_verification_and_isolated_failures(self):
         def ps(request, timeout=60):
+            if request["op"] == "inspect":
+                return {"items": [{"Name": "Spooler"}]}
             self.assertEqual(request["op"], "service_stop")
             self.assertEqual(request["name"], "Spooler")
-            self.assertNotIn("expected", request)  # Bulk matches by name; no per-PC snapshot.
+            self.assertEqual(request["expected"]["Name"], "Spooler")
             if request["computer"] == "PC-2":
                 raise RuntimeError("Protected service cannot be stopped or restarted")
             return {"ok": True, "computer": request["computer"], "verified": True, "after": {"State": "Stopped"}}
@@ -255,6 +257,34 @@ class ITTests(unittest.TestCase):
                     lambda: self.backend.bulk_service_action(["PC-1"], "service_stop", "")):
             with self.assertRaises(ValueError):
                 bad()
+
+    def test_bulk_service_approval_names_the_entire_batch(self):
+        self.confirm.return_value = False
+        self.backend.ps = Mock()
+        pcs = ['PC-%s' % i for i in range(12)]
+        self.backend.bulk_service_action(pcs, 'service_restart', 'Spooler')
+        for pc in pcs:
+            self.assertIn(pc, self.confirm.call_args[0][0])
+        self.backend.ps.assert_not_called()
+
+    def test_bulk_services_do_not_count_unverified_changes_as_success(self):
+        self.backend.ps = Mock(return_value={'ok': True, 'verified': False, 'items': [{'Name': 'Spooler'}],
+                                             'after': {'State': 'Running'}})
+        result = self.backend.bulk_service_action(['PC-1'], 'service_restart', 'Spooler')
+        self.assertEqual(result['succeeded'], 0)
+        self.assertFalse(result['results'][0]['ok'])
+
+    def test_bulk_service_change_uses_a_fresh_identity_under_the_target_lock(self):
+        service = {'Name': 'Spooler', 'PathName': 'C:\\Windows\\spoolsv.exe', 'StartName': 'LocalSystem'}
+        def ps(request, timeout=60):
+            if request['op'] == 'inspect':
+                return {'items': [service]}
+            self.assertEqual(request['expected'], service)
+            return {'ok': True, 'verified': True, 'after': {'State': 'Stopped'}}
+        self.backend.ps = Mock(side_effect=ps)
+        result = self.backend.bulk_service_action(['PC-1'], 'service_stop', 'Spooler')
+        self.assertEqual(result['succeeded'], 1)
+        self.assertEqual([call.args[0]['op'] for call in self.backend.ps.call_args_list], ['inspect', 'service_stop'])
 
     def test_snapshot_is_bound_to_target_view_and_lifetime(self):
         self.backend.ps = Mock(return_value={"ok": True, "computer": "PC-1", "items": [{"Name": "Spooler"}]})

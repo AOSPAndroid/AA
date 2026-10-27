@@ -106,6 +106,57 @@ class AtlasOperationTests(unittest.TestCase):
                     self.ops.call('inspect_computers', {'computers': computers, 'view': view})
         read.assert_not_called()
 
+    def test_bulk_service_actions_use_atlas_identity_guards_and_one_complete_approval(self):
+        def services(wmi, pc):
+            return {'items': [dict(SERVICE)]}
+        def restart(wmi, request):
+            self.assertEqual(request.expected_identity, SERVICE['identity'])
+            if request.computer == 'PC2':
+                return {'outcome': 'pending', 'state': 'Stop Pending', 'message': 'Still stopping'}
+            return {'outcome': 'restarted', 'state': 'Running'}
+        with patch('service_actions.list_services', side_effect=services), patch('service_actions.restart_service', side_effect=restart):
+            result = self.ops.call('bulk_service_action', {'computers': ['PC1', 'PC2'], 'action': 'service_restart', 'name': 'Spooler'})
+        self.assertEqual(result['succeeded'], 1)
+        self.assertEqual([(r['computer'], r['ok']) for r in result['results']], [('PC1', True), ('PC2', False)])
+        self.assertEqual(result['results'][1]['outcome'], 'pending')
+        self.assertEqual(self.confirm.call_count, 1)
+        for pc in ['PC1', 'PC2']:
+            self.assertIn(pc, self.confirm.call_args[0][0])
+
+    def test_bulk_service_action_runs_the_existing_atlas_service_transport(self):
+        result = self.ops.call('bulk_service_action', {'computers': ['testpc'], 'action': 'service_restart', 'name': 'Spooler'})
+        self.assertEqual(result['succeeded'], 1)
+        self.assertTrue(result['results'][0]['verified'])
+        self.assertTrue(any("-ExpectedIdentity '%s'" % SERVICE['identity'] in call for call in self.windows.calls))
+        self.assertEqual(self.confirm.call_count, 1)
+
+    def test_declined_or_invalid_bulk_service_actions_contact_no_pc(self):
+        with patch('service_actions.list_services') as read, patch('service_actions.restart_service') as change:
+            self.confirm.return_value = False
+            result = self.ops.call('bulk_service_action', {'computers': ['PC1'], 'action': 'service_restart', 'name': 'Spooler'})
+            self.assertEqual(result['state'], 'declined')
+            for computers in [['PC1', 'bad name'], [], ['PC%s' % i for i in range(51)]]:
+                with self.assertRaises(ValueError):
+                    self.ops.call('bulk_service_action', {'computers': computers, 'action': 'service_restart', 'name': 'Spooler'})
+        read.assert_not_called()
+        change.assert_not_called()
+
+    def test_bulk_services_keep_atlas_locks_and_protected_service_checks(self):
+        with patch('service_actions.list_services', return_value={'items': [dict(SERVICE, can_restart=False, restart_reason='Protected service')]}), patch('service_actions.restart_service') as change:
+            result = self.ops.call('bulk_service_action', {'computers': ['PC1'], 'action': 'service_restart', 'name': 'Spooler'})
+            self.assertEqual(result['succeeded'], 0)
+            self.assertIn('Protected', result['results'][0]['error'])
+        change.assert_not_called()
+        guard = app.target_lock('PC1')
+        self.assertTrue(guard.acquire(blocking=False))
+        try:
+            with patch('service_actions.list_services') as read:
+                result = self.ops.call('bulk_service_action', {'computers': ['PC1'], 'action': 'service_restart', 'name': 'Spooler'})
+        finally:
+            guard.release()
+        self.assertEqual(result['succeeded'], 0)
+        read.assert_not_called()
+
     def test_a_deployment_axis_starts_is_an_atlas_deployment(self):
         self.confirm.return_value = False
         self.assertEqual(self.ops.call('deploy_package', {'computers': ['testpc'], 'package': 'Example App',

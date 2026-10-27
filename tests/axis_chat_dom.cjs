@@ -326,6 +326,32 @@ test("split UTF-8 and CRLF events preserve full visible thinking, tool output an
   );
 });
 
+test("collapsed tool cards expose failures and mixed batch results", async (t) => {
+  const results = [
+    ["Error: PC unreachable", "error"],
+    [JSON.stringify({ error: "Access denied" }), "error"],
+    [JSON.stringify({ ok: false, items: [] }), "error"],
+    [JSON.stringify({ results: [{ ok: true }, { ok: false, outcome: "pending" }] }), "1 succeeded · 1 to review"],
+    ["User declined to contact a host outside Atlas.", "declined"],
+  ];
+  const f = fixture(t, {
+    route(call, api) {
+      if (call.url !== "/api/axis/chat") return;
+      const stream = api.stream();
+      for (const [result] of results) {
+        stream.event({ type: "tool_start", name: "bulk_service_action", args: {} });
+        stream.event({ type: "tool_result", name: "bulk_service_action", result });
+      }
+      stream.event({ type: "done" });
+      stream.end();
+      return stream.response;
+    },
+  });
+  f.submit("Show the results");
+  await f.idle();
+  assert.deepEqual(Array.from(f.w.document.querySelectorAll(".axis-tool-status"), (row) => row.textContent), results.map(([, status]) => status));
+});
+
 test("thinking is off by default, toggles per message, and resets on a new chat", async (t) => {
   const f = fixture(t);
   await tick();
