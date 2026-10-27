@@ -25,6 +25,7 @@ def main(python_only=False):
         source.close()
         dest.close()
         env = dict(os.environ, ATLAS_DB_PATH=str(db), AA_AXIS_STATE=str(Path(tmp) / 'axis-state'), AA_AXIS_TERMINAL_STATE=str(Path(tmp) / 'axis-terminal-state'),
+                   ATLAS_IMPORT_FOLDER=str(Path(tmp) / 'import-folder'),
                    PYTHON=sys.executable, PYTHONUTF8='1')
         # The complete imported Atlas suite starts many real PowerShell fixtures
         # on Windows, where it takes 9-10 minutes on hosted runners. Give the whole

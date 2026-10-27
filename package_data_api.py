@@ -13,6 +13,36 @@ from atlas_store import ClosingConnection
 import package_data as data
 
 
+def apply_import(database, value):
+    """Back up the package data, then upsert a parsed CSV; refused when package data changed since it was parsed."""
+    at = datetime.now(timezone.utc).isoformat()
+    import_id = uuid.uuid4().hex
+    backups = Path(database).resolve().parent / 'backups'
+    backups.mkdir(parents=True, exist_ok=True)
+    backup = backups / ('package-data-' + import_id + '.json.gz')
+    try:
+        with sqlite3.connect(database, timeout=20, factory=ClosingConnection) as con:
+            con.execute('begin immediate')
+            existing = data.load(con)
+            if data.fingerprint(existing) != value['fingerprint']:
+                raise HTTPException(409, 'Package data changed. Validate a fresh preview.')
+            # A package-only backup avoids copying a global directory database.
+            with gzip.open(backup, 'wt', encoding='utf-8') as archive:
+                json.dump({'schema': 1, 'at': at, 'packages': list(existing.values())}, archive, ensure_ascii=False)
+            columns = ['name_key', *data.FIELDS, *data.SOURCE_FIELDS, 'source', 'imported_at']
+            update = ','.join(f'{c}=excluded.{c}' for c in columns if c != 'name_key')
+            sql = f"insert into package_data({','.join(columns)}) values({','.join('?' for _ in columns)}) on conflict(name_key) do update set {update}"
+            for row in value['rows'].values():
+                item = {**row, 'source': value['source'], 'imported_at': at}
+                con.execute(sql, tuple(item[c] for c in columns))
+            con.execute('insert into package_data_imports values(?,?,?,?,?)',
+                        (import_id, at, value['source'], json.dumps(value['report']), str(backup)))
+    except Exception:
+        backup.unlink(missing_ok=True)
+        raise
+    return {'count': value['report']['after'], 'backup': backup.name, 'imported_at': at}
+
+
 def register(app, wmi, check_token):
     staged = {}
     with sqlite3.connect(wmi.MASTER_DB, factory=ClosingConnection) as con:
@@ -80,30 +110,7 @@ def register(app, wmi, check_token):
         value = staged.get(key)
         if not value:
             raise HTTPException(409, 'Package preview expired or was replaced. Validate the CSV again.')
-        at = datetime.now(timezone.utc).isoformat()
-        import_id = uuid.uuid4().hex
-        backups = Path(wmi.MASTER_DB).resolve().parent / 'backups'
-        backups.mkdir(parents=True, exist_ok=True)
-        backup = backups / ('package-data-' + import_id + '.json.gz')
-        try:
-            with connect() as con:
-                con.execute('begin immediate')
-                existing = data.load(con)
-                if data.fingerprint(existing) != value['fingerprint']:
-                    raise HTTPException(409, 'Package data changed. Validate a fresh preview.')
-                # A package-only backup avoids copying a global directory database.
-                with gzip.open(backup, 'wt', encoding='utf-8') as archive:
-                    json.dump({'schema': 1, 'at': at, 'packages': list(existing.values())}, archive, ensure_ascii=False)
-                columns = ['name_key', *data.FIELDS, *data.SOURCE_FIELDS, 'source', 'imported_at']
-                update = ','.join(f'{c}=excluded.{c}' for c in columns if c != 'name_key')
-                sql = f"insert into package_data({','.join(columns)}) values({','.join('?' for _ in columns)}) on conflict(name_key) do update set {update}"
-                for row in value['rows'].values():
-                    item = {**row, 'source': value['source'], 'imported_at': at}
-                    con.execute(sql, tuple(item[c] for c in columns))
-                con.execute('insert into package_data_imports values(?,?,?,?,?)',
-                            (import_id, at, value['source'], json.dumps(value['report']), str(backup)))
-        except Exception:
-            backup.unlink(missing_ok=True)
-            raise
+        result = apply_import(wmi.MASTER_DB, value)
         del staged[key]
-        return {'ok': True, 'count': value['report']['after'], 'backup': backup.name, 'imported_at': at}
+        return {'ok': True, **result}
+

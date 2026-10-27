@@ -75,10 +75,24 @@ def compare(target,candidate):
    result['warnings'].append('This older backup has no original export archive. Restoring it removes the current archive; stored directory fields remain.')
   return result
 
+HISTORY_SCHEMA='create table if not exists directory_import_history(id text primary key,at text,source text,backup text,report text)'
+
+def apply_directory(db,candidate,source,report,expected):
+ """Back up, then merge a prepared candidate; refused when the directory changed since `expected`."""
+ from datetime import datetime,timezone
+ at=datetime.now(timezone.utc).isoformat()
+ def validate_current(c):
+  if fingerprint_connection(c)!=expected:raise HTTPException(409,'Directory or account links changed. Prepare a fresh preview.')
+ def record_import(c,backup):
+  c.execute(HISTORY_SCHEMA)
+  c.execute('insert into directory_import_history values(?,?,?,?,?)',(uuid.uuid4().hex,at,source,str(backup),json.dumps(report)))
+  c.execute('insert or replace into metadata values(?,?)',('directory.created_at',at))
+ return apply_refresh(db,candidate,Path(db).parent/'backups',before_merge=validate_current,after_merge=record_import)
+
 def register_database_manager(app,wmi,check_token):
  from urllib.parse import unquote
  root=Path(__file__).parent;staged={};gate=asyncio.Lock()
- with sqlite3.connect(wmi.MASTER_DB,factory=ClosingConnection) as c:c.execute('create table if not exists directory_import_history(id text primary key,at text,source text,backup text,report text)')
+ with sqlite3.connect(wmi.MASTER_DB,factory=ClosingConnection) as c:c.execute(HISTORY_SCHEMA)
  def busy():
   from shared_operations import axis_busy
   return any(j.get('state') not in ('complete','failed','cancelled','interrupted','unknown') for pool in (wmi.jobs,wmi.queue_jobs) for j in list(pool.values())) or axis_busy()
@@ -225,14 +239,7 @@ def register_database_manager(app,wmi,check_token):
   if not s:raise HTTPException(409,'Preview expired or was replaced. Validate the file again.')
   if body.get('confirmation')!='APPLY' or body.get('full_snapshot') is not True:raise HTTPException(400,'Confirm the complete intended directory snapshot and type APPLY.')
   if busy():raise HTTPException(409,'Active jobs or queues must finish first.')
-  from datetime import datetime,timezone
-  at=datetime.now(timezone.utc).isoformat()
-  def validate_current(c):
-   if fingerprint_connection(c)!=s['fingerprint']:raise HTTPException(409,'Directory or account links changed. Prepare a fresh preview.')
-  def record_import(c,backup):
-   c.execute('insert into directory_import_history values(?,?,?,?,?)',(uuid.uuid4().hex,at,s['source'],str(backup),json.dumps(s['report'])))
-   c.execute('insert or replace into metadata values(?,?)',('directory.created_at',at))
-  backup=apply_refresh(wmi.MASTER_DB,s['candidate'],Path(wmi.MASTER_DB).parent/'backups',before_merge=validate_current,after_merge=record_import)
+  backup=apply_directory(wmi.MASTER_DB,s['candidate'],s['source'],s['report'],s['fingerprint'])
   del staged[stage_id];shutil.rmtree(s['folder'],ignore_errors=True)
   return {'ok':True,'backup':backup.name,'counts':counts(wmi.MASTER_DB)}
 
@@ -244,3 +251,6 @@ def register_database_manager(app,wmi,check_token):
  # Live floor plan: the assistants' desk-plan Excel keeps official seating current.
  from seating_sync import register as register_seating_sync
  register_seating_sync(app,wmi,check_token,busy,Path(wmi.MASTER_DB).resolve().parent/'seating-sync.json')
+ # Import folder: exports saved in one folder (C:\AtlasXL by default) update the database by themselves.
+ from import_folder import register as register_import_folder
+ register_import_folder(app,wmi,check_token,busy,Path(wmi.MASTER_DB).resolve().parent/'import-folder.json')

@@ -282,6 +282,8 @@
     section.scrollIntoView({ block: "start", behavior: "instant" });
   }
   window.addEventListener("hashchange", focusUploadSection);
+  // The import folder card reports imports made from the folder.
+  window.addEventListener("atlas:database-imported", () => status().catch(() => {}));
   focusUploadSection();
   // Loading counts and history must not disable uploads. Mutation requests
   // acquire a session lazily and recover on the next click after expiry.

@@ -2,6 +2,11 @@
 
 Atlas's map and Axis chat in one application.
 
+**Import folder.** Save the users, devices, Citrix and package exports in
+`C:\AtlasXL` and Atlas imports them within a minute, each with its usual backup.
+Files are recognised by their columns. A users and devices snapshot that would
+remove more than 10% waits for review in Manage Database > Import folder.
+
 **Admin and Demo match.** Demo now shows the same map, desk inspector, menus and
 console pages as Admin, with changes greyed out instead of hidden or replaced.
 The top left reads **Atlas**, and **Ask Axis** is a floating button in the

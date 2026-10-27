@@ -89,6 +89,10 @@ If the model is missing, the map still opens and chat explains how to start it.
   restart and continues where it stopped. The local Admin backend keeps the 20
   most recent chats in `data/axis/chats`; nothing is stored in the browser.
   Decisions show as history, so a saved approval can never be answered again.
+- **Import folder:** save the users, devices, Citrix and package exports in
+  `C:\AtlasXL` and Atlas updates its database within a minute, with a backup
+  first. A users and devices snapshot that would remove more than 10% waits for
+  your review in Manage Database. See the [database update guide](docs/database-update-guide.md#easiest-the-import-folder).
 - **Demo is Admin, greyed out:** the LAN Viewer (Demo) shows the same map,
   inspector, menus and console pages as Admin. Changes, live checks, deployment,
   Clipboard, Live Inbox collection and **Ask Axis** are visible but disabled;
