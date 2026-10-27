@@ -96,6 +96,7 @@ def commit_directory(database,candidate,source,report,expected,busy=None):
 def register_database_manager(app,wmi,check_token):
  from urllib.parse import unquote
  root=Path(__file__).parent;staged={};gate=asyncio.Lock()
+ app.state.mutation_gate=gate  # The data folder's background imports take the same gate.
  with sqlite3.connect(wmi.MASTER_DB,factory=ClosingConnection) as c:c.execute('create table if not exists directory_import_history(id text primary key,at text,source text,backup text,report text)')
  def busy():
   from shared_operations import axis_busy

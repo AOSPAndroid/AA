@@ -7,7 +7,7 @@ validation as Manage Database and applies it with the same backup and import his
 first, so Citrix links see new accounts, then Citrix, then packages. A users-and-devices snapshot that
 would remove more than 10% of users or devices, or loses columns, waits for review. Admin only.
 """
-import csv
+import asyncio
 import hashlib
 import json
 import os
@@ -16,8 +16,7 @@ import sqlite3
 import tempfile
 import threading
 import time
-import xml.etree.ElementTree as ET
-import zipfile
+from contextlib import contextmanager, nullcontext
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
@@ -31,13 +30,22 @@ SOURCE = 'Data folder'
 FOLDERS = (r'C:\AtlasXL', r'C:\AxisXL')  # The first that exists is used until a person saves another folder
 DEFAULT_FOLDER = FOLDERS[0]
 CHECK_SECONDS = 15 * 60  # Exports change a few times a week; Check now imports straight away
+RETRY_SECONDS = 60  # Sooner while a file is being saved, Admin is busy or the database is in use
 STABLE_SECONDS = 30
 KEEP_BACKUPS = 10
 SUFFIXES = ('.csv', '.xlsx')
 ORDER = ('directory', 'vdi', 'packages')
 LABELS = {'directory': 'Users & devices', 'vdi': 'Citrix VDI', 'packages': 'Package data'}
 PACKAGE_STATE = ('u_package_sub_state', 'package state')
-READ_ERRORS = (OSError, ValueError, KeyError, IndexError, zipfile.BadZipFile, ET.ParseError, csv.Error, UnicodeError)
+# Citrix Studio's own columns: Name and User alone could be any list of people.
+CITRIX_FIELDS = ('catalog', 'delivery_group', 'maintenance_mode', 'user_change_persistence', 'power_state')
+# Asset and CI columns: Name alone could be any ServiceNow list.
+DEVICE_FIELDS = {'infrastructure_itsi', 'sys_class_name', 'operational_status', 'correlation_id', 'serial_number', 'model_id',
+                 'last_discovered', 'discovery_source', 'last_logon_user', 'asset_tag', 'model_category', 'last_used', 'install_status'}
+
+
+class Changed(Exception):
+    """An export changed while it was read: it is read again on the next look."""
 
 
 class Settings(BaseModel):
@@ -64,29 +72,43 @@ def header(path):
 
 
 def classify(path):
-    """'user', 'machine', 'vdi', 'package' or '' (not an export Atlas imports), from the header row."""
+    """('user' | 'machine' | 'vdi' | 'package' | '', why a file is left alone), from the header row.
+    OSError (open elsewhere, still downloading) is raised: the file is looked at again."""
+    try:
+        headers = header(path)
+    except OSError:
+        raise
+    except Exception:  # Not a CSV or workbook Atlas can read; the same file fails the same way.
+        return '', 'not a CSV or XLSX export Atlas can read'
+    return kind_of(headers)
+
+
+def kind_of(headers):
     import directory_pair
     import package_data
     import vdi_data
-    try:
-        headers = header(path)
-    except READ_ERRORS:
-        return ''
+    from directory_workbook import directory_columns
     if not headers:
-        return ''
-    kind = directory_pair.kind_of(headers)
-    if kind == 'user':
-        return kind
-    # Citrix and package exports also have a Name column, which alone would read as devices.
+        return '', 'no header row'
+    if directory_pair.kind_of(headers) == 'user':
+        return 'user', ''
+    keys = {vdi_data.header_key(value) for value in headers}
     try:
         vdi_data._mapping(headers)
-        return 'vdi'
+        if any(keys & set(vdi_data.FIELDS[field]) for field in CITRIX_FIELDS):
+            return 'vdi', ''
     except ValueError:
         pass
+    users = {field for _, _, field in directory_columns('user', headers)}
+    if {'user_id', 'full_name'} <= users:
+        return '', 'looks like a users export but has no email column; export it with email'
     names = {value.casefold() for value in headers}
     if names & set(package_data.FIELDS['short_name']) and names & set(PACKAGE_STATE):
-        return 'package'
-    return kind
+        return 'package', ''
+    machines = {field for _, _, field in directory_columns('machine', headers)}
+    if 'machine_name' in machines and machines & DEVICE_FIELDS:
+        return 'machine', ''
+    return '', ''
 
 
 def file_hash(path):
@@ -102,16 +124,21 @@ def now():
 
 
 class DataFolder:
-    def __init__(self, db, repo, state_path, busy=lambda: False, interval=CHECK_SECONDS, clock=time.time, settle=2, default_folder=None):
+    def __init__(self, db, repo, state_path, busy=lambda: False, interval=CHECK_SECONDS, clock=time.time, settle=2,
+                 default_folder=None, gate=nullcontext):
         # db/repo may be callables, so the folder follows the server's current database and repository.
         self._db, self._repo, self.state_path = db, repo, Path(state_path)
         self.busy, self.interval, self.clock, self.settle = busy, interval, clock, settle
+        # Admin's change gate, held around each background import as an HTTP request holds it: an import
+        # never interleaves with a deployment starting or a desk edit.
+        self.gate = gate
         self.lock = threading.Lock()
         self.held = None
         self.files = {}  # (name, size, mtime) -> {'kind': ..., 'hash': ...}, so unchanged exports are not read again
         self.thread = None
         self.checked = None
-        self.stop_event = threading.Event()
+        self.soon = False  # Look again in RETRY_SECONDS rather than the usual interval.
+        self.stop_event, self.wake = threading.Event(), threading.Event()
         # Until a person saves settings, the built-in folder is used and the data folder is on.
         self.default_folder = default_folder
         self.state = self.load()
@@ -149,9 +176,19 @@ class DataFolder:
         temporary.write_text(json.dumps(self.state, indent=2, ensure_ascii=False), encoding='utf-8')
         os.replace(temporary, self.state_path)
 
+    @contextmanager
+    def locked(self):
+        """For requests: a background check may be waiting for the change gate the request holds, so do not wait long."""
+        if not self.lock.acquire(timeout=5):
+            raise HTTPException(409, 'The folder is being checked. Try again in a moment.')
+        try:
+            yield
+        finally:
+            self.lock.release()
+
     def configure(self, settings):
         folder = settings.folder.strip().strip('"').strip()
-        with self.lock:
+        with self.locked():
             if folder != self.folder():
                 self.state['kinds'] = {}  # Files in another folder are new to Atlas.
             self.state.update(folder=folder, enabled=settings.enabled and bool(folder), review_large=settings.review_large)
@@ -197,83 +234,105 @@ class DataFolder:
         return (path.name, stat.st_size, stat.st_mtime_ns)
 
     def scan(self, folder):
-        """Newest file of each kind first. Files still being saved or copied are left until they settle:
-        saved in the last 30 seconds, or growing between two looks (a copy keeps the old modified time)."""
+        """Newest file of each kind first, unrecognised files, and files not ready: saved in the last 30 seconds,
+        growing between two looks (a copy keeps the old modified time), or open elsewhere or still downloading."""
         found = {'user': [], 'machine': [], 'vdi': [], 'package': []}
         ignored, fresh = [], []
         candidates = {}
         for path in folder.iterdir():
             if path.suffix.casefold() in SUFFIXES and not path.name.startswith(('~$', '.')) and path.is_file():
                 candidates[path] = self.signature(path)
-        if any(signature not in self.files for signature in candidates.values()) and self.settle:
+        if self.settle and any(signature not in self.files for signature in candidates.values()):
             time.sleep(self.settle)
         for path, signature in candidates.items():
-            if not signature or self.signature(path) != signature or self.clock() - signature[2] / 1e9 < STABLE_SECONDS:
+            if not signature or self.signature(path) != signature or 0 <= self.clock() - signature[2] / 1e9 < STABLE_SECONDS:
                 fresh.append(path.name)
                 continue
             if signature not in self.files:
-                self.files[signature] = {'kind': classify(path)}
-            kind = self.files[signature]['kind']
-            (found[kind] if kind else ignored).append(path)
+                try:
+                    kind, note = classify(path)
+                except OSError:
+                    fresh.append(path.name)
+                    continue
+                self.files[signature] = {'kind': kind, 'note': note}
+            info = self.files[signature]
+            if info['kind']:
+                found[info['kind']].append(path)
+            else:
+                ignored.append(path.name + (f' ({info["note"]})' if info.get('note') else ''))
         self.files = {signature: info for signature, info in self.files.items() if signature in candidates.values()}
         for paths in found.values():
-            paths.sort(key=lambda path: path.stat().st_mtime, reverse=True)
-        return found, sorted(path.name for path in ignored), fresh
+            paths.sort(key=lambda path: candidates[path][2], reverse=True)
+        return found, sorted(ignored), sorted(fresh)
 
     def digest(self, paths):
         """One hash for these files' names and contents, read once per saved version."""
         h = hashlib.sha256()
         for path in paths:
-            info = self.files.setdefault(self.signature(path), {'kind': ''})
+            info = self.files.get(self.signature(path))
+            if info is None:
+                raise Changed(f'{path.name} changed while Atlas was reading it; reading it again shortly.')
             if 'hash' not in info:
                 info['hash'] = file_hash(path)
             h.update(path.name.encode() + b'\0' + info['hash'].encode())
         return h.hexdigest()
 
-    def check(self, force=False):
-        """One pass over the folder. Safe to call at any time; a pass already running is not repeated."""
+    def check(self, force=False, gate=nullcontext):
+        """One pass over the folder. Safe to call at any time; a pass already running is not repeated.
+        Requests already hold Admin's change gate; the background thread passes it as gate."""
         if not self.lock.acquire(blocking=False):
             return self.summary()
         try:
-            return self._check(force)
+            return self._check(force, gate)
         finally:
             self.lock.release()
 
-    def _check(self, force):
+    def _check(self, force, gate):
         self.checked = now()
+        self.soon = False
         if not self.enabled() or not self.folder():
             return self.summary()
         folder = Path(self.folder()).expanduser()
-        if not folder.is_dir():
+        try:
+            found, self.state['ignored'], fresh = self.scan(folder)
+        except OSError:
             self.set_status('error', f'Folder not reachable: {folder}. Create it, or check the path.')
             return self.summary()
-        found, self.state['ignored'], fresh = self.scan(folder)
+        if fresh:
+            # A newer export may be half saved: importing the older one, or half of a new pair, would be wrong.
+            self.soon = True
+            self.overall(fresh)
+            return self.summary()
         with tempfile.TemporaryDirectory(prefix='atlas_data_folder_') as work:
             for kind in ORDER:
                 try:
-                    getattr(self, '_' + kind)(found, Path(work), force)
-                except HTTPException as error:  # The data changed underneath, or jobs started: try again next time.
-                    self.mark(kind, 'waiting', str(error.detail))
-                except OSError as error:  # Open in Excel, being synced, or just removed: try again next time.
-                    self.mark(kind, 'waiting', f'Could not read the export yet ({error.__class__.__name__}); retrying.')
-                except READ_ERRORS + (sqlite3.Error,) as error:
+                    getattr(self, '_' + kind)(found, Path(work), force, gate)
+                except (HTTPException, Changed, OSError, sqlite3.OperationalError) as error:
+                    # The data changed underneath, jobs started, an export is open or changing, or the
+                    # database is in use: look again shortly.
+                    self.soon = True
+                    self.mark(kind, 'waiting', str(error.detail) if isinstance(error, HTTPException) else str(error) if isinstance(error, Changed)
+                              else f'Could not finish yet ({error.__class__.__name__}: {error}); retrying in a minute.')
+                except Exception as error:
                     # Refused until the export changes: the same file would fail the same way.
                     files = self.files_for(kind, found)
                     try:
                         h = self.digest(files) if files else None
-                    except OSError:
+                    except (OSError, Changed):
                         h = None
                     self.mark(kind, 'error', f'{", ".join(p.name for p in files)}: {error}', files=[p.name for p in files], hash=h)
-        self.overall(fresh)
+        self.overall()
         return self.summary()
 
     def overall(self, fresh=()):
         """The card's headline: the most pressing state among the exports."""
         results = [entry.get('result') for entry in self.state.get('kinds', {}).values()]
-        state = 'error' if 'error' in results else 'held' if 'held' in results else 'waiting' if 'waiting' in results or fresh else 'synced'
+        state = 'waiting' if fresh else 'error' if 'error' in results else 'held' if 'held' in results else 'waiting' if 'waiting' in results else 'synced'
+        names = ', '.join(fresh)
         self.set_status(state, {'error': 'An export could not be imported; see below.',
                                 'held': 'A users-and-devices snapshot is waiting for your review.',
-                                'waiting': 'Waiting: ' + (', '.join(fresh) + ' still being saved.' if fresh else 'see below.'),
+                                'waiting': f'Waiting: {names} {"is" if len(fresh) == 1 else "are"} still being saved or in use; '
+                                           'nothing is imported until it is ready.' if fresh else 'Waiting: see below.',
                                 'synced': 'Up to date with the exports in the folder.'}[state])
 
     @staticmethod
@@ -283,18 +342,23 @@ class DataFolder:
         return found['vdi' if kind == 'vdi' else 'package'][:1]
 
     def copy(self, paths, work):
-        """Read from copies: Excel and OneDrive may hold or rewrite the originals."""
+        """Read from copies: Excel and OneDrive may hold or rewrite the originals. A copy must match the version
+        that was hashed, so what is recorded as imported is what was read."""
         folder = work / uuid4().hex
         folder.mkdir()
         copies = []
         for path in paths:
-            shutil.copy2(path, folder / path.name)
-            copies.append(folder / path.name)
+            target = folder / path.name
+            shutil.copy2(path, target)
+            if file_hash(target) != self.files.get(self.signature(path), {}).get('hash'):
+                raise Changed(f'{path.name} changed while Atlas was reading it; reading it again shortly.')
+            copies.append(target)
         return copies
 
-    def _directory(self, found, work, force):
+    def _directory(self, found, work, force, gate):
         users, devices = found['user'], found['machine']
         if not users or not devices:
+            self.discard_held()  # What was reviewed is no longer in the folder.
             if users or devices:
                 have, need = (users[0].name, 'devices export (such as alm_asset)') if users else (devices[0].name, 'users export (such as sys_user)')
                 self.mark('directory', 'waiting', f'Found {have}; add the {need} too. Both are needed for a directory update.', files=[have])
@@ -303,12 +367,12 @@ class DataFolder:
             return
         files = [users[0], devices[0]]
         h = self.digest(files)
-        if self.held and self.held['hash'] == h:
+        if self.held and self.held['hash'] != h:
+            self.discard_held()
+        if self.held or self.handled('directory', h, force):
             return
-        if self.handled('directory', h, force):
-            return
-        self.discard_held()
         if self.busy():  # Imports wait for deployments and queues, as in Manage Database.
+            self.soon = True
             self.mark('directory', 'waiting', 'Deployments or queue jobs are running; users and devices update once they finish.',
                       files=[p.name for p in files])
             return
@@ -326,8 +390,9 @@ class DataFolder:
             with sqlite3.connect(candidate, factory=ClosingConnection) as c:
                 if directory_exports.exists(c):
                     c.execute('update directory_export_sheets set source_file=?', (source[len(SOURCE) + 3:],))
-            report = compare(self.db, candidate)
+            # Taken first: a change made during the comparison is caught when applying, not applied over.
             expected = fingerprint(self.db)
+            report = compare(self.db, candidate)
             names = [p.name for p in files]
             changes = sum(report[t][k] for t in ('users', 'machines') for k in ('added', 'removed', 'changed'))
             changes += report['relationships']['added'] + report['relationships']['removed']
@@ -340,23 +405,22 @@ class DataFolder:
                 held_folder = None  # Kept until applied or replaced.
                 self.mark('directory', 'held', 'Large change: waiting for your review below.', files=names, hash=h)
                 return
-            self.commit_directory(str(candidate), source, report, expected, names, h)
+            self.commit_directory(str(candidate), source, report, expected, names, h, gate)
         finally:
             if held_folder:
                 shutil.rmtree(held_folder, ignore_errors=True)
 
-    def commit_directory(self, candidate, source, report, expected, names, h):
+    def commit_directory(self, candidate, source, report, expected, names, h, gate=nullcontext):
         from database_manager import commit_directory
-        backup = commit_directory(self.db, candidate, source, report, expected, busy=self.busy)
+        with gate():
+            backup = commit_directory(self.db, candidate, source, report, expected, busy=self.busy)
         counts = {t: {k: report[t][k] for k in ('added', 'removed', 'changed')} for t in ('users', 'machines')}
         summary = '; '.join(f"{label} {counts[t]['added']:,} added, {counts[t]['removed']:,} removed, {counts[t]['changed']:,} updated"
                             for t, label in (('users', 'users'), ('machines', 'devices')))
         self.mark('directory', 'applied', 'Updated: ' + summary, files=names, hash=h, handled=True, backup=backup.name)
         self.remember('directory', names, summary, backup.name)
-        self.state['directory_backups'] = [backup.name, *self.state.get('directory_backups', [])]
-        self.prune()
 
-    def _vdi(self, found, work, force):
+    def _vdi(self, found, work, force, gate):
         import vdi_data_api
         paths = found['vdi']
         if not paths:
@@ -373,12 +437,13 @@ class DataFolder:
         if not (report['added'] or report['changed'] or report['removed']):
             self.mark('vdi', 'unchanged', 'Citrix VDI data already matches this export.', files=[path.name], hash=h, handled=True)
             return
-        result = vdi_data_api.commit(self.db, value)
+        with gate():
+            result = vdi_data_api.commit(self.db, value)
         summary = f"{report['added']:,} added, {report['changed']:,} updated"
         self.mark('vdi', 'applied', 'Updated: ' + summary, files=[path.name], hash=h, handled=True, backup=result['backup'])
         self.remember('vdi', [path.name], summary, result['backup'])
 
-    def _packages(self, found, work, force):
+    def _packages(self, found, work, force, gate):
         import package_data_api
         paths = found['package']
         if not paths:
@@ -397,7 +462,8 @@ class DataFolder:
         if not (report['added'] or report['changed']):
             self.mark('packages', 'unchanged', 'Package data already matches this export.', files=[path.name], hash=h, handled=True)
             return
-        result = package_data_api.commit(self.db, value)
+        with gate():
+            result = package_data_api.commit(self.db, value)
         summary = f"{report['added']:,} added, {report['changed']:,} updated"
         self.mark('packages', 'applied', 'Updated: ' + summary, files=[path.name], hash=h, handled=True, backup=result['backup'])
         self.remember('packages', [path.name], summary, result['backup'])
@@ -405,16 +471,20 @@ class DataFolder:
     def remember(self, kind, files, summary, backup):
         entry = {'at': now(), 'kind': kind, 'label': LABELS[kind], 'files': files, 'summary': summary, 'backup': backup}
         self.state['history'] = [entry, *self.state.get('history', [])][:50]
+        self.prune(kind, backup)
 
-    def prune(self):
-        """Keep the newest full-database backups this folder made; Manage Database imports keep their own."""
-        made = self.state.get('directory_backups', [])
+    def prune(self, kind, backup):
+        """Keep the newest backups each kind of import from this folder made; Manage Database imports keep their own."""
+        made = [backup, *self.state.setdefault('backups', {}).get(kind, [])]
         for name in made[KEEP_BACKUPS:]:
-            (Path(self.db).parent / 'backups' / name).unlink(missing_ok=True)
-        self.state['directory_backups'] = made[:KEEP_BACKUPS]
+            try:
+                (self.db.parent / 'backups' / name).unlink(missing_ok=True)
+            except OSError:
+                pass  # Open elsewhere: it stays, and is no longer counted.
+        self.state['backups'][kind] = made[:KEEP_BACKUPS]
 
     def apply_held(self, expected_id):
-        with self.lock:
+        with self.locked():
             held = self.held
             if not held:
                 raise HTTPException(409, 'Nothing is waiting for review. Check the folder again.')
@@ -423,24 +493,40 @@ class DataFolder:
             if self.busy():
                 raise HTTPException(409, 'Finish active jobs and queues first.')
             try:
+                # Only the exports that were reviewed, and only while they are still the newest in the folder.
+                found, _, fresh = self.scan(Path(self.folder()).expanduser())
+                current = None if fresh else self.digest(self.files_for('directory', found))
+                if current != held['hash']:
+                    raise HTTPException(409, 'The exports changed since this review. Atlas compares them again within a minute.')
                 self.commit_directory(held['candidate'], held['source'], held['report'], held['fingerprint'], held['files'], held['hash'])
-            except HTTPException:
-                self.discard_held()  # Prepared against data that has since changed: prepare it again.
-                self.state['kinds']['directory'] = {'result': 'waiting', 'message': 'The directory changed; comparing again.', 'at': now()}
+            except (HTTPException, OSError, Changed) as error:
+                self.discard_held()  # Prepared against files or data that have since changed: prepare it again.
+                self.mark('directory', 'waiting', 'The exports or the directory changed; comparing again.')
+                self.soon = True
+                self.wake.set()
                 self.save()
-                raise
+                if isinstance(error, HTTPException):
+                    raise
+                raise HTTPException(409, 'The exports changed since this review. Atlas compares them again within a minute.')
             self.discard_held()
             self.overall()
             return self.summary()
 
     def run(self):
-        self.stop_event.wait(5)  # First look once Admin has started, then every CHECK_SECONDS.
-        while not self.stop_event.is_set():
+        delay = 5  # First look once Admin has started.
+        while True:
+            self.wake.wait(delay)
+            self.wake.clear()
+            if self.stop_event.is_set():
+                return
             try:
-                self.check()
-            except Exception as error:  # A bad export never stops the watcher.
-                self.set_status('error', f'Data folder check failed: {error}')
-            self.stop_event.wait(self.interval)
+                self.check(gate=self.gate)
+            except Exception as error:  # A bad export or a full disk never stops the watcher.
+                try:
+                    self.set_status('error', f'Data folder check failed: {error}')
+                except Exception:
+                    pass
+            delay = RETRY_SECONDS if self.soon else self.interval
 
     def start(self):
         if not self.thread:
@@ -449,6 +535,7 @@ class DataFolder:
 
     def close(self):
         self.stop_event.set()
+        self.wake.set()
         self.discard_held()
 
 
@@ -457,7 +544,22 @@ def default_exports_folder():
 
 
 def register(app, wmi, check_token, busy, state_path):
-    folder = DataFolder(lambda: wmi.MASTER_DB, lambda: wmi.REPO, state_path, busy, default_folder=default_exports_folder)
+    loops = []
+
+    @contextmanager
+    def admin_gate():
+        """Hold Admin's change gate (database_manager) from the background thread, as a request would."""
+        gate = getattr(app.state, 'mutation_gate', None)
+        if gate is None or not loops or loops[0].is_closed():
+            yield
+            return
+        asyncio.run_coroutine_threadsafe(gate.acquire(), loops[0]).result()
+        try:
+            yield
+        finally:
+            loops[0].call_soon_threadsafe(gate.release)
+
+    folder = DataFolder(lambda: wmi.MASTER_DB, lambda: wmi.REPO, state_path, busy, default_folder=default_exports_folder, gate=admin_gate)
 
     @app.get('/api/data-folder')
     def status():
@@ -480,7 +582,8 @@ def register(app, wmi, check_token, busy, state_path):
         return folder.apply_held(body.id)
 
     @app.on_event('startup')
-    def begin():
+    async def begin():
+        loops.append(asyncio.get_running_loop())
         folder.start()
 
     @app.on_event('shutdown')

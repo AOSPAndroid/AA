@@ -23,18 +23,19 @@ Save the exports in `C:\AtlasXL` (or `C:\AxisXL`) and Atlas keeps itself up to d
 - **Citrix VDI:** the `SingleSessionMachines` export.
 - **Package data:** the ServiceNow package export (`u_cmdb_software_package`), as CSV.
 
-The data folder is on by default and uses `C:\AtlasXL`, or `C:\AxisXL` if only that one exists. You can use another folder, or turn it off, in **Admin → Manage Database → Data folder**. Replace the files whenever you have new exports. Names don't matter: Atlas recognises each file by its columns, and lists any file it doesn't recognise as left alone.
+The data folder is on by default and uses `C:\AtlasXL`, or `C:\AxisXL` if only that one exists. You can use another folder, or turn it off, in **Admin → Manage Database → Data folder**. Replace the files whenever you have new exports. Names don't matter: Atlas recognises each file by its columns, and lists any file it doesn't recognise as left alone, with the reason when it can tell (for example, a users export without the email column).
 
 Atlas looks when Admin starts and then every 15 minutes; **Check now** on the card looks straight away. It imports a file only when its content changed:
 
 - **Same checks:** it uses the same validation, backups and import history as the uploads described below. **Restore directory before this import** works for folder imports too.
 - **Order:** users and devices first, so Citrix links see new accounts, then Citrix, then packages.
-- **Half-saved files:** a file saved in the last 30 seconds, or still growing while it is copied, is left until it settles.
+- **Half-saved files:** while any file in the folder was saved in the last 30 seconds, is still growing, or is open in a program that blocks reading, nothing is imported. Atlas looks again a minute later.
+- **Retries:** a file that changes while Atlas reads it, a database briefly in use, or running jobs are retried a minute later. Imports take turns with deployments and desk edits, as uploads do.
 - **Running jobs:** users and devices wait for active deployments and queue jobs, as uploads do.
 - **Citrix VDI:** uses update mode. Supplied VDIs are replaced and omitted ones kept.
-- **Large changes:** with **Ask before large changes** on, a users-and-devices export that would remove more than 10% of users or devices, or that loses columns, waits on the card. Review the counts and examples there, then click **Apply this snapshot**. This catches a partial or filtered export before it empties directory search.
+- **Large changes:** with **Ask before large changes** on, a users-and-devices export that would remove more than 10% of users or devices, or that loses columns, waits on the card. Review the counts and examples there, then click **Apply this snapshot**. If the exports change or are removed before you apply, the review is dropped and Atlas compares the new files. This catches a partial or filtered export before it empties directory search.
 - **Refused files:** a file Atlas refuses, such as a package export saved as XLSX, is shown on the card and is not retried until it changes.
-- **Backups:** the folder keeps the last 10 full-database backups it made. Package and Citrix backups are kept as for uploads.
+- **Backups:** the folder keeps the last 10 backups of each kind it made. Uploads keep their own.
 
 The users and devices exports are a full snapshot, as below: export every intended row, with your usual filters.
 
