@@ -225,6 +225,35 @@ class ITTests(unittest.TestCase):
             self.backend.inspect_computers(["bad name"], "overview")
         self.backend.ps.assert_not_called()
 
+    def test_bulk_service_action_one_approval_per_pc_verification_and_isolated_failures(self):
+        def ps(request, timeout=60):
+            self.assertEqual(request["op"], "service_stop")
+            self.assertEqual(request["name"], "Spooler")
+            self.assertNotIn("expected", request)  # Bulk matches by name; no per-PC snapshot.
+            if request["computer"] == "PC-2":
+                raise RuntimeError("Protected service cannot be stopped or restarted")
+            return {"ok": True, "computer": request["computer"], "verified": True, "after": {"State": "Stopped"}}
+        self.backend.ps = Mock(side_effect=ps)
+        result = self.backend.bulk_service_action(["pc-1", "PC-2", "pc-1", "pc-3"], "service_stop", "Spooler")
+        self.assertEqual(self.confirm.call_count, 1)  # One approval for the whole batch.
+        self.assertIn("3 PCs", self.confirm.call_args[0][0])
+        self.assertEqual(result["succeeded"], 2)
+        self.assertEqual([(r["computer"], r["ok"]) for r in result["results"]],
+                         [("PC-1", True), ("PC-2", False), ("PC-3", True)])
+        self.assertEqual(result["results"][0]["state"], "Stopped")
+        self.assertIn("Protected", result["results"][1]["error"])
+
+    def test_bulk_service_action_declined_runs_nothing_and_validates(self):
+        self.backend.ps = Mock()
+        self.confirm.return_value = False
+        self.assertEqual(self.backend.bulk_service_action(["PC-1"], "service_restart", "Spooler")["state"], "declined")
+        self.backend.ps.assert_not_called()
+        for bad in (lambda: self.backend.bulk_service_action(["PC-1"], "reboot", "x"),
+                    lambda: self.backend.bulk_service_action([], "service_stop", "x"),
+                    lambda: self.backend.bulk_service_action(["PC-1"], "service_stop", "")):
+            with self.assertRaises(ValueError):
+                bad()
+
     def test_snapshot_is_bound_to_target_view_and_lifetime(self):
         self.backend.ps = Mock(return_value={"ok": True, "computer": "PC-1", "items": [{"Name": "Spooler"}]})
         snap = self.backend.inspect_computer("pc-1", "services")["snapshot"]
