@@ -28,7 +28,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from atlas_store import ClosingConnection
 
 SOURCE = 'Data folder'
-DEFAULT_FOLDER = r'C:\AtlasXL'
+FOLDERS = (r'C:\AtlasXL', r'C:\AxisXL')  # The first that exists is used until a person saves another folder
+DEFAULT_FOLDER = FOLDERS[0]
+CHECK_SECONDS = 15 * 60  # Exports change a few times a week; Check now imports straight away
 STABLE_SECONDS = 30
 KEEP_BACKUPS = 10
 SUFFIXES = ('.csv', '.xlsx')
@@ -100,7 +102,7 @@ def now():
 
 
 class DataFolder:
-    def __init__(self, db, repo, state_path, busy=lambda: False, interval=60, clock=time.time, settle=2):
+    def __init__(self, db, repo, state_path, busy=lambda: False, interval=CHECK_SECONDS, clock=time.time, settle=2, default_folder=None):
         # db/repo may be callables, so the folder follows the server's current database and repository.
         self._db, self._repo, self.state_path = db, repo, Path(state_path)
         self.busy, self.interval, self.clock, self.settle = busy, interval, clock, settle
@@ -110,8 +112,20 @@ class DataFolder:
         self.thread = None
         self.checked = None
         self.stop_event = threading.Event()
+        # Until a person saves settings, the built-in folder is used and the data folder is on.
+        self.default_folder = default_folder
         self.state = self.load()
-        self.state.setdefault('status', {'state': 'off', 'message': 'Choose the folder with the exports, then turn the data folder on.'})
+        self.state.setdefault('status', {'state': 'checking', 'message': 'Checking the exports folder…'} if self.uses_default() else
+                                        {'state': 'off', 'message': 'Choose the folder with the exports, then turn the data folder on.'})
+
+    def uses_default(self):
+        return 'folder' not in self.state and self.default_folder is not None
+
+    def folder(self):
+        return str(self.default_folder()) if self.uses_default() else self.state.get('folder', '')
+
+    def enabled(self):
+        return self.uses_default() or bool(self.state.get('enabled'))
 
     @property
     def db(self):
@@ -138,7 +152,7 @@ class DataFolder:
     def configure(self, settings):
         folder = settings.folder.strip().strip('"').strip()
         with self.lock:
-            if folder != self.state.get('folder'):
+            if folder != self.folder():
                 self.state['kinds'] = {}  # Files in another folder are new to Atlas.
             self.state.update(folder=folder, enabled=settings.enabled and bool(folder), review_large=settings.review_large)
             self.discard_held()
@@ -152,7 +166,7 @@ class DataFolder:
 
     def summary(self):
         held = self.held and {key: self.held[key] for key in ('id', 'kind', 'files', 'reason', 'report')}
-        return {'folder': self.state.get('folder', DEFAULT_FOLDER), 'enabled': bool(self.state.get('enabled')),
+        return {'folder': self.folder() or DEFAULT_FOLDER, 'enabled': self.enabled(),
                 'review_large': self.state.get('review_large', True), 'status': dict(self.state.get('status', {})),
                 'checked': self.checked, 'kinds': [{'kind': kind, 'label': LABELS[kind], **self.state.get('kinds', {}).get(kind, {})} for kind in ORDER],
                 'ignored': self.state.get('ignored', []), 'history': self.state.get('history', [])[:20], 'held': held}
@@ -227,9 +241,9 @@ class DataFolder:
 
     def _check(self, force):
         self.checked = now()
-        if not self.state.get('enabled') or not self.state.get('folder'):
+        if not self.enabled() or not self.folder():
             return self.summary()
-        folder = Path(self.state['folder']).expanduser()
+        folder = Path(self.folder()).expanduser()
         if not folder.is_dir():
             self.set_status('error', f'Folder not reachable: {folder}. Create it, or check the path.')
             return self.summary()
@@ -420,11 +434,13 @@ class DataFolder:
             return self.summary()
 
     def run(self):
-        while not self.stop_event.wait(self.interval):
+        self.stop_event.wait(5)  # First look once Admin has started, then every CHECK_SECONDS.
+        while not self.stop_event.is_set():
             try:
                 self.check()
             except Exception as error:  # A bad export never stops the watcher.
                 self.set_status('error', f'Data folder check failed: {error}')
+            self.stop_event.wait(self.interval)
 
     def start(self):
         if not self.thread:
@@ -436,8 +452,12 @@ class DataFolder:
         self.discard_held()
 
 
+def default_exports_folder():
+    return next((folder for folder in FOLDERS if os.path.isdir(folder)), FOLDERS[0])
+
+
 def register(app, wmi, check_token, busy, state_path):
-    folder = DataFolder(lambda: wmi.MASTER_DB, lambda: wmi.REPO, state_path, busy)
+    folder = DataFolder(lambda: wmi.MASTER_DB, lambda: wmi.REPO, state_path, busy, default_folder=default_exports_folder)
 
     @app.get('/api/data-folder')
     def status():

@@ -69,7 +69,7 @@ class ApplyReview(BaseModel):
 
 
 class SeatingSync:
-    def __init__(self, db, state_path, backups, busy=lambda: False, interval=60, clock=time.time):
+    def __init__(self, db, state_path, backups, busy=lambda: False, interval=60, clock=time.time, default_folder=None):
         # db/backups may be callables, so the sync follows the server's current database path.
         self._db, self._backups, self.state_path = db, backups, Path(state_path)
         self.busy, self.interval, self.clock = busy, interval, clock
@@ -79,8 +79,20 @@ class SeatingSync:
         self.thread = None
         self.checked = None
         self.stop_event = threading.Event()
+        # Until a person saves settings, the team's synced plan folder is used and the live link is on.
+        self.default_folder = default_folder
         self.state = self.load()
-        self.state.setdefault('status', {'state': 'off', 'message': 'Choose the folder with the desk plan, then turn the live link on.'})
+        self.state.setdefault('status', {'state': 'checking', 'message': 'Checking the team plan folder…'} if self.uses_default() else
+                                        {'state': 'off', 'message': 'Choose the folder with the desk plan, then turn the live link on.'})
+
+    def uses_default(self):
+        return 'folder' not in self.state and self.default_folder is not None
+
+    def folder(self):
+        return str(self.default_folder()) if self.uses_default() else self.state.get('folder', '')
+
+    def enabled(self):
+        return self.uses_default() or bool(self.state.get('enabled'))
 
     @property
     def db(self):
@@ -124,7 +136,7 @@ class SeatingSync:
         status = dict(self.state.get('status', {}))
         proposal = self.held
         held = proposal and {'id': proposal['id'], 'reason': proposal['reason'], 'file': proposal['file'], 'report': proposal['report'], 'reader': proposal['reader']}
-        return {'folder': self.state.get('folder', ''), 'enabled': bool(self.state.get('enabled')), 'review_large': self.state.get('review_large', True), 'status': status,
+        return {'folder': self.folder(), 'enabled': self.enabled(), 'review_large': self.state.get('review_large', True), 'status': status,
                 'checked': self.checked, 'last': self.state.get('last'), 'history': self.state.get('history', [])[:15], 'held': held,
                 'duplicates': self.duplicates()}
 
@@ -171,9 +183,9 @@ class SeatingSync:
 
     def _check(self, force):
         self.checked = now()
-        if not self.state.get('enabled') or not self.state.get('folder'):
+        if not self.enabled() or not self.folder():
             return self.summary()
-        folder = Path(self.state['folder']).expanduser()
+        folder = Path(self.folder()).expanduser()
         if not folder.is_dir():
             self.set_status('error', f'Folder not reachable: {folder}. Check that OneDrive is running and the folder is synced to this PC.')
             return self.summary()
@@ -403,7 +415,9 @@ def now():
 
 
 def register(app, wmi, check_token, busy, state_path):
-    sync = SeatingSync(lambda: wmi.MASTER_DB, state_path, lambda: Path(wmi.MASTER_DB).resolve().parent / 'backups', busy)
+    from package_paths import default_plan_folder
+    sync = SeatingSync(lambda: wmi.MASTER_DB, state_path, lambda: Path(wmi.MASTER_DB).resolve().parent / 'backups', busy,
+                       default_folder=default_plan_folder)
 
     @app.get('/api/seating-sync')
     def status():

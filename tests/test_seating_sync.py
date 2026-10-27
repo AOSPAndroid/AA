@@ -62,6 +62,16 @@ class LiveFloorPlan(unittest.TestCase):
         os.utime(path, (past, past))
         return path
 
+    def test_the_team_plan_folder_is_followed_without_setup(self):
+        self.write('Hoche Project_20261002.xlsx', self.layout)
+        root = Path(self.temp.name)
+        sync = SeatingSync(self.db, root / 'built-in.json', root / 'backups', default_folder=lambda: self.folder)
+        self.assertEqual((sync.summary()['folder'], sync.summary()['enabled']), (str(self.folder), True))
+        self.assertEqual(sync.check()['status']['state'], 'synced', 'The plan is read with nothing entered')
+        sync.configure(Settings(folder=str(self.folder), enabled=False))
+        again = SeatingSync(self.db, root / 'built-in.json', root / 'backups', default_folder=lambda: self.folder)
+        self.assertFalse(again.summary()['enabled'], 'A saved setting replaces the built-in folder after a restart')
+
     def test_plan_changes_reach_the_map_with_a_backup(self):
         self.write('Hoche Project_20261002.xlsx', self.layout)
         self.write('New Joiners 2026.xlsx', [['Name', 'Start'], ['Someone', '01/11/2026']], age=60)

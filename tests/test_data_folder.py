@@ -171,6 +171,28 @@ class DataFolderTests(unittest.TestCase):
         self.assertEqual(self.count('select count(*) from vdi_imports'), 0)
 
 
+class BuiltInFolder(unittest.TestCase):
+    def test_the_built_in_folder_is_on_without_setup_until_a_person_saves_settings(self):
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as temp:
+            root = Path(temp)
+            atlas, axis = root / 'AtlasXL', root / 'AxisXL'
+            with patch.object(data_folder, 'FOLDERS', (str(atlas), str(axis))):
+                self.assertEqual(data_folder.default_exports_folder(), str(atlas), 'Neither exists: the first is shown')
+                axis.mkdir()
+                self.assertEqual(data_folder.default_exports_folder(), str(axis), 'Only the second exists: it is used')
+                atlas.mkdir()
+                self.assertEqual(data_folder.default_exports_folder(), str(atlas))
+                sync = DataFolder(root / 'db', root, root / 'data-folder.json', default_folder=data_folder.default_exports_folder, settle=0)
+                summary = sync.check()
+                self.assertEqual((summary['folder'], summary['enabled']), (str(atlas), True))
+                self.assertEqual(summary['status']['state'], 'synced', 'An empty built-in folder is simply up to date')
+                sync.configure(Settings(folder=str(atlas), enabled=False))
+                again = DataFolder(root / 'db', root, root / 'data-folder.json', default_folder=data_folder.default_exports_folder, settle=0)
+                self.assertFalse(again.summary()['enabled'], 'Turning it off is remembered after a restart')
+                self.assertEqual(data_folder.CHECK_SECONDS, 900)
+                self.assertEqual(sync.interval, 900, 'Checked every 15 minutes, not every minute')
+
+
 class Routes(unittest.TestCase):
     def test_changes_need_the_admin_token_and_reading_the_state_does_not(self):
         from types import SimpleNamespace

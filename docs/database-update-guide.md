@@ -17,15 +17,15 @@ See [Updating AA](updating-atlas.md) for the complete steps, including preservin
 
 ## Easiest: the data folder
 
-Save the exports in one folder, for example `C:\AtlasXL`, and Atlas keeps itself up to date from them:
+Save the exports in `C:\AtlasXL` (or `C:\AxisXL`) and Atlas keeps itself up to date from them, with no setup:
 
 - **Users and devices:** the ServiceNow users export (`sys_user`) and devices export (`alm_asset` or `alm_hardware`).
 - **Citrix VDI:** the `SingleSessionMachines` export.
 - **Package data:** the ServiceNow package export (`u_cmdb_software_package`), as CSV.
 
-In **Admin → Manage Database → Data folder**, enter the folder (it suggests `C:\AtlasXL`), tick **Data folder on** and click **Save**. Then replace the files whenever you have new exports. Names don't matter: Atlas recognises each file by its columns, and lists any file it doesn't recognise as left alone.
+The data folder is on by default and uses `C:\AtlasXL`, or `C:\AxisXL` if only that one exists. You can use another folder, or turn it off, in **Admin → Manage Database → Data folder**. Replace the files whenever you have new exports. Names don't matter: Atlas recognises each file by its columns, and lists any file it doesn't recognise as left alone.
 
-About a minute after a new save, and only when a file's content changed, Atlas imports it:
+Atlas looks when Admin starts and then every 15 minutes; **Check now** on the card looks straight away. It imports a file only when its content changed:
 
 - **Same checks:** it uses the same validation, backups and import history as the uploads described below. **Restore directory before this import** works for folder imports too.
 - **Order:** users and devices first, so Citrix links see new accounts, then Citrix, then packages.
@@ -96,7 +96,7 @@ In **Manage Database > Import history**, choose **Restore directory before this 
 
 ## Live floor plan (the assistants' Excel)
 
-**Manage Database > Live floor plan** links official seating to the desk plan the administrative assistants keep in Excel. Enter the folder once, for example the OneDrive-synced `...\PA-IT_shared\02_Current_plan` (quotes from "Copy as path" are fine), tick **Live link on** and click **Save**.
+**Manage Database > Live floor plan** links official seating to the desk plan the administrative assistants keep in Excel. It is on by default and uses the team folder `PA-IT_shared\02_Current_plan` synced into business OneDrive: in **Shortcuts** or directly in OneDrive, found the same way as the package repository (also when Admin runs under the DSK account). Nothing needs entering. To use another folder, or turn it off, enter it on the card (quotes from "Copy as path" are fine) and click **Save**.
 
 - Atlas checks the folder every minute and uses the newest `.xlsx` with a tab per floor (`R+2`, `+3`, `Floor 4`…) that contains desk codes; without such a workbook, the newest one with desk codes. Other workbooks in the folder (New Joiners, Headcount files) are skipped. A file saved less than 30 seconds ago is read on the next check.
 - Every visible tab is read; hidden tabs (older copies of a floor) are skipped. When a desk appears on several tabs, the tab for its floor wins (`R+4 (FINAL)` for `04R…` desks), then tabs that name no floor (`Desk Mapping (FINAL)`), and tabs named old, draft, copy or v2 come last. Only two tabs of the same standing that disagree hold the update. List tabs are read row by row: a header such as **Desk** / **Desk number** with a person column (**Name**, **Person assigned**, **Assigned to**, **Employee**…) or a **Team** column; without headers, the cell beside a desk code. A code on another floor's tab (`02R…` on `R+4`) is listed for checking.

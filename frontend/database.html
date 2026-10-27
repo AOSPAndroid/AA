@@ -93,7 +93,7 @@
         <header class="atlas-live-plan-head"><h2 id="live-plan-title">Live floor plan</h2><span id="live-plan-state" role="status">Off</span></header>
         <p>Atlas reads the assistants' desk plan (Excel boxes such as <b>Christophe Duriez 02R015079</b>, <b>Credit Sales 02R016079</b> or <b>Open 03R016079</b>) from a synced folder, and the map updates within a minute of each save, in Admin and Demo. The Excel is the authority: what it says is applied as written, with a backup, and anything Atlas could not link is listed as a note. With <b>Ask before large changes</b> on, a save that changes many desks waits here for you first. Desks the plan does not mention are left as they are.</p>
         <div class="atlas-live-plan-controls">
-          <label class="atlas-live-plan-folder">Plan folder<input id="live-plan-folder" autocomplete="off" spellcheck="false" placeholder="C:\Users\you\OneDrive - Company\Shortcuts\PA-IT_shared\02_Current_plan"></label>
+          <label class="atlas-live-plan-folder">Plan folder<input id="live-plan-folder" autocomplete="off" spellcheck="false" placeholder="C:\Users\you\OneDrive - Barclays Bank PLC\Shortcuts\PA-IT_shared\02_Current_plan"></label>
           <label class="atlas-live-plan-toggle"><input type="checkbox" id="live-plan-enabled"> Live link on</label>
           <label class="atlas-live-plan-toggle" title="Off: every save of the plan reaches the map straight away"><input type="checkbox" id="live-plan-review" checked> Ask before large changes</label>
           <button type="button" id="live-plan-save" class="primary">Save</button>
@@ -111,7 +111,7 @@
       </section>
       <section class="panel atlas-live-plan" id="data-folder" aria-labelledby="data-folder-title">
         <header class="atlas-live-plan-head"><h2 id="data-folder-title">Data folder</h2><span id="data-folder-state" role="status">Off</span></header>
-        <p>Save the ServiceNow users (<b>sys_user</b>), devices (<b>alm_asset</b>) and packages (<b>u_cmdb_software_package</b>) exports and the Citrix <b>SingleSessionMachines</b> export in one folder, as CSV or XLSX, under any name. Atlas recognises each one by its columns and, about a minute after each new save, imports it with the same checks, backups and history as the uploads below. Unchanged files are not imported again. With <b>Ask before large changes</b> on, a users-and-devices export that would remove more than 10% of users or devices, or that loses columns, waits here for you.</p>
+        <p>Save the ServiceNow users (<b>sys_user</b>), devices (<b>alm_asset</b>) and packages (<b>u_cmdb_software_package</b>) exports and the Citrix <b>SingleSessionMachines</b> export in <b>C:\AtlasXL</b> (or <b>C:\AxisXL</b>), as CSV or XLSX, under any name. It is on without any setup. Atlas recognises each one by its columns and imports new saves when Admin starts and every 15 minutes, or straight away with <b>Check now</b>, with the same checks, backups and history as the uploads below. Unchanged files are not imported again. With <b>Ask before large changes</b> on, a users-and-devices export that would remove more than 10% of users or devices, or that loses columns, waits here for you.</p>
         <div class="atlas-live-plan-controls">
           <label class="atlas-live-plan-folder">Exports folder<input id="data-folder-path" autocomplete="off" spellcheck="false" placeholder="C:\AtlasXL"></label>
           <label class="atlas-live-plan-toggle"><input type="checkbox" id="data-folder-enabled"> Data folder on</label>

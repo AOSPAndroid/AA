@@ -37,6 +37,20 @@ class PackagePathsTests(unittest.TestCase):
         expected = self.folder(business)
         self.assertEqual(paths.package_repository({}, self.root), expected)
 
+    def test_the_team_plan_folder_is_found_like_the_package_repository(self):
+        business = self.root / 'business'
+        os.environ['OneDriveCommercial'] = str(business)
+        self.assertEqual(paths.default_plan_folder(), business / 'Shortcuts' / 'PA-IT_shared' / '02_Current_plan')
+        direct = business / 'PA-IT_shared' / '02_Current_plan'
+        direct.mkdir(parents=True)
+        self.assertEqual(paths.default_plan_folder(), direct, 'A folder added directly to OneDrive is found too')
+        loaded = self.root / 'signed-in-user-onedrive'
+        os.environ.pop('OneDriveCommercial')
+        expected = loaded / 'Shortcuts' / 'PA-IT_shared' / '02_Current_plan'
+        expected.mkdir(parents=True)
+        self.registry.side_effect = lambda other_profiles=False: [loaded] if other_profiles else []
+        self.assertEqual(paths.default_plan_folder(), expected, 'Admin under the DSK account finds the signed-in user\'s plan folder')
+
     def test_root_level_sharepoint_shortcut_is_supported(self):
         business = self.root / 'business'
         os.environ['OneDriveCommercial'] = str(business)
