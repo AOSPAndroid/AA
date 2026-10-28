@@ -312,10 +312,11 @@ class LaunchCommandOnWindows(unittest.TestCase):
         self.assertEqual(code, '1')
         self.assertIn('example failure', log)
 
-    def test_a_vbscript_runs_through_cscript(self):
-        code, log = self.run_script('setup_i.vbs', 'WScript.Echo "vbs ran"\r\nWScript.Quit 3\r\n')
-        self.assertEqual(code, '3')
-        self.assertIn('vbs ran', log)
+    def test_a_vbscript_runs_through_cscript_in_its_folder(self):
+        # Batch mode (//B) keeps a script from waiting on a prompt; it also hides WScript.Echo, so the script leaves a file.
+        code, log = self.run_script('setup_i.vbs', 'CreateObject("Scripting.FileSystemObject").CreateTextFile("vbs ran.txt").Close\r\nWScript.Quit 3\r\n')
+        self.assertEqual(code, '3', log)
+        self.assertTrue((self.folder / 'vbs ran.txt').is_file())
 
     def test_the_read_only_queries_are_valid_windows_powershell(self):
         for script in (install_watch.SOFTWARE, install_watch.PROCESSES):
