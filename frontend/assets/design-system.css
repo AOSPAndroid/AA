@@ -2450,7 +2450,7 @@ body :is(.atlas-header-menu,.atlas-ad-context,.atlas-context-menu) { border-colo
   body.atlas-console .console-sidebar nav button[data-page]:is(.active,[aria-current="page"]) { background:Highlight; color:HighlightText; }
 }
 
-/* Deployment kits in the activity queue drawer. */
+/* Personas in the activity queue drawer. */
 body.atlas-console .deployment-kits { border-top: 1px solid var(--atlas-line); margin-top: 8px; padding-top: 6px; }
 body.atlas-console .deployment-kits .kit-help { margin: 2px 0 6px; font-size: 11px; color: var(--atlas-muted, #64748b); }
 body.atlas-console .deployment-kits .kit-save { display: flex; gap: 6px; }
@@ -3050,6 +3050,66 @@ body.atlas-console .scripts-output [data-tone="info"] { color:#93c5fd; }
 body.atlas-console .scripts-output [data-tone="atlas"] { color:#7c8a99; }
 html[data-theme="dark"] body.atlas-console .scripts-output { background:#0b0f14; border:1px solid var(--atlas-line); }
 @media(max-width:900px) { body.atlas-console .scripts-layout, body.atlas-console .scripts-run-grid { grid-template-columns:minmax(0,1fr); } body.atlas-console .scripts-library { position:static; max-height:none; } }
+
+/* Personas: saved bundles on the left, the selected persona with its packages on the right. */
+body.atlas-console #personas.active { display:block; }
+body.atlas-console .personas-layout { display:grid; grid-template-columns:minmax(240px,300px) minmax(0,1fr); gap:8px; align-items:start; }
+body.atlas-console .personas-library { display:flex; flex-direction:column; gap:6px; padding:8px; position:sticky; top:8px; max-height:calc(100vh - 16px); overflow:auto; }
+body.atlas-console .personas-list { display:grid; gap:2px; }
+body.atlas-console #personas .personas-item { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:2px 6px; align-items:center; justify-items:start; width:100%; height:auto; min-height:0; padding:6px 8px; text-align:left; white-space:normal; border:1px solid transparent; background:transparent; }
+body.atlas-console #personas .personas-item:hover { background:var(--atlas-surface-subtle); }
+body.atlas-console #personas .personas-item[aria-current="true"] { background:var(--atlas-selected); border-color:var(--atlas-line); box-shadow:inset 2px 0 var(--atlas-accent); }
+body.atlas-console .personas-item strong { font-size:12px; }
+body.atlas-console .personas-item > span { font-size:10px !important; padding:0 6px !important; }
+body.atlas-console .personas-item small { grid-column:1/-1; color:var(--atlas-muted); font-size:11px; line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+body.atlas-console .personas-library-actions { display:flex; gap:6px; flex-wrap:wrap; }
+body.atlas-console .personas-library-actions button { flex:1; }
+body.atlas-console .personas-empty { color:var(--atlas-muted); font-size:12px; margin:6px 2px; list-style:none; }
+body.atlas-console .personas-detail { display:flex; flex-direction:column; gap:8px; padding:10px; min-width:0; }
+body.atlas-console .personas-head { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+body.atlas-console .personas-head > div { flex:1; min-width:0; display:grid; gap:4px; }
+body.atlas-console #personaName { width:100%; font-size:16px; font-weight:650; color:var(--atlas-ink); padding:2px 6px; height:auto; }
+body.atlas-console #personaDescription { width:100%; font-size:12px; padding:2px 6px; }
+body.atlas-console .personas-install { display:flex; flex-wrap:wrap; align-items:end; gap:6px; padding:8px; border:1px solid var(--atlas-line); border-radius:var(--atlas-control-radius); background:var(--atlas-surface-subtle); }
+body.atlas-console .personas-install label { display:grid; gap:2px; flex:1 1 180px; font-size:12px; font-weight:600; }
+body.atlas-console #personaMachine { font:12px/1.4 "Cascadia Mono", Consolas, monospace; }
+body.atlas-console .personas-help { margin:0; color:var(--atlas-muted); font-size:11px; }
+body.atlas-console .personas-subhead { margin:4px 0 0; font-size:12px; }
+body.atlas-console .personas-subhead small { font-weight:400; color:var(--atlas-muted); }
+body.atlas-console .personas-items { display:grid; gap:4px; margin:0; padding:0 0 0 22px; font-size:12px; }
+body.atlas-console .personas-row { display:grid; grid-template-columns:minmax(0,1fr) 96px minmax(120px,220px) auto; gap:4px 6px; align-items:center; padding:4px 6px; border:1px solid var(--atlas-line); border-radius:var(--atlas-control-radius); }
+body.atlas-console .personas-row.has-problem { border-color:var(--atlas-danger); }
+body.atlas-console .personas-row-name { display:grid; min-width:0; }
+body.atlas-console .personas-row-name :is(b,small) { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+body.atlas-console .personas-row-name b { font-size:12px; }
+body.atlas-console .personas-row-name small { font-size:10px; color:var(--atlas-muted); }
+body.atlas-console .personas-row select { min-width:0; font-size:12px; }
+body.atlas-console .personas-row-tools { display:flex; gap:2px; }
+body.atlas-console .personas-row-tools button { min-width:26px; min-height:26px; padding:0 6px; }
+body.atlas-console .personas-row-problem { grid-column:1/-1; font-size:11px; }
+body.atlas-console .personas-add { display:flex; flex-wrap:wrap; gap:6px; }
+body.atlas-console .personas-add input { flex:1 1 220px; min-width:0; }
+body.atlas-console .personas-results { display:grid; gap:2px; }
+body.atlas-console .personas-results:empty { display:none; }
+body.atlas-console #personas .personas-result { display:grid; justify-items:start; width:100%; height:auto; padding:5px 8px; text-align:left; white-space:normal; }
+body.atlas-console .personas-result b { font-size:12px; }
+body.atlas-console .personas-result small { font-size:10px; color:var(--atlas-muted); }
+body.atlas-console .personas-options { padding:6px 8px; border:1px solid var(--atlas-line); border-radius:var(--atlas-control-radius); font-size:12px; }
+body.atlas-console .personas-options summary { cursor:pointer; font-weight:600; }
+body.atlas-console .personas-options label { display:inline-flex; align-items:center; gap:6px; margin:6px 12px 0 0; }
+body.atlas-console .personas-options .num { width:64px; }
+body.atlas-console .personas-actions { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+body.atlas-console .personas-actions-gap { flex:1; }
+body.atlas-console #personaMessage { margin:0; font-size:12px; }
+body.atlas-console #personaMessage:empty { display:none; }
+body.atlas-console #personaMessage[data-tone="bad"] { color:var(--atlas-danger-text, var(--atlas-danger)); }
+body.atlas-console #personaMessage[data-tone="good"] { color:var(--atlas-success); }
+body.atlas-console .deployment-persona { display:flex; flex-wrap:wrap; gap:4px; margin:6px 0 0; padding-top:6px; border-top:1px solid var(--atlas-line); }
+body.atlas-console .deployment-persona select { flex:1 1 140px; min-width:0; font-size:12px; }
+body.atlas-console .deployment-persona button { flex:0 0 auto; min-height:26px; padding:0 8px; font-size:12px; }
+body.atlas-console .deployment-persona small { flex-basis:100%; font-size:11px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+body.atlas-console .deployment-persona small:empty { display:none; }
+@media(max-width:900px) { body.atlas-console .personas-layout { grid-template-columns:minmax(0,1fr); } body.atlas-console .personas-library { position:static; max-height:none; } body.atlas-console .personas-row { grid-template-columns:minmax(0,1fr) auto; } body.atlas-console .personas-row select { grid-column:1/-1; } }
 body.atlas-database #directory-import[data-drop="true"] { outline:2px dashed var(--atlas-accent); outline-offset:-4px; background:var(--atlas-selected); }
 
 /* Live floor plan card (Manage Database). */

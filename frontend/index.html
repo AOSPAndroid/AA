@@ -71,6 +71,7 @@
           ><button data-page="bulk">
             <span class="nav-icon">⇶</span
             ><span class="nav-label">Bulk Deploy</span></button
+          ><button data-page="personas"><span class="nav-icon" aria-hidden="true">☺</span><span class="nav-label">Personas</span></button
           ><button data-page="history">
             <span class="nav-icon">◷</span
             ><span class="nav-label">History</span>
@@ -338,6 +339,10 @@
           </details>
           <button class="primary" id="deploy">Copy &amp; execute</button>
           <div class="deployment-extra" role="group" aria-label="More deployment actions"><button type="button" id="deployQueue">Add to queue</button><button type="button" id="deployOpenQueue">Open queue</button></div>
+          <div class="deployment-persona" role="group" aria-label="Install a persona">
+            <select id="personaPick" aria-label="Persona"></select><button type="button" id="personaPickInstall">Install</button>
+            <small id="personaPickNote" class="muted"></small>
+          </div>
           <div
             id="console-deploy-summary"
             class="deployment-summary"
@@ -653,6 +658,48 @@
           </div>
         </div>
       </section>
+      <section id="personas" class="page" aria-label="Personas">
+        <div class="personas-layout">
+          <aside class="personas-library panel" aria-label="Saved personas">
+            <input id="personaSearch" type="search" placeholder="Find a persona" aria-label="Find a persona" autocomplete="off" />
+            <div id="personaList" class="personas-list"></div>
+            <div class="personas-library-actions"><button type="button" id="personaNew">New persona</button><button type="button" id="personaImportKits" hidden>Import browser kits</button></div>
+          </aside>
+          <div class="personas-detail panel">
+            <header class="personas-head">
+              <div>
+                <input id="personaName" maxlength="60" placeholder="Persona name, e.g. New starter" aria-label="Persona name" autocomplete="off" />
+                <input id="personaDescription" maxlength="300" placeholder="Who it is for (optional)" aria-label="Persona description" autocomplete="off" />
+              </div>
+              <span id="personaCount" class="pill">0 packages</span>
+            </header>
+            <div class="personas-install" role="group" aria-label="Install this persona">
+              <label>Machine<input id="personaMachine" placeholder="Hostname" aria-label="Machine to install on" autocomplete="off" spellcheck="false" /></label>
+              <button type="button" id="personaUseSelected">Use selected</button>
+              <button type="button" id="personaInstall" class="primary">Install</button>
+            </div>
+            <p class="personas-help">Atlas checks the machine and every package first, then installs them one after another through the queue, with the usual checks and history.</p>
+            <h3 class="personas-subhead">Packages <small>run in this order</small></h3>
+            <ol id="personaItems" class="personas-items"></ol>
+            <div class="personas-add">
+              <input id="personaPackageSearch" type="search" placeholder="Add a package…" aria-label="Add a package" autocomplete="off" />
+              <button type="button" id="personaFromQueue">Add queued packages</button>
+            </div>
+            <div id="personaResults" class="personas-results" aria-label="Matching packages"></div>
+            <details class="personas-options">
+              <summary>Options</summary>
+              <label><input type="checkbox" role="switch" id="personaFresh" /> Fresh copy</label>
+              <label>Robocopy threads<input id="personaThreads" class="num" type="number" min="1" max="32" value="8" /></label>
+            </details>
+            <div class="personas-actions" role="group" aria-label="Persona actions">
+              <button type="button" id="personaSave">Save</button><button type="button" id="personaDuplicate">Duplicate</button>
+              <span class="personas-actions-gap"></span>
+              <button type="button" id="personaDelete" class="danger">Delete</button>
+            </div>
+            <p id="personaMessage" role="status"></p>
+          </div>
+        </div>
+      </section>
       <section id="history" class="page">
         <div class="panel">
           <div class="head">
@@ -921,12 +968,12 @@ Ready. Choose a command and click Run.</pre>
         ><button id="clearQueue">Clear waiting</button>
       </div>
       <section class="deployment-kits" aria-labelledby="kitsHeading">
-        <h3 id="kitsHeading">Deployment kits</h3>
-        <p class="kit-help">Save the queued packages as a kit, then add the whole set for any machine in one click.</p>
+        <h3 id="kitsHeading">Personas</h3>
+        <p class="kit-help">Save the queued packages as a persona, then install the whole set on any machine in one click.</p>
         <div class="kit-save">
-          <input id="kitName" maxlength="60" placeholder="Kit name, e.g. New starter" aria-label="Kit name" /><button id="saveKit">Save queue as kit</button>
+          <input id="personaQueueName" maxlength="60" placeholder="Persona name, e.g. New starter" aria-label="Persona name for the queue" /><button id="personaSaveQueue">Save queue as persona</button>
         </div>
-        <div id="kitList"></div>
+        <div id="personaQueueList"></div>
       </section>
     </aside>
     <aside id="deploymentsDrawer" class="deployments-drawer">
@@ -1164,7 +1211,7 @@ Ready. Choose a command and click Run.</pre>
     <script src="/assets/app.js"></script>
     <script src="/assets/console-directory.js?v=3"></script>
     <script src="/assets/console-deployment.js?v=3"></script>
-    <script src="/assets/deployment-kits.js"></script>
+    <script src="/assets/personas.js"></script>
     <script src="/assets/console-processes.js"></script>
     <script src="/assets/slowdown-diagnostics.js"></script>
     <script src="/assets/psexec-catalogue.js"></script>

@@ -98,7 +98,7 @@ def register(app, backend):
             if queue.get('state')=='paused': controls.append(dict(label='Resume',url=f'/api/queue/{key}/resume'))
             elif queue.get('state') in ('queued','running'): controls.append(dict(label='Pause after current',url=f'/api/queue/{key}/pause'))
             if queue.get('state') in ACTIVE: controls.append(dict(label='Cancel waiting',url=f'/api/queue/{key}/cancel'))
-            row=dict(id='queue-'+key,title='Deployment queue',target=', '.join(dict.fromkeys(r.get('target','') for r in items)),
+            row=dict(id='queue-'+key,title='Persona · '+queue['persona'] if queue.get('persona') else 'Deployment queue',target=', '.join(dict.fromkeys(r.get('target','') for r in items)),
                      state=queue.get('state','unknown'),updated=queue.get('updated',0),message=f'{done} of {len(items)} finished',
                      log='\n'.join(f"{r.get('target','')}: {r.get('state','waiting')}\n{events_text(r.get('events',[]))}" for r in items)[-6000:],controls=controls,view='workspace')
             if visible(row,now): rows.append(row)

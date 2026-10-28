@@ -88,7 +88,7 @@ Each selected message shows a **Request** card and buttons on every machine:
   click the deploy button there.
   **Add to queue** adds it to the deployment queue, which still needs
   **Start queue**. If nothing matches, **Search catalogue** opens the package
-  picker with the words after "install". Saved deployment kits can be added too.
+  picker with the words after "install". Saved personas can be added to the queue too.
 - **Other names and typos.** Each catalogue package is linked to the same product
   in an offline copy of the Windows Package Manager index (`resources/winget_aliases.json.gz`,
   from github.com/microsoft/winget-pkgs, MIT), so "powerbi", "acrobat reader" or

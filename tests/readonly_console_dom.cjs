@@ -19,7 +19,7 @@ const settle = () => new Promise(r => setTimeout(r, 40));
   run(fs.readFileSync(path.join(root,'frontend/assets/readonly-console.js'),'utf8'));
   await f.console(); await settle();
   if (!d.body.classList.contains('atlas-readonly-console')) { d.dispatchEvent(new w.Event('DOMContentLoaded')); await settle(); }
-  for(const page of ['workspace','admin','bulk','history','psexec']) {
+  for(const page of ['workspace','admin','bulk','personas','history','psexec']) {
     d.querySelector(`[data-page="${page}"]`).click(); await settle();
     assert(d.getElementById(page).classList.contains('active'),page);
   }

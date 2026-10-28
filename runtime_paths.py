@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parent
 DATABASE = 'office_atlas.db'
 KNOWLEDGE = 'knowledge.sqlite3'
 SCRIPTS = 'scripts.json'
+PERSONAS = 'personas.json'
 CLIPBOARD = 'clipboard-history.json'
 
 
@@ -41,6 +42,11 @@ def knowledge_path():
 def scripts_path():
     folder = database_folder()
     return folder / SCRIPTS if folder else ROOT / 'data' / SCRIPTS
+
+
+def personas_path():
+    folder = database_folder()
+    return folder / PERSONAS if folder else ROOT / 'data' / PERSONAS
 
 
 def companion_state_path():

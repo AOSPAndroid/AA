@@ -342,16 +342,20 @@ def package_root(folder):
  if root.parent!=base or not root.is_dir():raise HTTPException(400,'Select an available package within the configured repository')
  return root
 
+INSTALLER_SUFFIX={'Install':('_i','_install','_installs'),'Uninstall':('_u','_uninstall','_uninstalls'),'Repair':('_r','_repair','_repairs')}
+def installer(folder,script,action):
+ """The package folder, once its script is a .ps1/.vbs inside it named for the action."""
+ root=package_root(folder);path=Path(script)
+ if not script or path.is_absolute() or '..' in path.parts or ':' in script:
+  raise HTTPException(400,'Invalid installer path')
+ target=(root/path).resolve()
+ if root not in target.parents or not target.is_file() or target.suffix.lower() not in ('.ps1','.vbs') or not target.stem.lower().endswith(INSTALLER_SUFFIX[action]):
+  raise HTTPException(400,'Installer does not match the selected package and action')
+ return root
+
 def validate_deployment(p):
  p.computer=validate_pc(p.computer)
- root=package_root(p.folder);script=Path(p.script)
- if not p.script or script.is_absolute() or '..' in script.parts or ':' in p.script:
-  raise HTTPException(400,'Invalid installer path')
- target=(root/script).resolve()
- suffix={'Install':('_i','_install','_installs'),'Uninstall':('_u','_uninstall','_uninstalls'),'Repair':('_r','_repair','_repairs')}[p.action]
- if root not in target.parents or not target.is_file() or target.suffix.lower() not in ('.ps1','.vbs') or not target.stem.lower().endswith(suffix):
-  raise HTTPException(400,'Installer does not match the selected package and action')
- p.folder=str(root);return p
+ p.folder=str(installer(p.folder,p.script,p.action));return p
 
 @app.get('/api/packages')
 def packages(term:str=''):
@@ -365,7 +369,7 @@ def packages(term:str=''):
 @app.get('/api/scripts')
 def scripts(package:str,action:str='Install'):
  if action not in ('Install','Uninstall','Repair'):raise HTTPException(400,'Invalid action')
- root=package_root(package);suffix={'Install':('_i','_install','_installs'),'Uninstall':('_u','_uninstall','_uninstalls'),'Repair':('_r','_repair','_repairs')}[action]
+ root=package_root(package);suffix=INSTALLER_SUFFIX[action]
  return {'scripts':sorted(str(x.relative_to(root)) for x in root.rglob('*') if x.is_file() and root in x.resolve().parents and x.suffix.lower() in ('.ps1','.vbs') and x.stem.lower().endswith(suffix))}
 @app.get('/api/preflight/{pc}')
 def preflight(pc:str):
@@ -592,18 +596,21 @@ def _queue_worker(queue_id,items):
     if row['state']=='waiting':row['state']='cancelled'
   job_service.save(queue_id,queue=True)
 
-@app.post('/api/queue')
-def start_queue(request:QueueRequest):
- if not request.items or len(request.items)>200:raise HTTPException(400,'Queue must contain 1 to 200 items')
- for item in request.items:
+def queue_items(items,**details):
+ """Check every item first, then run them one after another; nothing starts if any is refused."""
+ if not items or len(items)>200:raise HTTPException(400,'Queue must contain 1 to 200 items')
+ for item in items:
   validate_deployment(item);job_service.target_ready(item.computer)
  queue_id=uuid.uuid4().hex
- queue_jobs[queue_id]={'id':queue_id,'state':'queued','pause_requested':False,'started_at':time.time(),'items':[{'target':x.computer,'package':Path(x.folder).name,'action':x.action,'mode':x.mode,'state':'waiting','events':[],'payload':x.model_dump()} for x in request.items]}
+ queue_jobs[queue_id]={'id':queue_id,'state':'queued','pause_requested':False,'started_at':time.time(),**details,'items':[{'target':x.computer,'package':Path(x.folder).name,'action':x.action,'mode':x.mode,'state':'waiting','events':[],'payload':x.model_dump()} for x in items]}
  job_service.save(queue_id,queue=True)
- try:job_service.submit(_queue_worker,queue_id,request.items)
+ try:job_service.submit(_queue_worker,queue_id,items)
  except Exception:
   queue_jobs[queue_id]['state']='cancelled';job_service.save(queue_id,queue=True);raise
  return {'queue':queue_id}
+
+@app.post('/api/queue')
+def start_queue(request:QueueRequest):return queue_items(request.items)
 
 @app.get('/api/queue/{queue_id}')
 def get_queue(queue_id:str):return job_service.snapshot(queue_jobs,queue_id)
@@ -716,7 +723,7 @@ def active_deployments():
                 'state':item.get('state','waiting'),
                 'events':item.get('events',[])[-100:],
             })
-        deployments.append({'id':queue_id,'kind':'queue','state':state,'started_at':queue_data.get('started_at'),'items':items})
+        deployments.append({'id':queue_id,'kind':'queue','state':state,'started_at':queue_data.get('started_at'),'persona':queue_data.get('persona'),'items':items})
     # Interleave single jobs and queues by start time; sorted() keeps ties stable.
     deployments.sort(key=lambda d:d.get('started_at') or 0,reverse=True)
     return {'count':len(deployments),'deployments':deployments}
@@ -793,6 +800,10 @@ register_terminal(app)
 from script_library import register as register_scripts
 from runtime_paths import scripts_path
 register_scripts(app, scripts_path())
+# Personas: saved software bundles, each installed on a machine as one deployment queue.
+from personas import register as register_personas
+from runtime_paths import personas_path
+persona_store=register_personas(app, personas_path(), sys.modules[__name__])
 
 # Independent live health results; retains the application's local-only middleware.
 from machine_health import register_machine_health

@@ -2,6 +2,17 @@
 
 Atlas's map and Axis chat in one application.
 
+**Personas.** Save the software a role needs as a persona (for example *New
+starter* or *Trader*) on the new **Personas** page, then install every package
+on a machine in one click: from that page, or from **Install a persona** in the
+Workspace deployment panel for the selected machine. Atlas checks the machine
+and every package first and starts nothing if any is missing, then installs them
+one after another through the queue with the usual locks, history and recovery;
+follow or stop the run under Ongoing actions. Personas are saved in Atlas beside
+saved scripts, not in the browser. Kits saved in this browser by earlier versions
+can be imported once. The queue can still be saved as a persona. Demo shows the
+page greyed out.
+
 **Review fixes.** Model joins verify the existing prefix after an interruption,
 recover their checkpoint and check the complete GGUF checksum before reporting
 success. The import folder now waits for saved or locked files, retries

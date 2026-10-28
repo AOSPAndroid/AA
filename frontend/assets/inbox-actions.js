@@ -83,9 +83,9 @@
         document.querySelector("#packagePicker").open = true;
         return packages();
       }
-      case "kit":
+      case "persona":
         await focus(detail);
-        window.AtlasKits.addToQueue(detail.kit);
+        window.AtlasPersonas.addToQueue(detail.persona);
         return openQueue();
       case "knowledge":
         // Articles open beside the message; diagrams need the diagram viewer.

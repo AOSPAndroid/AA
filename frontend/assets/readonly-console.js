@@ -19,6 +19,17 @@
     "#bulkStart",
     "#startQueue",
     "#pauseQueue",
+    "#personaNew",
+    "#personaSave",
+    "#personaDuplicate",
+    "#personaDelete",
+    "#personaInstall",
+    "#personaUseSelected",
+    "#personaFromQueue",
+    "#personaImportKits",
+    "#personaPickInstall",
+    "#personaSaveQueue",
+    "[data-persona-queue]",
     "#cleanupPackages",
     "[data-preflight]",
     "[data-tool]",
@@ -101,6 +112,8 @@
     "/api/deployments/recent": [],
     "/api/deployments/active": { jobs: [], bulk: [], queues: [], count: 0 },
     "/api/operations/recovery": { targets: [] },
+    // Personas are saved and installed in Admin; Demo shows the page without them.
+    "/api/personas": { personas: [], repository: false, max_items: 40 },
   };
   const stored =
     /^\/api\/(?:package-data|health|capabilities|master\/status|master\/resolve\/[^/]+|search|user\/[^/]+|machine\/[^/]+|directory\/record|vdi-data\/record\/[^/]+|palette\/desks|palette\/person\/[^/]+|desks\/[^/]+\/context|script-library)$/;

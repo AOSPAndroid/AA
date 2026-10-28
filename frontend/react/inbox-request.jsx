@@ -63,10 +63,10 @@ export function RequestCard({ detail, user }) {
   const initial = () => machines.some((m) => m.name === chosenMachines.get(id)) ? chosenMachines.get(id) : machines[0]?.name || "";
   const [target, setChosen] = useState(initial);
   const [term, setTerm] = useState(analysis.search || "");
-  const [kit, setKit] = useState("");
-  const kits = window.AtlasKits?.load?.() || [];
+  const [persona, setPersona] = useState("");
+  const personas = window.AtlasPersonas?.list?.() || [];
   const setTarget = (name) => { chosenMachines.set(id, name); setChosen(name); };
-  useEffect(() => { setChosen(initial()); setTerm(analysis.search || ""); setKit(""); }, [id, machines.length]);
+  useEffect(() => { setChosen(initial()); setTerm(analysis.search || ""); setPersona(""); }, [id, machines.length]);
   const action = analysis.action || "Install";
   const send = (name, extra = {}) => sendInboxAction(name, { machine: target, user, ...extra });
   const noMachine = !target, machineTitle = noMachine ? "No Windows machine is linked to or named in this message" : undefined;
@@ -97,9 +97,9 @@ export function RequestCard({ detail, user }) {
           <Button size="sm" variant="outline" disabled={noMachine} title={machineTitle} onClick={() => send("search", { term })}>Search catalogue</Button></div>
       </section>}
 
-      {analysis.kind === "software" && kits.length > 0 && <section aria-label="Deployment kits" className="inbox-request-section">
-        <div className="inbox-request-row"><select aria-label="Deployment kit" value={kit} onChange={(event) => setKit(event.target.value)}><option value="">Add a deployment kit…</option>{kits.map((k) => <option key={k.name} value={k.name}>{k.name} · {k.items.length} package{k.items.length === 1 ? "" : "s"}</option>)}</select>
-          <Button size="sm" variant="outline" disabled={noMachine || !kit} title={machineTitle} onClick={() => send("kit", { kit })}>Add to queue</Button></div>
+      {analysis.kind === "software" && personas.length > 0 && <section aria-label="Personas" className="inbox-request-section">
+        <div className="inbox-request-row"><select aria-label="Persona" value={persona} onChange={(event) => setPersona(event.target.value)}><option value="">Add a persona…</option>{personas.map((p) => <option key={p.id} value={p.id}>{p.name} · {p.items.length} package{p.items.length === 1 ? "" : "s"}</option>)}</select>
+          <Button size="sm" variant="outline" disabled={noMachine || !persona} title={machineTitle} onClick={() => send("persona", { persona })}>Add to queue</Button></div>
       </section>}
 
       {(analysis.tools || []).length > 0 && <section aria-label="Suggested checks" className="inbox-request-section">
