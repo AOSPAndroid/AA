@@ -4,8 +4,8 @@
   if (!$("import-folder")) return;
   const tones = { synced: "status-ok", held: "status-warn", waiting: "status-warn", checking: "status-warn", empty: "", error: "status-bad", off: "" };
   const labels = { synced: "Up to date", held: "Waiting for review", waiting: "Waiting", checking: "Checking", empty: "No exports yet", error: "Needs attention", off: "Off" };
-  const kinds = { users: "Users", devices: "Devices", vdi: "Citrix VDI", packages: "Packages" };
-  const groupOf = { users: "directory", devices: "directory", vdi: "vdi", packages: "packages" };
+  const kinds = { users: "Users", devices: "Devices", vdi: "Citrix VDI", packages: "Packages", access: "New joiner requests" };
+  const groupOf = { users: "directory", devices: "directory", vdi: "vdi", packages: "packages", access: "access" };
   const results = { applied: "imported", error: "not imported", skipped: "skipped", held: "waiting for review", waiting: "waiting" };
   let editing = false, timer, review = null, latest;
   const api = (url, options = {}) => window.AtlasClient.request(url, { ...options, atlasSilent: true });

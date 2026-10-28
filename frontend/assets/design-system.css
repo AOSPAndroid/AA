@@ -3056,9 +3056,9 @@ body.atlas-console #personas.active { display:block; }
 body.atlas-console .personas-layout { display:grid; grid-template-columns:minmax(240px,300px) minmax(0,1fr); gap:8px; align-items:start; }
 body.atlas-console .personas-library { display:flex; flex-direction:column; gap:6px; padding:8px; position:sticky; top:8px; max-height:calc(100vh - 16px); overflow:auto; }
 body.atlas-console .personas-list { display:grid; gap:2px; }
-body.atlas-console #personas .personas-item { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:2px 6px; align-items:center; justify-items:start; width:100%; height:auto; min-height:0; padding:6px 8px; text-align:left; white-space:normal; border:1px solid transparent; background:transparent; }
-body.atlas-console #personas .personas-item:hover { background:var(--atlas-surface-subtle); }
-body.atlas-console #personas .personas-item[aria-current="true"] { background:var(--atlas-selected); border-color:var(--atlas-line); box-shadow:inset 2px 0 var(--atlas-accent); }
+body.atlas-console :is(#personas,#joiners) .personas-item { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:2px 6px; align-items:center; justify-items:start; width:100%; height:auto; min-height:0; padding:6px 8px; text-align:left; white-space:normal; border:1px solid transparent; background:transparent; }
+body.atlas-console :is(#personas,#joiners) .personas-item:hover { background:var(--atlas-surface-subtle); }
+body.atlas-console :is(#personas,#joiners) .personas-item[aria-current="true"] { background:var(--atlas-selected); border-color:var(--atlas-line); box-shadow:inset 2px 0 var(--atlas-accent); }
 body.atlas-console .personas-item strong { font-size:12px; }
 body.atlas-console .personas-item > span { font-size:10px !important; padding:0 6px !important; }
 body.atlas-console .personas-item small { grid-column:1/-1; color:var(--atlas-muted); font-size:11px; line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
@@ -3091,12 +3091,12 @@ body.atlas-console .personas-add { display:flex; flex-wrap:wrap; gap:6px; }
 body.atlas-console .personas-add input { flex:1 1 220px; min-width:0; }
 body.atlas-console .personas-results { display:grid; gap:2px; }
 body.atlas-console .personas-results:empty { display:none; }
-body.atlas-console #personas .personas-result { display:grid; justify-items:start; width:100%; height:auto; padding:5px 8px; text-align:left; white-space:normal; }
+body.atlas-console :is(#personas,#joiners) .personas-result { display:grid; justify-items:start; width:100%; height:auto; padding:5px 8px; text-align:left; white-space:normal; }
 body.atlas-console .personas-result b { font-size:12px; }
 body.atlas-console .personas-result small { font-size:10px; color:var(--atlas-muted); }
 body.atlas-console .personas-options { padding:6px 8px; border:1px solid var(--atlas-line); border-radius:var(--atlas-control-radius); font-size:12px; }
 body.atlas-console .personas-options summary { cursor:pointer; font-weight:600; }
-body.atlas-console .personas-options label { display:inline-flex; align-items:center; gap:6px; margin:6px 12px 0 0; }
+body.atlas-console .personas-options label { display:inline-flex; flex-direction:row; align-items:center; gap:6px; margin:6px 12px 0 0; }
 body.atlas-console .personas-options .num { width:64px; }
 body.atlas-console .personas-actions { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
 body.atlas-console .personas-actions-gap { flex:1; }
@@ -3109,6 +3109,45 @@ body.atlas-console .deployment-persona select { flex:1 1 140px; min-width:0; fon
 body.atlas-console .deployment-persona button { flex:0 0 auto; min-height:26px; padding:0 8px; font-size:12px; }
 body.atlas-console .deployment-persona small { flex-basis:100%; font-size:11px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
 body.atlas-console .deployment-persona small:empty { display:none; }
+body.atlas-console #personaAccess label { display:flex; flex-direction:row; align-items:center; justify-content:flex-start; gap:6px; margin:6px 0 4px; font-weight:600; }
+body.atlas-console .personas-access select { flex:1; min-width:0; font-size:12px; }
+body.atlas-console .personas-requests { display:grid; gap:2px; max-height:320px; overflow:auto; margin:4px 0 0; padding:0 0 0 22px; }
+body.atlas-console .personas-requests li span { display:block; }
+body.atlas-console .personas-requests li small { color:var(--atlas-muted); font-size:11px; }
+/* New joiners: the checklist of one person, access requests first, then software. */
+body.atlas-console #joiners.active { display:block; }
+body.atlas-console .joiners-soon { border-top:1px solid var(--atlas-line); padding-top:6px; font-size:12px; }
+body.atlas-console .joiners-soon summary { cursor:pointer; font-weight:600; }
+body.atlas-console .joiners-soon summary small { font-weight:400; color:var(--atlas-muted); }
+body.atlas-console .joiners-site { display:flex; flex-direction:row; align-items:center; gap:6px; margin:6px 0; }
+body.atlas-console .joiners-site select { flex:1; min-width:0; font-size:12px; }
+body.atlas-console #joiners .personas-item:disabled { opacity:.7; }
+body.atlas-console .joiners-form { display:grid; gap:8px; max-width:640px; }
+body.atlas-console .joiners-form h2 { margin:0; font-size:16px; }
+body.atlas-console .joiners-form label { display:grid; gap:2px; font-size:12px; font-weight:600; }
+body.atlas-console #joinerTitle { margin:0; font-size:16px; }
+body.atlas-console #joinerFacts { margin:2px 0 0; }
+body.atlas-console .joiners-step { display:grid; gap:6px; padding:8px; border:1px solid var(--atlas-line); border-radius:var(--atlas-control-radius); }
+body.atlas-console .joiners-step h3 { margin:0; font-size:13px; }
+body.atlas-console .joiners-step h3 small { font-weight:400; color:var(--atlas-muted); }
+body.atlas-console .joiners-tools { display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:12px; }
+body.atlas-console .joiners-tools label { display:inline-flex; flex-direction:row; align-items:center; gap:4px; }
+body.atlas-console .joiners-requests { display:grid; gap:2px; margin:0; padding:0; list-style:none; }
+body.atlas-console .joiners-request { display:grid; grid-template-columns:auto minmax(0,1fr) minmax(150px,auto) 150px; gap:4px 8px; align-items:center; padding:4px 6px; border-radius:var(--atlas-control-radius); font-size:12px; }
+body.atlas-console .joiners-request:hover { background:var(--atlas-surface-subtle); }
+body.atlas-console .joiners-request[data-raised="true"] .joiners-request-name b { color:var(--atlas-muted); text-decoration:line-through; }
+body.atlas-console .joiners-request-name { display:grid; min-width:0; }
+body.atlas-console .joiners-request-name small { color:var(--atlas-muted); font-size:11px; }
+body.atlas-console .joiners-reference { display:inline-flex; align-items:center; gap:4px; }
+body.atlas-console .joiners-reference code { font:11px "Cascadia Mono", Consolas, monospace; }
+body.atlas-console .joiners-reference button { min-height:22px; padding:0 6px; font-size:11px; }
+body.atlas-console .joiners-request input:not([type]) { min-width:0; font:12px "Cascadia Mono", Consolas, monospace; }
+body.atlas-console :is(#joinerMessage,#joinerFormMessage,#joinerInstallStatus) { margin:0; font-size:12px; }
+body.atlas-console :is(#joinerMessage,#joinerFormMessage):empty { display:none; }
+body.atlas-console :is(#joinerMessage,#joinerInstallStatus)[data-tone="bad"] { color:var(--atlas-danger-text, var(--atlas-danger)); }
+body.atlas-console :is(#joinerMessage,#joinerInstallStatus)[data-tone="good"] { color:var(--atlas-success); }
+body.atlas-console #joinerFormMessage { color:var(--atlas-danger-text, var(--atlas-danger)); }
+@media(max-width:900px) { body.atlas-console .joiners-request { grid-template-columns:auto minmax(0,1fr); } body.atlas-console .joiners-request > :is(.joiners-reference,input:not([type])) { grid-column:2; } }
 @media(max-width:900px) { body.atlas-console .personas-layout { grid-template-columns:minmax(0,1fr); } body.atlas-console .personas-library { position:static; max-height:none; } body.atlas-console .personas-row { grid-template-columns:minmax(0,1fr) auto; } body.atlas-console .personas-row select { grid-column:1/-1; } }
 body.atlas-database #directory-import[data-drop="true"] { outline:2px dashed var(--atlas-accent); outline-offset:-4px; background:var(--atlas-selected); }
 

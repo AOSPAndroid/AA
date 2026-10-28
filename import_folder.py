@@ -11,6 +11,8 @@ Manage Database, with the same backup and import history:
   deployments or queue jobs run.
 - Citrix VDI: replaces the VDIs in the file and keeps the others (the default Citrix mode).
 - packages: adds and updates package data; nothing is removed.
+- new joiner requests (the requests workbook, one sheet per desk): replaces the requests Atlas keeps
+  for each desk and adds a persona for any new desk (persona_access).
 
 A file that cannot be imported is reported and not read again until it is saved again.
 Admin only: the Demo just sees the updated database.
@@ -39,9 +41,9 @@ STABLE_SECONDS = 30
 FIRST_CHECK_SECONDS = 5
 LARGE_REMOVAL = .1
 KEEP_HISTORY = 30
-LABELS = {'users': 'Users', 'devices': 'Devices', 'vdi': 'Citrix VDI', 'packages': 'Packages'}
-GROUPS = {'directory': ('users', 'devices'), 'vdi': ('vdi',), 'packages': ('packages',)}
-GROUP_LABELS = {'directory': 'Users & devices', 'vdi': 'Citrix VDI', 'packages': 'Package data'}
+LABELS = {'users': 'Users', 'devices': 'Devices', 'vdi': 'Citrix VDI', 'packages': 'Packages', 'access': 'New joiner requests'}
+GROUPS = {'directory': ('users', 'devices'), 'vdi': ('vdi',), 'packages': ('packages',), 'access': ('access',)}
+GROUP_LABELS = {'directory': 'Users & devices', 'vdi': 'Citrix VDI', 'packages': 'Package data', 'access': 'New joiner requests'}
 PACKAGE_STATES = {'u_package_sub_state', 'package state'}
 DEVICE_FIELDS = {'infrastructure_itsi', 'sys_class_name', 'operational_status', 'correlation_id', 'serial_number',
                  'model_id', 'last_discovered', 'discovery_source', 'last_logon_user', 'asset_tag', 'model_category',
@@ -133,9 +135,10 @@ class HeldReview(BaseModel):
 
 
 class ImportFolder:
-    def __init__(self, db, state_path, busy=lambda: False, repo=lambda: None, interval=60, clock=time.time):
+    def __init__(self, db, state_path, busy=lambda: False, repo=lambda: None, interval=60, clock=time.time, access=None):
         # db may be a callable, so the folder follows the server's current database path.
-        self._db, self.state_path, self.busy, self.repo = db, Path(state_path), busy, repo
+        # access returns the new joiner requests store and the persona store.
+        self._db, self.state_path, self.busy, self.repo, self.access = db, Path(state_path), busy, repo, access
         self.interval, self.clock = interval, clock
         self.lock = threading.Lock()
         self.kinds = {}
@@ -226,7 +229,7 @@ class ImportFolder:
                 try:
                     if signature not in self.kinds:
                         try:
-                            kind = kind_of(headers(path))
+                            kind = kind_of(headers(path)) or (path.suffix.casefold() == '.xlsx' and self.access_kind(path)) or ''
                         except OSError:
                             raise  # Locked or temporarily unavailable: do not cache an unrecognised file.
                         except Exception:
@@ -282,7 +285,7 @@ class ImportFolder:
             self.set_status('waiting', message)
             return self.summary()
         if not newest:
-            self.set_status('empty', f'No exports recognised in {folder} yet. Save the users, devices, Citrix and package exports there.')
+            self.set_status('empty', f'No exports recognised in {folder} yet. Save the users, devices, Citrix and package exports or the new joiner requests workbook there.')
             return self.summary()
         # Directory first: Citrix links and package owners are matched against the updated directory.
         for group in GROUPS:
@@ -506,6 +509,39 @@ class ImportFolder:
         self.record('packages', signature, 'applied', f'{result["count"]:,} packages (+{report["added"]:,} new, {report["changed"]:,} updated).',
                     files=[item['name']], backup=result['backup'])
 
+    @staticmethod
+    def access_kind(path):
+        from persona_access import recognise
+        return recognise(path)
+
+    # New joiner requests: the workbook replaces the requests Atlas keeps; each new desk gets a persona.
+    def import_access(self, items, signature):
+        import persona_access
+        item = items[0]
+        if not self.access:
+            self.record('access', signature, 'error', 'New joiner requests are imported by Atlas Admin.', files=[item['name']])
+            return
+        work = tempfile.mkdtemp(prefix='atlas_import_folder_')
+        try:
+            try:
+                copy, = self.copies(items, work)
+            except OSError as error:
+                self.state['groups']['access'] = {'result': 'waiting', 'message': f'Could not open {item["name"]} yet ({error.__class__.__name__}); retrying.', 'at': now(), 'files': [item['name']]}
+                return
+            try:
+                parsed = persona_access.parse(copy)
+            except (ValueError, KeyError, IndexError, zipfile.BadZipFile, SyntaxError) as error:
+                self.record('access', signature, 'error', str(error) or 'The workbook could not be read.', files=[item['name']])
+                return
+            requests, personas = self.access()
+            requests.replace(parsed, item['name'])
+            added = personas.add_desks([desk['name'] for desk in parsed['desks']])
+            count = sum(len(desk['requests']) for desk in parsed['desks'])
+            self.record('access', signature, 'applied', f'{len(parsed["desks"])} desks, {count:,} requests'
+                        + (f'; {added} new persona{"s" if added != 1 else ""}' if added else '') + '.', files=[item['name']])
+        finally:
+            shutil.rmtree(work, ignore_errors=True)
+
     def run(self):
         wait = FIRST_CHECK_SECONDS
         while not self.stop_event.wait(wait):
@@ -527,7 +563,8 @@ class ImportFolder:
 
 
 def register(app, wmi, check_token, busy, state_path):
-    watcher = ImportFolder(lambda: wmi.MASTER_DB, state_path, busy, lambda: wmi.REPO)
+    watcher = ImportFolder(lambda: wmi.MASTER_DB, state_path, busy, lambda: wmi.REPO,
+                           access=lambda: (wmi.persona_access_store, wmi.persona_store))
 
     @app.get('/api/import-folder')
     def status():

@@ -44,6 +44,7 @@ function page(id) {
     admin: "Inspect device health and investigate performance.",
     bulk: "Prepare packages and actions across multiple devices.",
     personas: "The software each role needs, installed on a machine in one click.",
+    joiners: "Each new joiner's access requests and software, tracked until both are done.",
     history: "Review deployment activity and execution details.",
     terminal: "Write scripts and run commands from one place.",
     scripts: "Run saved PowerShell scripts against a list of machines.",
@@ -69,6 +70,7 @@ function page(id) {
   if (id === "psexec") window.AtlasPsExec?.open();
   if (id === "scripts") window.AtlasScripts?.open();
   if (id === "personas") window.AtlasPersonas?.open();
+  if (id === "joiners") window.AtlasJoiners?.open();
   if (id === "active-directory") window.AtlasAD?.open();
   if (id === "clipboard") window.AtlasClipboard?.shown();
   if (id === "bulk" && !bulkCatalogueLoaded && !bulkBusy) bulkPackages();
@@ -636,6 +638,7 @@ async function openPaletteTarget() {
   if (location.hash === "#psexec") page("psexec");
   if (location.hash === "#scripts") page("scripts");
   if (location.hash === "#personas") page("personas");
+  if (location.hash === "#joiners") page("joiners");
   if (location.hash === "#knowledge") page("knowledge");
   const params = new URLSearchParams(location.search),
     person = params.get("person"),
@@ -797,6 +800,7 @@ async function runSharedCommand(id) {
     terminal: () => page("terminal"),
     scripts: () => page("scripts"),
     personas: () => page("personas"),
+    joiners: () => page("joiners"),
     psexec: () => page("psexec"),
     active: () => openDeploymentMonitor("active"),
     recent: () => openDeploymentMonitor("recent"),

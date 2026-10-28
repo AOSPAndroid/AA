@@ -28,7 +28,8 @@ class Personas(unittest.TestCase):
         # Record the queue instead of running it: nothing is copied or launched.
         submit = patch.object(self.service, 'submit', side_effect=lambda fn, queue_id, items: self.started.append((fn, queue_id, items)))
         submit.start(); self.addCleanup(submit.stop)
-        store = patch.object(main.persona_store, 'path', base / 'data' / 'personas.json'); store.start(); self.addCleanup(store.stop)
+        for store, name in ((main.persona_store, 'personas.json'), (main.persona_access_store, 'persona-access.json')):
+            patcher = patch.object(store, 'path', base / 'data' / name); patcher.start(); self.addCleanup(patcher.stop)
         token = patch('atlas_api.TOKEN', 'test-token'); token.start(); self.addCleanup(token.stop)
         self.client = TestClient(main.app, base_url='http://127.0.0.1', client=('127.0.0.1', 12345)); self.addCleanup(self.client.close)
 
@@ -71,13 +72,14 @@ class Personas(unittest.TestCase):
                 self.assertEqual(response.status_code, 400, response.text)
                 self.assertIn(detail, response.json()['detail'])
         self.assertEqual(self.create('   ').status_code, 400)
-        self.assertEqual(self.client.post('/api/personas', json={'name': 'Empty', 'items': []}, headers=TOKEN).status_code, 422)
+        empty = self.client.post('/api/personas', json={'name': 'Requests only', 'items': []}, headers=TOKEN)
+        self.assertEqual((empty.status_code, empty.json().get('items')), (200, []), 'A desk persona may start with its access requests only')
         # The same package may be removed and installed again in one persona.
         self.assertEqual(self.create('Reinstall Zoom', [{'folder': 'Zoom', 'script': 'zoom_u.ps1', 'action': 'Uninstall'},
                                                         {'folder': 'Zoom', 'script': 'zoom_i.ps1'}]).status_code, 200)
         self.assertEqual(self.create('reinstall ZOOM').status_code, 409, 'Names are unique, ignoring case and spacing')
         self.assertEqual(self.client.post('/api/personas', json={'name': 'No token', 'items': [{'folder': 'Office', 'script': 'setup_i.ps1'}]}).status_code, 403)
-        self.assertEqual([p['name'] for p in self.client.get('/api/personas').json()['personas']], ['Reinstall Zoom'])
+        self.assertEqual([p['name'] for p in self.client.get('/api/personas').json()['personas']], ['Reinstall Zoom', 'Requests only'])
 
     def test_edits_and_deletes_need_the_current_revision(self):
         saved = self.create().json()

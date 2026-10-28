@@ -40,6 +40,7 @@ const viewerCommands = new Set(["ad-browser","ad-support-summary","daas","vdi","
   "terminal",
   "scripts",
   "personas",
+  "joiners",
   "psexec",
   "catalogue",
   "packages",
@@ -226,6 +227,7 @@ export const COMMANDS = [
   ],
   ["terminal", "Terminal & PowerShell ISE", "Open the local command console and script editor", "terminal powershell ise cmd script console"],
   ["scripts", "Scripts", "Run PowerShell scripts on a list of machines: services, processes, health, software", "scripts script powershell services disable enable tanium processes kill uptime disk gpupdate restart bulk machines"],
+  ["joiners", "New joiners", "Access requests and software for each new joiner, tracked until done", "new joiner joiners starter starters onboarding onboard access request requests portal ticket tickets checklist start"],
   ["personas", "Personas", "Software bundles for a role, installed on a new machine in one click", "persona personas bundle bundles kit kits role profile profiling new starter machine build software install set"],
   [
     "psexec",

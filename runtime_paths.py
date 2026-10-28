@@ -9,6 +9,8 @@ DATABASE = 'office_atlas.db'
 KNOWLEDGE = 'knowledge.sqlite3'
 SCRIPTS = 'scripts.json'
 PERSONAS = 'personas.json'
+PERSONA_ACCESS = 'persona-access.json'
+JOINERS = 'joiners.json'
 CLIPBOARD = 'clipboard-history.json'
 
 
@@ -47,6 +49,14 @@ def scripts_path():
 def personas_path():
     folder = database_folder()
     return folder / PERSONAS if folder else ROOT / 'data' / PERSONAS
+
+
+def persona_access_path():
+    return personas_path().with_name(PERSONA_ACCESS)
+
+
+def joiners_path():
+    return personas_path().with_name(JOINERS)
 
 
 def companion_state_path():

@@ -2,6 +2,15 @@
 
 Atlas's map and Axis chat in one application.
 
+**New joiners.** Save the new joiner requests workbook (`ListOfRequests.xlsx`,
+one sheet per desk) in `C:\AtlasXL` and Atlas reads each desk's access requests,
+adding a persona per desk. On the new **New joiners** page, pick someone from
+**Starting soon** (directory start dates at your site) or search the directory,
+choose their persona and machine, and Atlas builds their checklist: step 1 lists
+every request to raise in the portal with the earlier ticket to copy, and you tick
+each one off by entering its new ticket number; step 2 installs the persona's
+software on their machine in one click. Atlas never raises requests itself.
+
 **Personas.** Save the software a role needs as a persona (for example *New
 starter* or *Trader*) on the new **Personas** page, then install every package
 on a machine in one click: from that page, or from **Install a persona** in the

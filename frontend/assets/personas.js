@@ -11,7 +11,8 @@
   const ACTIONS = ["Install", "Repair", "Uninstall"];
   // Kits from earlier versions were kept in this browser only; they can be imported once.
   const KITS = "atlasDeploymentKits", PICK = "atlasPersonaPick";
-  let personas = [], repository = true, loaded = false, maxItems = 40;
+  // desks: each desk's new joiner access requests, from the requests workbook in the import folder.
+  let personas = [], desks = [], requestsSource = "", requestsImported = "", repository = true, loaded = false, maxItems = 40;
   // drafting: a new or duplicated persona the operator opened; a reload does not replace it.
   let current = null, pristine = "", drafting = false, saving = false, installing = false, searchTimer;
   const searchRequest = AtlasClient.latest();
@@ -24,6 +25,9 @@
   const problems = (persona) => (persona?.items || []).filter((item) => item.problem);
   const verb = (persona) => ((persona?.items || []).every((item) => (item.action || "Install") === "Install") ? "Install" : "Run");
   const target = () => S.target || "";
+  const key = (text) => String(text || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const deskOf = (persona) => (persona?.desk ? desks.find((d) => key(d.name) === key(persona.desk)) : null);
+  const installable = (persona) => !!persona?.items.length;
   const message = (text, tone = "") => {
     get("Message").textContent = text;
     get("Message").dataset.tone = tone;
@@ -41,6 +45,9 @@
     try {
       const data = await AtlasClient.request("/api/personas", { atlasSilent: true });
       personas = data.personas || [];
+      desks = data.desks || [];
+      requestsSource = data.requests_source || "";
+      requestsImported = data.requests_imported || "";
       repository = data.repository !== false;
       maxItems = data.max_items || maxItems;
     } catch (error) {
@@ -74,8 +81,10 @@
       button.dataset.personaId = persona.id;
       if (current?.id === persona.id) button.setAttribute("aria-current", "true");
       name.textContent = persona.name;
+      const desk = deskOf(persona);
       count.className = issues ? "status-bad" : "status-neutral";
-      count.textContent = issues ? `${issues} to fix` : plural(persona.items.length, "package");
+      count.textContent = issues ? `${issues} to fix`
+        : [persona.items.length || !desk ? plural(persona.items.length, "package") : "", desk ? plural(desk.requests.length, "request") : ""].filter(Boolean).join(" · ");
       about.textContent = persona.description || persona.items.map((i) => label(i.folder)).join(", ");
       button.append(name, count, about);
       button.onclick = () => choose(persona);
@@ -90,9 +99,9 @@
     }
   }
 
-  const blank = () => ({ id: null, revision: 0, name: "", description: "", fresh: false, threads: 8, items: [] });
+  const blank = () => ({ id: null, revision: 0, name: "", description: "", desk: "", fresh: false, threads: 8, items: [] });
   const copyOf = (p) => ({
-    id: p.id, revision: p.revision, name: p.name, description: p.description || "", fresh: !!p.fresh, threads: p.threads || 8,
+    id: p.id, revision: p.revision, name: p.name, description: p.description || "", desk: p.desk || "", fresh: !!p.fresh, threads: p.threads || 8,
     items: p.items.map((i) => ({ folder: i.folder, action: i.action || "Install", script: i.script, scripts: null, problem: i.problem || null })),
   });
   function read() {
@@ -100,11 +109,12 @@
     current.description = get("Description").value;
     current.fresh = get("Fresh").checked;
     current.threads = Math.min(32, Math.max(1, Math.round(Number(get("Threads").value)) || 8));
+    current.desk = get("Desk").value;
   }
   function snapshot() {
     if (!current) return "";
     read();
-    return JSON.stringify([current.name.trim(), current.description.trim(), current.fresh, current.threads,
+    return JSON.stringify([current.name.trim(), current.description.trim(), current.fresh, current.threads, current.desk,
       current.items.map((i) => [i.folder, i.action, i.script])]);
   }
   const dirty = () => !!current && snapshot() !== pristine;
@@ -128,6 +138,32 @@
     get("PackageSearch").value = "";
     get("Results").replaceChildren();
     renderItems();
+    renderDesks();
+  }
+
+  // Step 1 of a new joiner: the access requests of the desk this persona names (read from the workbook).
+  function renderDesks() {
+    const select = get("Desk"), wanted = current.desk;
+    const known = desks.some((d) => key(d.name) === key(wanted));
+    select.replaceChildren(new Option(desks.length ? "No desk" : "No requests workbook imported", ""),
+      ...desks.map((d) => new Option(`${d.name}${d.area ? " · " + d.area : ""} · ${plural(d.requests.length, "request")}`, d.name)),
+      ...(wanted && !known ? [new Option(`${wanted} · not in the workbook`, wanted)] : []));
+    select.value = known ? desks.find((d) => key(d.name) === key(wanted)).name : wanted;
+    renderAccess();
+  }
+  function renderAccess() {
+    const desk = desks.find((d) => key(d.name) === key(get("Desk").value)), list = get("Requests");
+    get("AccessCount").textContent = desk ? `· ${desk.name} · ${plural(desk.requests.length, "request")}` : "";
+    get("AccessSource").textContent = !desks.length
+      ? "Save the new joiner requests workbook (one sheet per desk) in the import folder, C:\\AtlasXL by default, to list each desk's requests here."
+      : `From ${requestsSource || "the requests workbook"}${requestsImported ? ", imported " + new Date(requestsImported).toLocaleString([], { dateStyle: "short", timeStyle: "short" }) : ""}. New joiners lists these to raise in the request portal.`;
+    list.replaceChildren(...(desk?.requests || []).map((row) => {
+      const item = document.createElement("li"), name = document.createElement("span"), ticket = document.createElement("small");
+      name.textContent = row.catalog;
+      ticket.textContent = [row.ticket, row.notes].filter(Boolean).join(" · ");
+      item.append(name, ticket);
+      return item;
+    }));
   }
 
   function renderItems() {
@@ -288,11 +324,12 @@
     get("Delete").hidden = !saved;
     get("Delete").disabled = locked || !saved || saving;
     get("Duplicate").disabled = locked || !current.items.length;
-    for (const id of ["New", "FromQueue", "PackageSearch", "Name", "Description", "Fresh", "Threads", "Machine", "UseSelected"])
+    for (const id of ["New", "FromQueue", "PackageSearch", "Name", "Description", "Fresh", "Threads", "Machine", "UseSelected", "Desk"])
       get(id).disabled = locked;
     const issue = locked ? blocked()
       : !saved ? "Save the persona first"
       : changed ? "Save your changes before installing"
+      : !installable(saved) ? "Add the persona's software first"
       : problems(saved).length ? `Fix ${plural(problems(saved).length, "package")} first: ${problems(saved).map((i) => label(i.folder)).join(", ")}`
       : !repository ? "The package repository is unavailable. Check Settings and OneDrive sync."
       : !machine ? "Enter or select the machine to install on"
@@ -311,11 +348,10 @@
       get("Name").focus();
       return message("Name the persona, for example New starter.", "bad");
     }
-    if (!current.items.length) return message("Add at least one package.", "bad");
     const missing = current.items.find((i) => !i.script);
     if (missing) return message(`${label(missing.folder)}: choose a script.`, "bad");
     const body = {
-      name: current.name.trim().replace(/\s+/g, " "), description: current.description.trim(), fresh: current.fresh, threads: current.threads,
+      name: current.name.trim().replace(/\s+/g, " "), description: current.description.trim(), desk: current.desk, fresh: current.fresh, threads: current.threads,
       revision: current.revision, items: current.items.map(({ folder, script, action }) => ({ folder, script, action })),
     };
     saving = true;
@@ -413,27 +449,27 @@
   function renderPick() {
     const select = get("Pick");
     if (!select) return;
-    const wanted = select.value || stored(PICK) || "";
-    select.replaceChildren(new Option(personas.length ? "Install a persona…" : "No personas yet", ""),
-      ...personas.map((p) => new Option(`${p.name} · ${plural(p.items.length, "package")}`, p.id)));
-    select.value = personas.some((p) => p.id === wanted) ? wanted : "";
+    const wanted = select.value || stored(PICK) || "", ready = personas.filter(installable);
+    select.replaceChildren(new Option(ready.length ? "Install a persona…" : "No personas with software yet", ""),
+      ...ready.map((p) => new Option(`${p.name} · ${plural(p.items.length, "package")}`, p.id)));
+    select.value = ready.some((p) => p.id === wanted) ? wanted : "";
     pickControls();
   }
   function pickControls() {
     const select = get("Pick"), button = get("PickInstall"), note = get("PickNote");
     if (!select) return;
-    const persona = personas.find((p) => p.id === select.value), machine = target();
+    const persona = personas.find((p) => p.id === select.value), machine = target(), ready = personas.some(installable);
     const issue = readonly() ? blocked()
-      : !persona ? (personas.length ? "Choose a persona" : "Create personas on the Personas page")
+      : !persona ? (ready ? "Choose a persona" : "Add software to a persona on the Personas page")
       : !machine ? "Select a machine first"
       : problems(persona).length ? `Fix ${persona.name} on the Personas page first: ${problems(persona).map((i) => `${label(i.folder)} (${i.problem})`).join(", ")}`
       : !repository ? "The package repository is unavailable. Check Settings and OneDrive sync."
       : installing ? "Starting…" : "";
-    select.disabled = readonly() || !personas.length;
+    select.disabled = readonly() || !ready;
     button.disabled = !!issue;
     button.title = issue || `${verb(persona)} ${plural(persona.items.length, "package")} on ${machine}, one after another`;
     button.textContent = persona ? `${verb(persona)} ${plural(persona.items.length, "package")}` : "Install";
-    note.textContent = persona ? persona.items.map((i) => label(i.folder)).join(" · ") : personas.length ? "" : "Save software bundles on the Personas page.";
+    note.textContent = persona ? persona.items.map((i) => label(i.folder)).join(" · ") : ready ? "" : "Save software bundles on the Personas page.";
   }
   async function installPick() {
     const persona = personas.find((p) => p.id === get("Pick").value);
@@ -456,7 +492,7 @@
     const host = get("QueueList");
     if (!host) return;
     const locked = readonly(), machine = target();
-    host.replaceChildren(...personas.map((persona) => {
+    host.replaceChildren(...personas.filter(installable).map((persona) => {
       const row = document.createElement("div"), text = document.createElement("div"), name = document.createElement("b");
       const about = document.createElement("span"), button = document.createElement("button");
       const names = persona.items.map((i) => `${label(i.folder)} (${i.action || "Install"})`);
@@ -474,10 +510,10 @@
       row.append(text, button);
       return row;
     }));
-    if (!personas.length) {
+    if (!personas.some(installable)) {
       const empty = document.createElement("p");
       empty.className = "empty";
-      empty.textContent = "No personas yet. Queue the packages you deploy together, name them, then save.";
+      empty.textContent = "No personas with software yet. Queue the packages you deploy together, name them, then save.";
       host.append(empty);
     }
     get("SaveQueue").disabled = locked;
@@ -587,6 +623,10 @@
   };
   for (const id of ["Name", "Description", "Threads"]) get(id).addEventListener("input", controls);
   get("Fresh").addEventListener("change", controls);
+  get("Desk").addEventListener("change", () => {
+    renderAccess();
+    controls();
+  });
   get("PackageSearch").oninput = () => {
     clearTimeout(searchTimer);
     searchTimer = setTimeout(search, 250);
@@ -616,7 +656,9 @@
 
   window.AtlasPersonas = {
     load,
-    list: () => personas,
+    list: () => personas.filter(installable),
+    all: () => personas,
+    desk: deskOf,
     addToQueue,
     open() {
       syncMachine();

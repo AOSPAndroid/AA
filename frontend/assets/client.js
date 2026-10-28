@@ -74,7 +74,7 @@
     const { atlasSilent = false, ...transport } = options;
     const endLoading = atlasSilent ? () => {} : beginLoading();
     const tracked =
-      /^\/api\/(deploy$|bulk\/deploy$|queue$|personas\/[a-f0-9]+\/install$|psexec\/run$|terminal\/run$|software-tools\/(inventory|uninstall)$|performance\/|processes\/|services(?:\/stop)?$|remote-registry\/enable$|kill$|cleanup-packages\/|ping\/|disk\/|overview\/|access\/|preflight\/|open-tool\/)/.test(
+      /^\/api\/(deploy$|bulk\/deploy$|queue$|(?:personas|joiners)\/[a-f0-9]+\/install$|psexec\/run$|terminal\/run$|software-tools\/(inventory|uninstall)$|performance\/|processes\/|services(?:\/stop)?$|remote-registry\/enable$|kill$|cleanup-packages\/|ping\/|disk\/|overview\/|access\/|preflight\/|open-tool\/)/.test(
         url,
       );
     if (tracked)
@@ -91,7 +91,7 @@
             detail: {
               open:
                 options.method === "POST" &&
-                /^\/api\/(deploy$|bulk\/deploy$|queue$|personas\/[a-f0-9]+\/install$|psexec\/run$|terminal\/run$|software-tools\/uninstall$)/.test(
+                /^\/api\/(deploy$|bulk\/deploy$|queue$|(?:personas|joiners)\/[a-f0-9]+\/install$|psexec\/run$|terminal\/run$|software-tools\/uninstall$)/.test(
                   url,
                 ),
             },

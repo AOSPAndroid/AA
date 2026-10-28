@@ -1,4 +1,5 @@
 {
   "package_repository": "",
-  "deployment_timeout_seconds": 3600
+  "deployment_timeout_seconds": 3600,
+  "new_joiner_site": "Paris"
 }

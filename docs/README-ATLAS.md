@@ -340,11 +340,24 @@ The activity feed reads existing server state; it never starts a remote scan. Sl
 
 Run **Stop-All-Atlas.bat**, then **windows\Move-Databases.bat**. It moves the Atlas database and the Knowledge Base database to `F:\Atlas\DB` (or to a folder you give it, for example `windows\Move-Databases.bat G:\AtlasData`) and records the folder as `database_folder` in `config.json`. Each copy must pass an integrity check and match the original's row counts before Atlas switches to it; existing files are never overwritten, and the old files are kept in `data\backups\before-database-move-...` until you delete them. If the drive is missing when Atlas starts, Atlas stops with a message instead of opening an empty database. To go back, remove `database_folder` from `config.json` and return the files to `data`.
 
+### New joiners: access requests and software in one checklist
+
+A new joiner needs two things: the access requests their desk raises in the request portal, and the software on their PC. Save the requests workbook (`ListOfRequests.xlsx`: a **Main** sheet with Desk Sheet and Area, then one sheet per desk with **Catalog Name**, **Request Ticket Number** and **Notes**, one row per request) in the import folder, `C:\AtlasXL` by default. Atlas recognises it by those columns within a minute, keeps each desk's requests and adds a persona for every desk that has none, named after the desk. Saving a new version replaces the requests; the import result is under Manage Database > Import folder.
+
+Open **New joiners**. **Starting soon** lists directory people whose start date is within the past two weeks or the next six, at the site set by `new_joiner_site` in `config.json` (Paris by default; the list can show another site or all sites). Click a person, or **New joiner** and search the directory by name, then choose their persona and machine (filled from the directory when linked) and click **Create checklist**.
+
+1. **Access requests** lists the desk's requests. Each shows the earlier joiner's ticket with **Copy**, to open as a template in the portal, and any note (for example requests raised through RPM). Type the new ticket number and the request is ticked as raised; tick requests raised elsewhere by hand. **Hide raised** and **Copy remaining** help with what is left.
+2. **Software** installs the persona's packages on the machine in one click, the same as **Install on MACHINE** on the Personas page, and shows the run's progress.
+
+**Mark complete** when both are done. A checklist keeps the requests it was created with, so a later workbook does not change it. Atlas never raises requests in the portal. Checklists are saved in `joiners.json` beside `personas.json`. Demo shows the page greyed out without anyone's details.
+
 ### Personas: one-click software for a new machine
 
 A persona is the software a role needs, for example *New starter* or *Trader*. Open **Personas** in the sidebar, click **New persona**, name it, search for each package and add it; each package keeps its action (Install, Repair or Uninstall), its script and its place in the order. **Options** sets Fresh copy and Robocopy threads for the whole persona. Click **Save**. **Add queued packages** copies what is in the deployment queue, and **Save queue as persona** in the queue drawer does the same from there.
 
 To install, select the machine in Workspace (or type its name in the persona's **Machine** field) and click **Install on MACHINE**. In Workspace, the deployment panel's **Install a persona** list does the same for the selected machine and remembers the last persona used. Atlas checks the machine and every package and script first and starts nothing if any is refused, then runs the packages one after another as one deployment queue with the usual per-PC lock, history and recovery rules. The run appears under **Ongoing actions** in the queue, where it can pause after the current package or cancel the waiting ones. A machine that already has a deployment running is refused until it finishes.
+
+Each persona can name a desk under **Access requests**, which lists that desk's requests from the workbook; New joiners uses it for step 1. A persona may have requests only, until you add its software.
 
 Personas are saved in `personas.json` beside saved scripts (`data`, or the `database_folder` from `config.json`), so every browser on the Admin PC sees the same list. Packages are stored by folder name, so moving the repository keeps them. A package or script removed from the repository is flagged on the persona and blocks installing until you choose its new script or remove it. **Add for MACHINE** in the queue drawer still only fills the queue; nothing deploys until **Start queue**. Deployment kits saved in a browser by earlier versions are offered once as **Import browser kits**. Demo shows the Personas page and controls greyed out, without saved personas.
 

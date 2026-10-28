@@ -5,6 +5,9 @@ Personas are saved in personas.json beside the saved scripts. Installing one sta
 deployment queue for the machine: Atlas checks the machine and every package first and starts
 nothing if any is refused, then runs them one after another with the queue's per-PC lock,
 history and recovery rules.
+
+A persona can name a desk from the new joiner requests workbook (persona_access): its access
+requests are shown with it, and importing the workbook adds a persona for each new desk.
 """
 import json
 import os
@@ -35,7 +38,9 @@ class Persona(BaseModel):
     model_config = ConfigDict(extra='forbid')
     name: str = Field(min_length=1, max_length=60)
     description: str = Field(default='', max_length=300)
-    items: list[Item] = Field(min_length=1, max_length=MAX_ITEMS)
+    # A desk's persona starts with its access requests only; software is added in Atlas.
+    items: list[Item] = Field(default_factory=list, max_length=MAX_ITEMS)
+    desk: str = Field(default='', max_length=120)
     fresh: bool = False
     threads: int = Field(default=8, ge=1, le=32)
     revision: int = Field(default=0, ge=0)
@@ -95,11 +100,37 @@ class Store:
             while not item_id or (not current and item_id in taken):
                 item_id = secrets.token_hex(6)
             item = {'id': item_id, 'name': name, 'description': body.description.strip(), 'items': items,
-                    'fresh': body.fresh, 'threads': body.threads, 'revision': (current or {}).get('revision', 0) + 1,
-                    'updated': time.strftime('%Y-%m-%dT%H:%M:%S')}
+                    'desk': ' '.join(body.desk.split()), 'fresh': body.fresh, 'threads': body.threads,
+                    'revision': (current or {}).get('revision', 0) + 1, 'updated': time.strftime('%Y-%m-%dT%H:%M:%S')}
             personas = [item if entry['id'] == persona_id else entry for entry in personas] if current else [*personas, item]
             self.write(sorted(personas, key=lambda entry: entry['name'].casefold()))
             return item
+
+    def add_desks(self, desks):
+        """A persona for each desk no persona names yet, named after it; returns how many were added."""
+        from persona_access import key
+        with self.lock:
+            personas = self.all()
+            linked = {key(item.get('desk')) for item in personas}
+            names = {item['name'].casefold() for item in personas}
+            added = []
+            for desk in desks:
+                if not key(desk) or key(desk) in linked:
+                    continue
+                name = desk[:60] if desk[:60].casefold() not in names else (desk[:48] + ' (requests)')
+                if name.casefold() in names:
+                    continue
+                taken = {item['id'] for item in personas + added}
+                item_id = secrets.token_hex(6)
+                while item_id in taken:
+                    item_id = secrets.token_hex(6)
+                added.append({'id': item_id, 'name': name, 'description': '', 'items': [], 'desk': desk, 'fresh': False,
+                              'threads': 8, 'revision': 1, 'updated': time.strftime('%Y-%m-%dT%H:%M:%S')})
+                linked.add(key(desk))
+                names.add(name.casefold())
+            if added:
+                self.write(sorted(personas + added, key=lambda entry: entry['name'].casefold()))
+            return len(added)
 
     def delete(self, persona_id, revision):
         with self.lock:
@@ -113,8 +144,9 @@ class Store:
             return {'deleted': persona_id}
 
 
-def register(app, path, backend):
-    """backend is the Admin app module: its repository, deployment checks and queue."""
+def register(app, path, backend, access):
+    """backend is the Admin app module: its repository, deployment checks and queue.
+    access is the persona_access.Store with the desks' new joiner requests."""
     store = Store(path)
     install_lock = threading.Lock()
 
@@ -180,7 +212,10 @@ def register(app, path, backend):
             for persona in items:
                 for item in persona['items']:
                     item['problem'] = problem(item.get('folder', ''), item.get('script', ''), item.get('action', 'Install'))
-        return {'personas': items, 'repository': available, 'max_items': MAX_ITEMS}
+        # Each persona shows the requests of the desk it names.
+        requests = access.read()
+        return {'personas': items, 'repository': available, 'max_items': MAX_ITEMS, 'desks': requests['desks'],
+                'requests_source': requests.get('source', ''), 'requests_imported': requests.get('imported', '')}
 
     @app.post('/api/personas')
     def create(body: Persona, request: Request):
@@ -200,12 +235,18 @@ def register(app, path, backend):
         return store.delete(persona_id, revision)
 
     @app.post('/api/personas/{persona_id}/install')
-    def install(persona_id: str, body: Install, request: Request):
+    def install_route(persona_id: str, body: Install, request: Request):
         authorize(request)
+        return install(persona_id, body.computer, body.revision)
+
+    def install(persona_id, computer, revision=None):
+        """Start the persona's software on one machine as one queue; New joiners installs through here too."""
         persona = find(persona_id)
-        if body.revision is not None and persona.get('revision') != body.revision:
+        if revision is not None and persona.get('revision') != revision:
             raise HTTPException(409, f'{persona["name"]} was changed since you opened it. Review it, then install again.')
-        computer = backend.validate_pc(body.computer)
+        if not persona['items']:
+            raise HTTPException(400, f'{persona["name"]} has no software yet. Add its packages on the Personas page.')
+        computer = backend.validate_pc(computer)
         with install_lock:
             # Each item would wait for the machine's lock and fail; say so once instead.
             if busy(computer):
@@ -217,4 +258,5 @@ def register(app, path, backend):
         return {**started, 'persona': persona['name'], 'computer': computer, 'count': len(items),
                 'items': [{'package': item['folder'], 'action': item['action']} for item in persona['items']]}
 
+    store.install = install
     return store

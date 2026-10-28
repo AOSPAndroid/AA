@@ -40,10 +40,11 @@ If the model is missing, the map still opens and chat explains how to start it.
 - **Chat on every page:** the floating **Ask Axis** button in the bottom-right
   corner opens the same chat on the map and every console page. On Workspace,
   **Use current target** attaches the target PC.
-- **Personas:** save the software a role needs on the **Personas** page, then
-  install every package on a new machine in one click, from that page or from
-  the Workspace deployment panel. Atlas checks everything first, then runs the
-  packages one after another through its queue.
+- **New joiners and personas:** each desk's access requests come from the
+  requests workbook in `C:\AtlasXL`; each persona adds the software that role
+  needs. **New joiners** turns them into one checklist per person: the requests
+  to raise in the portal, ticked off by ticket number, and the software installed
+  on their machine in one click (also from Personas or the Workspace panel).
 - **Clipboard page:** the Clipboard sits beside Workspace and Live Inbox. Each
   capture lists the machines, people, desks, tickets and IP addresses Atlas
   recognises, with their actions.

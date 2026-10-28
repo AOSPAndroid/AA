@@ -48,15 +48,15 @@ class ViewerTests(unittest.TestCase):
         self.assertIn('content="viewer"',html)
         self.assertIn('atlas-demo-badge',html)
         self.assertEqual(self.client.get('/assets/desktop.html').status_code, 404, 'The Desktop layout was removed')
-        for page in ('workspace','admin','bulk','history','psexec','personas'):
+        for page in ('workspace','admin','bulk','history','psexec','personas','joiners'):
             self.assertIn('data-page="'+page+'"',html)
         for filename in re.findall(r'/assets/([\w.-]+)',html):
             self.assertEqual(self.client.get('/assets/'+filename).status_code,200,filename)
         self.assertEqual(self.client.get('/installer/').status_code,200)
         self.assertEqual(self.client.get('/api/capabilities').json()['elevated_operations'],False)
-        for path in ('/api/psexec/runs','/api/overview/PC','/api/machine-health/PC/cpu','/api/catalog','/api/session','/api/app','/api/inbox/arrivals','/api/inbox/control','/api/personas','/atlas-sw.js','/atlas.webmanifest'):
+        for path in ('/api/psexec/runs','/api/overview/PC','/api/machine-health/PC/cpu','/api/catalog','/api/session','/api/app','/api/inbox/arrivals','/api/inbox/control','/api/personas','/api/joiners','/api/joiners/starting','/atlas-sw.js','/atlas.webmanifest'):
             self.assertEqual(self.client.get(path).status_code,404,path)
-        for path in ('/api/psexec/run','/api/psexec/runs/fake/input','/api/bulk/deploy','/api/queue','/api/personas','/api/personas/0123456789ab/install'):
+        for path in ('/api/psexec/run','/api/psexec/runs/fake/input','/api/bulk/deploy','/api/queue','/api/personas','/api/personas/0123456789ab/install','/api/joiners','/api/joiners/0123456789ab/install'):
             self.assertEqual(self.client.post(path,json={}).status_code,403,path)
         for path in ('/api/palette/desks','/api/master/status','/api/master/resolve/nobody'):
             self.assertEqual(self.client.get(path).status_code,200,path)

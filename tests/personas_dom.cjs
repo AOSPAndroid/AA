@@ -97,7 +97,7 @@ function choose(f, target) {
   get('personaFresh').click();
   get('personaSave').click();
   await until(() => state.personas.length === 1 && /Saved New starter/.test(get('personaMessage').textContent), 'Saved');
-  assert.deepEqual(posts(state)[0].body, {name: 'New starter', description: '', fresh: true, threads: 8, revision: 0,
+  assert.deepEqual(posts(state)[0].body, {name: 'New starter', description: '', desk: '', fresh: true, threads: 8, revision: 0,
     items: [{folder: 'Teams', script: 'teams_machine_i.ps1', action: 'Install'}, {folder: 'Office', script: 'setup_i.ps1', action: 'Install'}]});
   assert.match(get('personaList').textContent, /New starter/);
   assert(get('personaSave').disabled, 'Saved state is clean');

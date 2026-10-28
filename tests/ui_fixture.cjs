@@ -1,7 +1,7 @@
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const {JSDOM,VirtualConsole}=require('jsdom');
 const root=path.resolve(__dirname,'..');
-const consoleFiles=['app.js','console-directory.js','console-deployment.js','personas.js','console-processes.js','slowdown-diagnostics.js','psexec-catalogue.js','psexec-commands.js','console-psexec.js','psexec-terminal.js','action-widgets.js','reboot-monitor.js','knowledge-converter.js','knowledge-base.js','knowledge-articles.js','console-shell.js','inbox-workbench.js','inbox-actions.js','remote-services.js','copilot-diagnostics.js','script-library.js'];
+const consoleFiles=['app.js','console-directory.js','console-deployment.js','personas.js','joiners.js','console-processes.js','slowdown-diagnostics.js','psexec-catalogue.js','psexec-commands.js','console-psexec.js','psexec-terminal.js','action-widgets.js','reboot-monitor.js','knowledge-converter.js','knowledge-base.js','knowledge-articles.js','console-shell.js','inbox-workbench.js','inbox-actions.js','remote-services.js','copilot-diagnostics.js','script-library.js'];
 function consoleSource(){return consoleFiles.map(file=>fs.readFileSync(path.join(root,'frontend/assets',file),'utf8')).join('\n')}
 async function fixture({html='frontend/index.html',fetch:request,url='http://127.0.0.1:8892/installer'}={}){
  const errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));

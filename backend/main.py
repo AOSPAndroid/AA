@@ -800,10 +800,15 @@ register_terminal(app)
 from script_library import register as register_scripts
 from runtime_paths import scripts_path
 register_scripts(app, scripts_path())
-# Personas: saved software bundles, each installed on a machine as one deployment queue.
+# Personas: saved software bundles, each installed on a machine as one deployment queue,
+# with each desk's new joiner requests from the requests workbook; New joiners tracks both steps.
 from personas import register as register_personas
-from runtime_paths import personas_path
-persona_store=register_personas(app, personas_path(), sys.modules[__name__])
+from persona_access import Store as PersonaAccess
+from joiners import register as register_joiners
+from runtime_paths import personas_path, persona_access_path, joiners_path
+persona_access_store=PersonaAccess(persona_access_path())
+persona_store=register_personas(app, personas_path(), sys.modules[__name__], persona_access_store)
+joiner_store=register_joiners(app, joiners_path(), sys.modules[__name__], persona_store, persona_access_store)
 
 # Independent live health results; retains the application's local-only middleware.
 from machine_health import register_machine_health

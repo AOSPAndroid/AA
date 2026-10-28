@@ -278,6 +278,7 @@
     phone: '<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M10 5h4m-3 14h2"/>',
     tablet: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M11 18h2"/>',
     bulk: '<path d="M5 4h14v4H5zM5 10h14v4H5zM5 16h14v4H5z"/>',
+    joiners: '<circle cx="10" cy="7.5" r="3.5"/><path d="M3.5 20a6.5 6.5 0 0 1 13 0M19 8v6m-3-3h6"/>',
     personas: '<circle cx="9" cy="7.5" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 10-5.5M18 12l3.5 2v4L18 20l-3.5-2v-4L18 12Zm-3.5 2 3.5 2 3.5-2M18 16v4"/>',
     history: '<path d="M4 12a8 8 0 1 0 2.3-5.7L4 8.6M4 4v4.6h4.6M12 7v5l3 2"/>',
     clipboard: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M8.5 10h7M8.5 14h7M8.5 18h4"/>',

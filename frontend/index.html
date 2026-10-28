@@ -71,6 +71,7 @@
           ><button data-page="bulk">
             <span class="nav-icon">⇶</span
             ><span class="nav-label">Bulk Deploy</span></button
+          ><button data-page="joiners"><span class="nav-icon" aria-hidden="true">+</span><span class="nav-label">New joiners</span></button
           ><button data-page="personas"><span class="nav-icon" aria-hidden="true">☺</span><span class="nav-label">Personas</span></button
           ><button data-page="history">
             <span class="nav-icon">◷</span
@@ -658,6 +659,61 @@
           </div>
         </div>
       </section>
+      <section id="joiners" class="page" aria-label="New joiners">
+        <div class="personas-layout">
+          <aside class="personas-library panel" aria-label="New joiners">
+            <input id="joinerSearch" type="search" placeholder="Find a new joiner" aria-label="Find a new joiner" autocomplete="off" />
+            <div id="joinerList" class="personas-list"></div>
+            <div class="personas-library-actions"><button type="button" id="joinerNew" class="primary">New joiner</button></div>
+            <details id="joinerSoon" class="joiners-soon" open>
+              <summary>Starting soon <small id="joinerSoonCount"></small></summary>
+              <label class="joiners-site">Site<select id="joinerSite" aria-label="Site"></select></label>
+              <div id="joinerSoonList" class="personas-list"></div>
+            </details>
+          </aside>
+          <div class="personas-detail panel">
+            <form id="joinerForm" class="joiners-form" hidden>
+              <h2>New joiner</h2>
+              <label>Name<input id="joinerName" maxlength="120" autocomplete="off" placeholder="Name, email or ID; pick them from the directory" /></label>
+              <div id="joinerMatches" class="personas-results" aria-label="Directory matches"></div>
+              <label>Email<input id="joinerEmail" maxlength="254" autocomplete="off" /></label>
+              <label>Persona<select id="joinerPersona" aria-label="Persona"></select></label>
+              <label>Machine<input id="joinerMachine" maxlength="255" autocomplete="off" spellcheck="false" placeholder="Hostname (optional now)" /></label>
+              <p id="joinerPlan" class="personas-help"></p>
+              <div class="personas-actions"><button type="submit" id="joinerCreate" class="primary">Create checklist</button><button type="button" id="joinerCancel">Cancel</button></div>
+              <p id="joinerFormMessage" role="status"></p>
+            </form>
+            <div id="joinerDetail" hidden>
+              <header class="personas-head">
+                <div><h2 id="joinerTitle"></h2><p id="joinerFacts" class="personas-help"></p></div>
+                <span id="joinerProgress" class="pill"></span>
+              </header>
+              <section class="joiners-step" aria-labelledby="joinerAccessHeading">
+                <h3 id="joinerAccessHeading">1 · Access requests <small id="joinerRequestCount"></small></h3>
+                <p class="personas-help">Raise each request in the request portal; the earlier ticket shows what was asked for last time. Enter the new ticket number to tick it off.</p>
+                <div class="joiners-tools"><label><input type="checkbox" id="joinerHideRaised" /> Hide raised</label><button type="button" id="joinerCopyRemaining">Copy remaining</button></div>
+                <ol id="joinerRequests" class="joiners-requests"></ol>
+              </section>
+              <section class="joiners-step" aria-labelledby="joinerSoftwareHeading">
+                <h3 id="joinerSoftwareHeading">2 · Software <small id="joinerSoftwareCount"></small></h3>
+                <div class="personas-install" role="group" aria-label="Install the software">
+                  <label>Machine<input id="joinerComputer" maxlength="255" autocomplete="off" spellcheck="false" placeholder="Hostname" /></label>
+                  <button type="button" id="joinerInstall" class="primary">Install</button>
+                </div>
+                <p id="joinerSoftware" class="personas-help"></p>
+                <p id="joinerInstallStatus" role="status"></p>
+              </section>
+              <div class="personas-actions" role="group" aria-label="New joiner actions">
+                <button type="button" id="joinerDone">Mark complete</button>
+                <span class="personas-actions-gap"></span>
+                <button type="button" id="joinerDelete" class="danger">Delete</button>
+              </div>
+              <p id="joinerMessage" role="status"></p>
+            </div>
+            <p id="joinerEmpty" class="personas-empty"></p>
+          </div>
+        </div>
+      </section>
       <section id="personas" class="page" aria-label="Personas">
         <div class="personas-layout">
           <aside class="personas-library panel" aria-label="Saved personas">
@@ -690,6 +746,12 @@
               <summary>Options</summary>
               <label><input type="checkbox" role="switch" id="personaFresh" /> Fresh copy</label>
               <label>Robocopy threads<input id="personaThreads" class="num" type="number" min="1" max="32" value="8" /></label>
+            </details>
+            <details id="personaAccess" class="personas-options personas-access">
+              <summary>Access requests <small id="personaAccessCount"></small></summary>
+              <label>Requests of desk<select id="personaDesk" aria-label="Desk whose access requests this persona raises"></select></label>
+              <p id="personaAccessSource" class="personas-help"></p>
+              <ol id="personaRequests" class="personas-requests"></ol>
             </details>
             <div class="personas-actions" role="group" aria-label="Persona actions">
               <button type="button" id="personaSave">Save</button><button type="button" id="personaDuplicate">Duplicate</button>
@@ -1212,6 +1274,7 @@ Ready. Choose a command and click Run.</pre>
     <script src="/assets/console-directory.js?v=3"></script>
     <script src="/assets/console-deployment.js?v=3"></script>
     <script src="/assets/personas.js"></script>
+    <script src="/assets/joiners.js"></script>
     <script src="/assets/console-processes.js"></script>
     <script src="/assets/slowdown-diagnostics.js"></script>
     <script src="/assets/psexec-catalogue.js"></script>
