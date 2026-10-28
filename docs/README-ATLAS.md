@@ -62,7 +62,7 @@ The **map** helps you explore floors and seating in 2D or 3D. The **IT console**
 | **Office maps** | Explore multiple floors in 2D and 3D, search desks and rooms, locate colleagues, and manage seating and directory links. |
 | **People and machines** | Search directory and inventory exports; inspect accounts, organisation details, assigned machines, last recorded users and original export fields. |
 | **Remote administration** | Check machine health and specifications, inspect software and resource usage, manage processes, list and start/stop/restart Windows services, and open Windows support tools. Remote actions use the host account's existing permissions. |
-| **Application deployment** | Browse a package catalogue, select install/repair/uninstall scripts, deploy to individual targets or a bulk queue, and follow progress, logs and history. |
+| **Application deployment** | Browse a package catalogue, select install/repair/uninstall scripts, deploy to individual targets or a bulk queue, and follow progress, logs and history. Atlas copies the package to `C:\Temp\Packages` and starts only its own script on the PC with one readable PowerShell line that saves the output and exit code; it then waits for any installers the script handed off to (and Windows Installer) and lists the software that changed, reading the PC over WMI. Nothing is encoded or compiled on the PC. |
 | **Data management** | Preview and apply directory imports, review export-column coverage, maintain seating records, and back up or restore the database. |
 | **Shared viewer** | Host a separate read-only interface on the local network for maps, people lookup and stored inventory. Editing, deployment and elevated remote operations stay in the admin tool. |
 

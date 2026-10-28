@@ -1,6 +1,6 @@
 from __future__ import annotations
 from datetime import datetime
-import base64, hashlib, json, logging, os, re, secrets, shutil, sqlite3, subprocess, sys, threading, time, uuid, zlib
+import base64, hashlib, json, logging, os, re, secrets, shutil, sqlite3, subprocess, sys, threading, time, uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Literal
@@ -39,7 +39,8 @@ from response_compression import compress_responses
 compress_responses(app)
 from job_service import JobService, TERMINAL
 from shared_operations import TargetLock, axis_ready
-from axis.it_tools import describe_install_activity, install_activity_finish, install_activity_setup, install_unconfirmed, read_install_activity
+from axis.it_tools import describe_install_activity, install_unconfirmed
+import install_watch
 job_service=JobService(lambda:HISTORY_DB,guard=axis_ready)
 jobs=job_service.jobs;lock=job_service.lock
 @app.on_event('startup')
@@ -117,51 +118,32 @@ def wmi_create(pc,cmd):
  return int(out.splitlines()[-1])
 def wmi_running(pc,pid):
  return ps(f'[bool](Get-WmiObject -ComputerName {quote(pc)} Win32_Process -Filter {quote("ProcessId="+str(int(pid)))} -EA Stop)',timeout=30).lower()=='true'
-def install_files(ex):
- """The target's waiting status and installer-activity record for a launch's exit-code file."""
- base=ex.rsplit('.',1)[0];return base+'.status',base+'.activity.json'
-def remote_command(payload):
- # Compressed so the command line stays well inside Windows' 32K limit; it still never touches the target's disk.
- packed=base64.b64encode(zlib.compress(payload.encode('utf-8'),9)[2:-4]).decode('ascii')
- bootstrap=("$s=New-Object IO.Compression.DeflateStream((New-Object IO.MemoryStream(,[Convert]::FromBase64String('"+packed+"'))),"
-            "[IO.Compression.CompressionMode]::Decompress);& ([scriptblock]::Create((New-Object IO.StreamReader($s,[Text.Encoding]::UTF8)).ReadToEnd()))")
- return 'powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand '+base64.b64encode(bootstrap.encode('utf-16le')).decode('ascii')
+def launch_command(remote,log,ex):
+ """The one readable line WMI starts on the target: the package's own script, its output saved to log and its exit code to ex.
+ Nothing is encoded, compressed or compiled; everything else about the installation is read from Atlas (install_watch)."""
+ run=f'& {quote(remote)}' if remote.lower().endswith('.ps1') else f'& cscript.exe //B //NoLogo {quote(remote)}'
+ folder=remote.rsplit('\\',1)[0]
+ # Stop on the first error, as Atlas's launch always has: the script then reports exit code 1.
+ return ('powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$ErrorActionPreference=\'Stop\'; $c=1; try { '
+         f'Set-Location -LiteralPath {quote(folder)}; Get-ChildItem -Recurse -File -Filter *.ps1 | Unblock-File; {run} *>&1 | Out-File -LiteralPath {quote(log)} -Encoding utf8; $c=[int]$LASTEXITCODE '
+         f'}} catch {{ $_ | Out-File -LiteralPath {quote(log)} -Append -Encoding utf8 }} finally {{ [string]$c | Out-File -LiteralPath {quote(ex)} -Encoding ascii }}; exit $c"')
 def launch(pc,remote,pkg):
  token=uuid.uuid4().hex
  safe=re.sub(r'[^A-Za-z0-9_.-]','_',pkg)[:60]
- log=rf'C:\Temp\{safe}_{token}.log';ex=rf'C:\Temp\{safe}_{token}.exitcode';status,activity=install_files(ex)
- # The target stops waiting for installer activity early enough to report before monitoring ends.
- limit=max(60,int(CONFIG.get('deployment_timeout_seconds',3600))-120)
- invoke=f'& {quote(remote)} *>&1 | Out-File -LiteralPath {quote(log)} -Encoding utf8' if remote.lower().endswith('.ps1') else f'& cscript.exe //B //NoLogo {quote(remote)} *>&1 | Out-File -LiteralPath {quote(log)} -Encoding utf8'
- # EncodedCommand avoids nested cmd/PowerShell quoting. Each attempt owns its result files.
- payload=f"""$ErrorActionPreference='Stop'
-$ec=1
-{install_activity_setup(limit)}
-try {{
- Set-Location -LiteralPath (Split-Path -LiteralPath {quote(remote)})
- Get-ChildItem -LiteralPath (Split-Path -LiteralPath {quote(remote)}) -Recurse -File -Filter *.ps1 | Unblock-File
- $global:LASTEXITCODE=0
- {invoke}
- $ec=$LASTEXITCODE
-}} catch {{
- $_ | Out-File -LiteralPath {quote(log)} -Append -Encoding utf8
- $ec=1
-}} finally {{
- {install_activity_finish('$ec',status,activity,log)}
- [string]$ec | Out-File -LiteralPath {quote(ex)} -Encoding ascii
-}}
-exit $ec
-"""
- return wmi_create(pc,remote_command(payload)),log,ex
+ # Each attempt owns its result files.
+ log=rf'C:\Temp\{safe}_{token}.log';ex=rf'C:\Temp\{safe}_{token}.exitcode'
+ return wmi_create(pc,launch_command(remote,log,ex)),log,ex
+def watch_for(pc):
+ return install_watch.Watch(lambda script:ps(script,timeout=120),quote(pc))
 def monitor(pc,pid,log,ex,progress=None,activity=None):
- # progress receives what the target is still waiting for; activity is filled with its installer-activity record.
+ # progress receives what the installation is still waiting for; activity is filled with its installer-activity record.
+ # The watch reads the PC from here; a Record from the deployment brings the registrations read before the launch.
  deadline=time.monotonic()+int(CONFIG.get('deployment_timeout_seconds',3600))
- status_path,activity_path=(Path(unc(pc,path)) for path in install_files(ex));shown=None
- while wmi_running(pc,pid):
+ watch=getattr(activity,'watch',None) or watch_for(pc)
+ while True:
+  table,_=watch.look()
+  if not any(p['id']==int(pid) for p in watch.follow(table,int(pid))):break
   if time.monotonic()>deadline:raise RuntimeError('Monitoring timed out; remote installation may still be running. Inspect target before retrying.')
-  try:status=status_path.read_text(encoding='utf-8-sig',errors='replace').strip()[:300]
-  except OSError:status=None
-  if progress and status and status!=shown:progress(status);shown=status
   time.sleep(2)
  eu,lu=Path(unc(pc,ex)),Path(unc(pc,log))
  # Brief grace period for SMB visibility; absence is never success.
@@ -171,7 +153,7 @@ def monitor(pc,pid,log,ex,progress=None,activity=None):
  values=eu.read_text(encoding='utf-8-sig',errors='replace').splitlines() if eu.is_file() else []
  ec=values[0].strip() if values else 'not written'
  lines=lu.read_text(encoding='utf-8-sig',errors='replace').splitlines()[-100:] if lu.is_file() else []
- if activity is not None:activity.update(read_install_activity(activity_path) or {})
+ if activity is not None and re.fullmatch(r'-?\d+',ec):activity.update(watch.settle(ec,deadline,progress))
  return ec,lines
 
 class Deploy(BaseModel):computer:str;folder:str;script:str;action:Literal['Install','Uninstall','Repair']='Install';fresh:bool=False;threads:int=Field(8,ge=1,le=128);mode:Literal['full','copy','execute']='full';sha256:str|None=Field(None,pattern=r'^[a-f0-9]{64}$')
@@ -225,14 +207,18 @@ def _deploy_worker(j,p):
   # An approved request (Axis) names the script's digest: run exactly that script or nothing. Queue items have none.
   approved=getattr(p,'sha256',None)
   if approved and file_sha256(Path(p.folder)/p.script)!=approved:raise RuntimeError('Installer changed after approval; nothing was copied or launched')
+  # What is registered before the installation, read while the package copies.
+  watch=watch_for(pc)
+  if p.mode!='copy':watch.remember_software()
   if p.mode!='execute':
    emit(j,'Copying package...');rc=copy_pkg(p.folder,unc(pc,rf'{REMOTE_ROOT}\{pkg}'),p.fresh,p.threads)
    emit(j,f'Copy complete. Robocopy: {rc}');history_update(j,robocopy_code=str(rc))
   if approved and file_sha256(unc(pc,remote))!=approved:raise RuntimeError('The installer on the target differs from the approved script; it was not launched')
   if p.mode=='copy':
    emit(j,'Copy-only completed','complete');history_update(j,state='complete',finished=time.strftime('%Y-%m-%d %H:%M:%S'));return
+  watch.ready()
   pid,log,ex=launch(pc,remote,pkg);launched=True;emit(j,'Launched',pid=pid);history_update(j,pid=str(pid))
-  activity={};ec,lines=monitor(pc,pid,log,ex,lambda status:emit(j,status),activity);state,message=outcome(ec)
+  activity=install_watch.Record(watch);ec,lines=monitor(pc,pid,log,ex,lambda status:emit(j,status),activity);state,message=outcome(ec)
   if not re.fullmatch(r'-?\d+',str(ec).strip()):
    # No exit record is no outcome: hold the PC until someone inspects it and acknowledges, as after a lost monitor.
    job_service.unresolved.add(pc);message='Launched; the installer left no exit code. Inspect the target, then acknowledge it in Operation recovery.'
@@ -242,7 +228,7 @@ def _deploy_worker(j,p):
    job_service.unresolved.add(pc);message=f'Launched; {install_unconfirmed(activity)}. Inspect the target, then acknowledge it in Operation recovery.'
    with lock:jobs[j]['recovery_required']=True
   elif describe_install_activity(activity):message+='; '+describe_install_activity(activity)
-  emit(j,message,state,log=lines,exit_code=ec,**({'install':activity} if activity else {}))
+  emit(j,message,state,log=lines,exit_code=ec,**({'install':dict(activity)} if activity else {}))
   history_update(j,state=state,exit_code=str(ec),finished=time.strftime('%Y-%m-%d %H:%M:%S'),details=message+'\n'+'\n'.join(lines[-20:]))
  except Exception as e:
   state='launched' if launched else 'failed'

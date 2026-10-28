@@ -8,6 +8,7 @@ import unittest
 from unittest.mock import patch
 
 from fastapi import HTTPException
+import install_watch
 from backend import main
 from install_fixture import finished
 from job_service import JobService
@@ -26,6 +27,7 @@ class RemoteRecovery(unittest.TestCase):
             stack.enter_context(patch.object(main, 'identity', return_value='FICTIONAL OPERATOR'))
             stack.enter_context(patch.object(main.os.path, 'isdir', return_value=True))
             copy = stack.enter_context(patch.object(main, 'copy_pkg', return_value=1))
+            stack.enter_context(patch.object(main, 'watch_for', lambda pc: install_watch.Watch(lambda script: '{}', pc)))
             stack.enter_context(patch.object(main, 'launch', return_value=(4321, 'fixture.log', 'fixture.exit')))
             stack.enter_context(patch.object(main, 'monitor', side_effect=RuntimeError('Monitoring timed out')))
             service.jobs['fixture'] = {'state': 'queued', 'events': []}
@@ -59,6 +61,7 @@ class RemoteRecovery(unittest.TestCase):
             stack.enter_context(patch.object(main, 'identity', return_value='FICTIONAL OPERATOR'))
             stack.enter_context(patch.object(main.os.path, 'isdir', return_value=True))
             stack.enter_context(patch.object(main, 'copy_pkg', return_value=1))
+            stack.enter_context(patch.object(main, 'watch_for', lambda pc: install_watch.Watch(lambda script: '{}', pc)))
             stack.enter_context(patch.object(main, 'launch', return_value=(4321, 'fixture.log', 'fixture.exit')))
             stack.enter_context(patch.object(main, 'monitor', side_effect=finished('0')))
             service.jobs['fixture'] = {'state': 'queued', 'events': []}
@@ -82,6 +85,7 @@ class RemoteRecovery(unittest.TestCase):
             stack.enter_context(patch.object(main, 'identity', return_value='FICTIONAL OPERATOR'))
             stack.enter_context(patch.object(main.os.path, 'isdir', return_value=True))
             stack.enter_context(patch.object(main, 'copy_pkg', return_value=1))
+            stack.enter_context(patch.object(main, 'watch_for', lambda pc: install_watch.Watch(lambda script: '{}', pc)))
             stack.enter_context(patch.object(main, 'launch', return_value=(4321, 'fixture.log', 'fixture.exit')))
             stack.enter_context(patch.object(main, 'monitor', return_value=('not written', [])))
             service.jobs['fixture'] = {'state': 'queued', 'events': []}

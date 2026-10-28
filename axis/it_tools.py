@@ -1015,7 +1015,8 @@ def install_unconfirmed(activity):
     if not activity.get("settled"):
         running = list(activity.get("still_running") or []) + (["Windows Installer"] if activity.get("windows_installer_busy") else [])
         return "installer activity was still running when monitoring stopped (%s)" % (", ".join(running) or "unknown")
-    if activity.get("tracking") != "job object":
+    # A job object on the target (Axis), or Atlas watching the PC's processes and Windows Installer from outside.
+    if activity.get("tracking") not in ("job object", "process watch"):
         return "this PC could not track every process the script started, so installer completion is not confirmed"
     return None
 
