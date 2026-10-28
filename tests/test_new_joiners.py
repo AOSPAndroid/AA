@@ -1,7 +1,7 @@
 """New joiners: the requests workbook, personas per desk and each joiner's checklist. No remote command runs."""
 from sqlite_fixture import isolate_backend_database
 isolate_backend_database()
-import json, os, sqlite3, tempfile, time, unittest
+import json, os, tempfile, time, unittest
 from datetime import date, timedelta
 from pathlib import Path
 from unittest.mock import patch
@@ -193,7 +193,7 @@ class Joiners(unittest.TestCase):
 
     def test_people_starting_soon_at_any_site_are_suggested_once(self):
         today = date.today()
-        with sqlite3.connect(self.db) as c:
+        with fixture_connect(self.db) as c:  # closes it, so Windows can remove the folder
             uid = c.execute('select coalesce(max(id),0)+1 from users').fetchone()[0]
             for offset, (name, start, location) in enumerate([('Soon Starter', today + timedelta(days=5), 'Paris - 52 Avenue Hoche'),
                                                               ('Later Starter', today + timedelta(days=200), 'Paris - 52 Avenue Hoche'),
