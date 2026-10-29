@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import patch
 
 from backend import main
-from job_service import JobService
+from backend.job_service import JobService
 
 
 class QueueBoundaries(unittest.TestCase):

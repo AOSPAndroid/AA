@@ -21,7 +21,7 @@ from fastapi import HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, ValidationError
 
-import clipboard_history
+from backend.inbox import clipboard_history
 
 from axis.agent import Agent, MEMORY_FILE, change_memory, memory_entries, read_memory, without_entry, write_audit
 from axis.it_tools import read_json, write_json

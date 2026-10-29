@@ -7,9 +7,9 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from fastapi import FastAPI,HTTPException
 from fastapi.staticfiles import StaticFiles
 from types import SimpleNamespace
-import database_manager as dm
+from backend import database_manager as dm
 from sqlite_fixture import connect
-from runtime_paths import database_path
+from backend.runtime_paths import database_path
 from fastapi.testclient import TestClient
 from http.server import ThreadingHTTPServer,BaseHTTPRequestHandler
 ROOT=Path(__file__).resolve().parents[1]

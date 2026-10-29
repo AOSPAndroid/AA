@@ -1,6 +1,6 @@
 import json,unittest
 from fastapi import HTTPException
-from service_actions import enable_remote_registry
+from backend.remote.service_actions import enable_remote_registry
 class Transport:
  def __init__(self):self.calls=[];self.result={'computer':'PC1','service':'RemoteRegistry','state':'Running','start_mode':'Manual','previous_state':'Stopped','previous_start_mode':'Disabled'}
  def validate_pc(self,pc):

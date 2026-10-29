@@ -2,7 +2,7 @@ from sqlite_fixture import connect as fixture_connect
 import unittest,tempfile,sys,copy
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-import desk_moves as dm
+from backend.seating import desk_moves as dm
 class DeskMoves(unittest.TestCase):
  def test_swap_roundtrip_conflicts_and_rollback(self):
   with tempfile.TemporaryDirectory() as d:

@@ -5,7 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-import seating_excel as sx
+from backend.seating import seating_excel as sx
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 

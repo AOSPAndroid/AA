@@ -9,15 +9,15 @@ from pathlib import Path
 from unittest.mock import patch
 
 from sqlite_fixture import connect as fixture_connect, isolate_backend_database
-from directory_lookup import exact_users, prepare_views, resolve_directory, search_directory
-from directory_workbook import build, norm, schema
-from identity_links import MATCHING_VERSION, build_index, candidates, rebuild_links
-from merge_data import atlas_schema, merge_directory
-from seating_excel import account_index, stamp
+from backend.directory.directory_lookup import exact_users, prepare_views, resolve_directory, search_directory
+from backend.directory.directory_workbook import build, norm, schema
+from backend.directory.identity_links import MATCHING_VERSION, build_index, candidates, rebuild_links
+from backend.directory.merge_data import atlas_schema, merge_directory
+from backend.seating.seating_excel import account_index, stamp
 from test_directory_exports import device_sheets, workbook
-import atlas_store
-import vdi_data
-import vdi_inventory
+from backend import atlas_store
+from backend.directory import vdi_data
+from backend.directory import vdi_inventory
 
 
 def user(con, uid, login='', name='', email='', employee=''):
@@ -225,7 +225,7 @@ class PersistentMatchingTests(unittest.TestCase):
                 generation=con.execute("select value from metadata where key='directory.generation'").fetchone()[0]
                 self.assertEqual(con.execute("select value from metadata where key='directory.matching_version'").fetchone()[0],MATCHING_VERSION)
                 self.assertTrue(con.execute("select 1 from user_aliases where alias_type='matching_account'").fetchone())
-            with patch('identity_links.rebuild_links',side_effect=AssertionError('No repeat rebuild')):
+            with patch('backend.directory.identity_links.rebuild_links',side_effect=AssertionError('No repeat rebuild')):
                 atlas_store.initialize()
             with fixture_connect(self.db) as con:
                 self.assertEqual(con.execute("select value from metadata where key='directory.generation'").fetchone()[0],generation)

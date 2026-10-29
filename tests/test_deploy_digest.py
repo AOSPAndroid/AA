@@ -8,10 +8,10 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import install_watch
+from backend.deploy import install_watch
 from backend import main
 from install_fixture import finished
-from job_service import JobService
+from backend.job_service import JobService
 
 
 class DeploymentDigest(unittest.TestCase):

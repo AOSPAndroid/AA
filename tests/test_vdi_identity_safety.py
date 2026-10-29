@@ -9,11 +9,11 @@ from unittest.mock import patch
 
 from fastapi import HTTPException
 
-from directory_lookup import linked_machines, prepare_views
-from directory_workbook import schema
+from backend.directory.directory_lookup import linked_machines, prepare_views
+from backend.directory.directory_workbook import schema
 from sqlite_fixture import connect as fixture_connect, isolate_backend_database
-import vdi_data
-import vdi_inventory
+from backend.directory import vdi_data
+from backend.directory import vdi_inventory
 
 
 def parsed(rows):

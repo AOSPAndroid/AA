@@ -9,7 +9,7 @@ from unittest.mock import patch
 from uuid import uuid4
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
-import psexec_runner as px
+from backend.remote import psexec_runner as px
 
 
 def payload(**kw):
@@ -132,7 +132,7 @@ class PsExecTests(unittest.TestCase):
             self.assertEqual(calls[0][0],r'C:\Data\PsExec64.exe' if template=='identity' else r'C:\Data\PsPing64.exe')
 
     def test_routes_require_token_and_reject_client_scripts(self):
-        from atlas_api import TOKEN
+        from backend.atlas_api import TOKEN
         r,calls=self.runner('print("TEST")')
         app=FastAPI();px.register(app)
         with patch.object(px,'runner',r), TestClient(app) as client:

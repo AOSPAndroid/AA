@@ -13,11 +13,11 @@ import threading
 import unittest
 from unittest.mock import patch
 
-import install_watch
+from backend.deploy import install_watch
 from backend import main
 from axis.it_tools import install_unconfirmed
 from backend.axis_operations import AtlasOperations
-from job_service import JobService
+from backend.job_service import JobService
 
 SETTLED = {"settled": True, "waited_seconds": 95, "still_running": [], "left_running": [], "windows_installer_busy": False,
            "tracking": "process watch", "software": {"added": [{"name": "Example App", "version": "2.1"}], "removed": [], "changed": []}}

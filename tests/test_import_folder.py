@@ -13,10 +13,10 @@ from unittest.mock import patch
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
-import package_data
-import vdi_data
-from atlas_store import ClosingConnection
-from import_folder import ImportFolder, Settings, headers, kind_of, register
+from backend.deploy import package_data
+from backend.directory import vdi_data
+from backend.atlas_store import ClosingConnection
+from backend.directory.import_folder import ImportFolder, Settings, headers, kind_of, register
 from sqlite_fixture import connect as fixture_connect
 from test_directory_exports import device_sheets, workbook
 from test_directory_pair import csv_text
@@ -80,7 +80,7 @@ class ImportFolderTests(unittest.TestCase):
 
     def test_a_locked_header_is_retried_without_resaving_the_export(self):
         self.write('citrix.csv', citrix_csv([citrix_device()]))
-        with patch('import_folder.headers', side_effect=[PermissionError('locked'), CITRIX_HEADERS]) as read:
+        with patch('backend.directory.import_folder.headers', side_effect=[PermissionError('locked'), CITRIX_HEADERS]) as read:
             first = self.watcher.check()
             second = self.watcher.check()
         self.assertEqual(first['status']['state'], 'waiting')
@@ -121,7 +121,7 @@ class ImportFolderTests(unittest.TestCase):
                 changed = True
                 self.write('sys_user.csv', csv_text(self.sheets['users']) + '\n')
             return copy(source, destination, *args, **kwargs)
-        with patch('import_folder.shutil.copy2', side_effect=changing_copy):
+        with patch('backend.directory.import_folder.shutil.copy2', side_effect=changing_copy):
             summary = self.watcher.check()
         self.assertTrue(changed)
         self.assertEqual(summary['groups']['directory']['result'], 'waiting')
@@ -168,8 +168,8 @@ class ImportFolderTests(unittest.TestCase):
             self.watcher.apply_held(held['id'])
         self.busy = False
         # A job that starts between the check and the write still stops the import.
-        from database_manager import apply_directory as real_apply
-        import database_manager
+        from backend.database_manager import apply_directory as real_apply
+        from backend import database_manager
         def starts_job(*args, **kwargs):
             self.busy = True
             try:

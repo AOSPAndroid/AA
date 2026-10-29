@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch
-import edition_launcher as e
+from backend.launch import edition_launcher as e
 
 class EditionLauncherTests(unittest.TestCase):
     def test_start_all_opens_admin_demo_and_preview_once(self):

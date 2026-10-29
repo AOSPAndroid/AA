@@ -9,12 +9,12 @@ from unittest.mock import patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlite_fixture import connect, isolate_backend_database
-from directory_workbook import schema
-from directory_lookup import prepare_views
-from identity_links import rebuild_links
-from outlook_watcher import MailQueue, stamp, utcnow
-from mail_inbox import register, watcher_status
-from notification_inbox import notification_status
+from backend.directory.directory_workbook import schema
+from backend.directory.directory_lookup import prepare_views
+from backend.directory.identity_links import rebuild_links
+from backend.inbox.outlook_watcher import MailQueue, stamp, utcnow
+from backend.inbox.mail_inbox import register, watcher_status
+from backend.inbox.notification_inbox import notification_status
 
 
 class InboxTests(unittest.TestCase):
@@ -179,7 +179,7 @@ class InboxTests(unittest.TestCase):
             self.assertEqual(client.get('/api/inbox/messages').status_code, 503)
 
     def test_hung_watcher_is_not_reported_as_live(self):
-        with patch('mail_inbox.status', return_value={'running': True, 'state': 'watching', 'updated_at': '2000-01-01T00:00:00+00:00'}):
+        with patch('backend.inbox.mail_inbox.status', return_value={'running': True, 'state': 'watching', 'updated_at': '2000-01-01T00:00:00+00:00'}):
             self.assertTrue(watcher_status(self.base)['stale'])
 
     def notification(self, name='Sam Green'):
@@ -216,13 +216,13 @@ class InboxTests(unittest.TestCase):
         path = directory / 'notifications-status.json'
         path.write_text(json.dumps({'state': 'watching', 'updated_at': '2000-01-01T00:00:00+00:00'}))
         self.assertEqual(notification_status(directory)['state'], 'stopped')
-        with patch('notification_inbox.is_running', return_value=True):
+        with patch('backend.inbox.notification_inbox.is_running', return_value=True):
             self.assertTrue(notification_status(directory)['stale'])
             path.write_text(json.dumps({'state': 'permission_required', 'updated_at': stamp(utcnow())}))
             current = notification_status(directory)
             self.assertEqual(current['state'], 'permission_required')
             self.assertFalse(current['stale'])
-        with patch('notification_inbox.is_running', side_effect=PermissionError):
+        with patch('backend.inbox.notification_inbox.is_running', side_effect=PermissionError):
             self.assertEqual(notification_status(directory)['state'], 'error')
         path.write_text('[]')
         self.assertEqual(notification_status(directory)['state'], 'error')
@@ -295,7 +295,7 @@ class InboxTests(unittest.TestCase):
         self.assertEqual(self.client.get('/api/inbox/person/999').status_code, 404)
 
     def test_name_windows_cover_word_orders_and_possessives(self):
-        from mail_inbox import name_candidates
+        from backend.inbox.mail_inbox import name_candidates
         names = name_candidates("Hi Marie DUPONT, can Dupont, Marie use O'Brien's PC?")
         self.assertEqual(names['marie dupont'], 'Marie DUPONT')
         self.assertEqual(names['dupont marie'], 'Marie DUPONT')

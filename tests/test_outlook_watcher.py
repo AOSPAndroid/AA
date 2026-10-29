@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
-import outlook_watcher as watcher
+from backend.inbox import outlook_watcher as watcher
 
 UTC = timezone.utc
 START = datetime(2026, 10, 15, 10, 0, 30, tzinfo=UTC)

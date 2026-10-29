@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import Mock
 
 from fastapi import HTTPException
-import remote_processes as rp
+from backend.remote import remote_processes as rp
 
 
 class RemoteProcesses(unittest.TestCase):

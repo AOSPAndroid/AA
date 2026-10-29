@@ -11,10 +11,10 @@ from unittest.mock import patch
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
-import shared_operations as shared
-from action_activity import register
+from backend import shared_operations as shared
+from backend.action_activity import register
 from axis import it_tools
-from job_service import JobService
+from backend.job_service import JobService
 
 
 class SharedOperationTests(unittest.TestCase):
@@ -94,7 +94,7 @@ class SharedOperationTests(unittest.TestCase):
         running = self.axis_job('b', 'running')
         stale = self.axis_job('c', 'running', computers=('PC2',), created_epoch=time.time() - 60, worker_pid=None)
         before = (self.state / 'jobs' / (stale['id'] + '.json')).read_bytes()
-        with patch('psexec_runner.runner.jobs', {}), TestClient(app) as client:
+        with patch('backend.remote.psexec_runner.runner.jobs', {}), TestClient(app) as client:
             rows = {row['id']: row for row in client.get('/api/actions').json()['actions']}
         row = rows['axis-' + running['id']]
         self.assertEqual((row['title'], row['target'], row['state']), ('Axis · Install · Example', 'PC1', 'running'))

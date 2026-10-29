@@ -7,18 +7,18 @@ from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from fastapi import FastAPI,HTTPException
 from fastapi.testclient import TestClient
-import database_manager as dm
-import shared_operations
+from backend import database_manager as dm
+from backend import shared_operations
 from axis import it_tools
 class DatabaseManager(unittest.TestCase):
  def test_preview_apply_restore_and_busy_guards(self):
   with tempfile.TemporaryDirectory() as temp:
    root=Path(temp);db=root/'office_atlas.db'
-   with fixture_connect(Path(dm.__file__).parent/'office_atlas.db') as a,fixture_connect(db) as b:a.backup(b)
+   with fixture_connect(Path(dm.__file__).resolve().parents[1]/'office_atlas.db') as a,fixture_connect(db) as b:a.backup(b)
    w=SimpleNamespace(MASTER_DB=db,jobs={},queue_jobs={});app=FastAPI()
    def token(r):
     if r.headers.get('x-atlas-token')!='test':raise HTTPException(403,'token')
-   with patch.object(dm,'__file__',str(root/'database_manager.py')):dm.register_database_manager(app,w,token)
+   with patch.object(dm,'__file__',str(root/'backend'/'database_manager.py')):dm.register_database_manager(app,w,token)
    cli=TestClient(app);headers={'x-atlas-token':'test','x-file-name':'Friday.xlsx'}
    def prepare(source,out):
     with fixture_connect(db) as a,fixture_connect(out) as b:a.backup(b)

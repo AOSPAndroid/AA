@@ -8,7 +8,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from backend import main
-from job_service import JobService
+from backend.job_service import JobService
 
 TOKEN = {'X-Atlas-Token': 'test-token'}
 
@@ -30,7 +30,7 @@ class Personas(unittest.TestCase):
         submit.start(); self.addCleanup(submit.stop)
         for store, name in ((main.persona_store, 'personas.json'), (main.persona_access_store, 'persona-access.json')):
             patcher = patch.object(store, 'path', base / 'data' / name); patcher.start(); self.addCleanup(patcher.stop)
-        token = patch('atlas_api.TOKEN', 'test-token'); token.start(); self.addCleanup(token.stop)
+        token = patch('backend.atlas_api.TOKEN', 'test-token'); token.start(); self.addCleanup(token.stop)
         self.client = TestClient(main.app, base_url='http://127.0.0.1', client=('127.0.0.1', 12345)); self.addCleanup(self.client.close)
 
     def create(self, name='New starter', items=None, **extra):

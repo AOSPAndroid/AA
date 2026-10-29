@@ -11,9 +11,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
-from directory_workbook import schema
-from desk_directory import palette_search, people_desks, person_desks
-from directory_lookup import prepare_views, search_directory
+from backend.directory.directory_workbook import schema
+from backend.directory.desk_directory import palette_search, people_desks, person_desks
+from backend.directory.directory_lookup import prepare_views, search_directory
 
 
 class PaletteIdentityTests(unittest.TestCase):

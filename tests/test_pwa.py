@@ -2,7 +2,7 @@ import unittest
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from pwa import register
+from backend.pwa import register
 
 
 class PwaTests(unittest.TestCase):

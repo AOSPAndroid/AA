@@ -1,6 +1,6 @@
 import unittest
 
-from inbox_analysis import analyse, hostname_candidates, latest_text, match_packages, plain
+from backend.inbox.inbox_analysis import analyse, hostname_candidates, latest_text, match_packages, plain
 
 PACKAGES = [
     {'folder': 'Microsoft_PowerBI_Desktop_2.130', 'display_name': 'Microsoft Power BI Desktop'},

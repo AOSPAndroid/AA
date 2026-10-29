@@ -7,15 +7,15 @@ from pathlib import Path
 from unittest.mock import patch
 from fastapi.testclient import TestClient
 from backend import main, viewer
-import atlas_store
-from job_service import JobService
-from runtime_paths import prepare_runtime_database
+from backend import atlas_store
+from backend.job_service import JobService
+from backend.runtime_paths import prepare_runtime_database
 from sqlite_fixture import connect
 
 
 class OptimizationTests(unittest.TestCase):
     def test_custom_official_location_survives_reload_and_export(self):
-        from seating_excel import layout_records
+        from backend.seating.seating_excel import layout_records
         with tempfile.TemporaryDirectory() as tmp:
             db=Path(tmp)/'atlas.db'
             with connect(atlas_store.DB) as source,connect(db) as dest:source.backup(dest)
@@ -79,7 +79,7 @@ class OptimizationTests(unittest.TestCase):
             service.pool.shutdown(wait=True)
 
     def test_runtime_migration_preserves_seed_and_is_one_time(self):
-        import runtime_paths
+        from backend import runtime_paths
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);seed=root/'office_atlas.db'
             with connect(seed) as c:c.execute('create table evidence(value text)');c.execute("insert into evidence values('seed')")

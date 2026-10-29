@@ -4,9 +4,9 @@ import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
-import atlas_store
-from directory_lookup import exact_users, prepare_views
-from identity_links import MATCHING_VERSION
+from backend import atlas_store
+from backend.directory.directory_lookup import exact_users, prepare_views
+from backend.directory.identity_links import MATCHING_VERSION
 
 
 class IndexTests(unittest.TestCase):

@@ -3,7 +3,7 @@ import threading
 import unittest
 from unittest.mock import Mock, patch
 from fastapi import HTTPException
-from reboot_monitor import RebootMonitor, ping_once
+from backend.deploy.reboot_monitor import RebootMonitor, ping_once
 
 
 class RebootTests(unittest.TestCase):
@@ -57,7 +57,7 @@ class RebootTests(unittest.TestCase):
 
     def test_duplicate_target_rejected_and_shutdown_signals_watch(self):
         manager = RebootMonitor(Mock())
-        with patch('reboot_monitor.threading.Thread'):
+        with patch('backend.deploy.reboot_monitor.threading.Thread'):
             manager.start('TESTPC')
             with self.assertRaises(HTTPException) as error: manager.start('TESTPC')
             self.assertEqual(error.exception.status_code,409)
@@ -65,9 +65,9 @@ class RebootTests(unittest.TestCase):
         self.assertTrue(all(s.is_set() for s in manager.stops.values()))
 
     def test_unreachable_zero_exit_code_is_not_reply(self):
-        with patch('reboot_monitor.subprocess.run', return_value=Mock(returncode=0, stdout='Reply from gateway: Destination host unreachable.')):
+        with patch('backend.deploy.reboot_monitor.subprocess.run', return_value=Mock(returncode=0, stdout='Reply from gateway: Destination host unreachable.')):
             self.assertFalse(ping_once('TESTPC')[0])
-        with patch('reboot_monitor.subprocess.run', return_value=Mock(returncode=0, stdout='Reply from 1.2.3.4: bytes=32 time<1ms TTL=128')):
+        with patch('backend.deploy.reboot_monitor.subprocess.run', return_value=Mock(returncode=0, stdout='Reply from 1.2.3.4: bytes=32 time<1ms TTL=128')):
             self.assertTrue(ping_once('TESTPC')[0])
 
 

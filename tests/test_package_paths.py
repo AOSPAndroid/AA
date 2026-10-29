@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-import package_paths as paths
+from backend.deploy import package_paths as paths
 
 
 class PackagePathsTests(unittest.TestCase):

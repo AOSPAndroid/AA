@@ -8,11 +8,11 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-import persona_access
-import personas
+from backend.deploy import persona_access
+from backend.deploy import personas
 from backend import main
-from import_folder import ImportFolder, headers, kind_of
-from job_service import JobService
+from backend.directory.import_folder import ImportFolder, headers, kind_of
+from backend.job_service import JobService
 from sqlite_fixture import connect as fixture_connect
 from test_directory_exports import workbook
 
@@ -100,7 +100,7 @@ class ImportFolderAccess(unittest.TestCase):
     def test_an_unreadable_workbook_is_reported_and_keeps_the_last_requests(self):
         self.save()
         self.watcher.check()
-        with patch('persona_access.parse', side_effect=ValueError('Repo Trader lists 900 requests')):
+        with patch('backend.deploy.persona_access.parse', side_effect=ValueError('Repo Trader lists 900 requests')):
             path = self.folder / 'ListOfRequests.xlsx'; stamp = time.time() - 100; os.utime(path, (stamp, stamp))
             summary = self.watcher.check()
         self.assertEqual(summary['groups']['access']['result'], 'error')
@@ -127,7 +127,7 @@ class Joiners(unittest.TestCase):
         submit.start(); self.addCleanup(submit.stop)
         for store, name in ((main.persona_store, 'personas.json'), (main.persona_access_store, 'persona-access.json'), (main.joiner_store, 'joiners.json')):
             patcher = patch.object(store, 'path', base / 'data' / name); patcher.start(); self.addCleanup(patcher.stop)
-        token = patch('atlas_api.TOKEN', 'test-token'); token.start(); self.addCleanup(token.stop)
+        token = patch('backend.atlas_api.TOKEN', 'test-token'); token.start(); self.addCleanup(token.stop)
         self.client = TestClient(main.app, base_url='http://127.0.0.1', client=('127.0.0.1', 12345)); self.addCleanup(self.client.close)
         parsed = persona_access.parse(requests_workbook(base / 'ListOfRequests.xlsx'))
         main.persona_access_store.replace(parsed, 'ListOfRequests.xlsx')

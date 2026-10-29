@@ -238,19 +238,19 @@ class AtlasOperations:
         if view == "disks":
             return {"computer": pc, "view": view, "disks": wmi.disk(pc)}
         if view == "services":
-            import service_actions
+            from backend.remote import service_actions
             items = service_actions.list_services(wmi, pc)["items"]
             page = _page(items, query, offset, limit, ("name", "display_name", "state"))
             page["items"] = [{k: v for k, v in item.items() if k != "identity"} for item in page["items"]]
             return dict(page, computer=pc, view=view, snapshot=self.snapshot(pc, view, items))
         if view == "processes":
-            import remote_processes
+            from backend.remote import remote_processes
             items = remote_processes.list_processes(wmi, pc, "cpu")
             page = _page(items, query, offset, limit, ("Process", "PID", "CommandLine"))
             page["items"] = [dict(item, CommandLine=str(item.get("CommandLine") or "")[:200]) for item in page["items"]]
             return dict(page, computer=pc, view=view, snapshot=self.snapshot(pc, view, items),
                         note="The 30 processes using the most CPU.")
-        import remote_software
+        from backend.remote import remote_software
         if not wmi.job_service.inventory.acquire(blocking=False):
             raise RuntimeError("Three software inventories are running; try again shortly")
         try:
@@ -404,7 +404,7 @@ class AtlasOperations:
             self.ready(pc)
             if not self.confirm("%s service %s (%s) on %s" % (verbs[action], item["name"], item.get("display_name", ""), pc)):
                 return {"state": "declined"}
-            import service_actions
+            from backend.remote import service_actions
             request = wmi.ServiceControl(computer=pc, name=item["name"], expected_identity=item["identity"])
             with self.held(pc):
                 return getattr(service_actions, verbs[action] + "_service")(wmi, request)
@@ -417,7 +417,7 @@ class AtlasOperations:
             self.ready(pc)
             if not self.confirm("stop process %s (PID %s) on %s" % (item.get("Process"), pid, pc)):
                 return {"state": "declined"}
-            import remote_processes
+            from backend.remote import remote_processes
             with self.held(pc):
                 return remote_processes.terminate(wmi, wmi.Kill(computer=pc, value=str(pid), created=item.get("CreatedAt"),
                                                                 name=item.get("Process")))
@@ -434,7 +434,7 @@ class AtlasOperations:
             return wmi.cleanup_package_folder(pc)  # Takes Atlas's per-PC lock itself.
         with self.held(pc):
             if action == "enable_remote_registry":
-                import service_actions
+                from backend.remote import service_actions
                 return service_actions.enable_remote_registry(wmi, pc)
             started = wmi.reboot(wmi.Machine(computer=pc))
         with self.lock:
@@ -447,7 +447,7 @@ class AtlasOperations:
         pcs, name = service_targets(computers, action, name, self.pc)
         if not self.confirm("%s %s on %d PCs: %s" % (action, name, len(pcs), ", ".join(pcs))):
             return {"state": "declined"}
-        import service_actions
+        from backend.remote import service_actions
         verb = {"service_start": "start", "service_stop": "stop", "service_restart": "restart"}[action]
         outcomes = {"service_start": {"started", "already_running"}, "service_stop": {"stopped", "already_stopped"},
                     "service_restart": {"restarted"}}
@@ -482,7 +482,7 @@ class AtlasOperations:
                 "succeeded": sum(1 for row in results if row["ok"]), "results": results}
 
     def directory_lookup(self, kind, identity, server=""):
-        import active_directory
+        from backend.remote import active_directory
         if kind == "group":
             found = active_directory.browse(active_directory.Browse(operation="search", kind="group", query=identity,
                                                                     server=server or "", limit=25), self.wmi.ps)

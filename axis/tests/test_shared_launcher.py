@@ -213,7 +213,7 @@ class SharedLauncherTests(unittest.TestCase):
     def test_aa_terminal_never_starts_a_second_atlas_or_model(self):
         aa = self.root / "AA"
         (aa / "axis").mkdir(parents=True)
-        (aa / "aa_launcher.py").write_text("")
+        (aa / "Start AA.bat").write_text("")
         import aa_client
         with patch.object(start, "AA_ROOT", str(aa)), patch.object(launch_atlas, "start_atlas") as atlas, \
              patch.object(start, "prepare_model") as model, patch.object(aa_client, "main", return_value=0) as client:

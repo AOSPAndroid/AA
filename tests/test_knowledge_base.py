@@ -2,7 +2,7 @@ import tempfile, unittest
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from knowledge_base import register
+from backend.knowledge_base import register
 
 class KnowledgeTests(unittest.TestCase):
     def setUp(self):

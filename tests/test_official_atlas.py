@@ -5,8 +5,8 @@ from types import SimpleNamespace
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from fastapi import FastAPI,HTTPException
 from fastapi.testclient import TestClient
-import atlas_store as store
-from official_atlas import register_official
+from backend import atlas_store as store
+from backend.seating.official_atlas import register_official
 class OfficialAtlas(unittest.TestCase):
  def test_register_and_explicit_mapping_preserve_previous(self):
   before_db=store.DB

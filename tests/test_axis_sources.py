@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 from fastapi import HTTPException
 
-from clipboard_history import History
+from backend.inbox.clipboard_history import History
 from backend.axis_sources import TEXT, AtlasSources, SourceUnavailable
 import test_mail_inbox  # Its fixture; importing the class here would run its tests twice.
 

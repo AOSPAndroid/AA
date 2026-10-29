@@ -10,8 +10,8 @@ from uuid import uuid4
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
-import script_library
-from script_library import BUILTIN, build, parse_targets, register
+from backend.deploy import script_library
+from backend.deploy.script_library import BUILTIN, build, parse_targets, register
 
 TOKEN = {'X-Atlas-Token': 'test-token'}
 
@@ -20,7 +20,7 @@ class ScriptLibrary(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.path = Path(self.tmp.name) / 'scripts.json'
-        self.token = patch('atlas_api.TOKEN', 'test-token')
+        self.token = patch('backend.atlas_api.TOKEN', 'test-token')
         self.token.start()
         self.started = []
         self.start = patch.object(script_library.runner, 'start', side_effect=lambda job: self.started.append(job) or {'id': str(job.id), 'state': 'starting'})

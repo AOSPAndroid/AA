@@ -15,8 +15,8 @@ from unittest.mock import patch
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from sqlite_fixture import connect as fixture_connect
-import package_data as data
-import package_data_api as api
+from backend.deploy import package_data as data
+from backend.deploy import package_data_api as api
 
 HEADERS = ['u_display_name', 'name', 'u_barclays_correlation_id', 'u_package_sub_state', 'u_requester', 'assigned_to', 'u_domain', 'u_build', 'sys_created_on', 'custom_note']
 
@@ -407,7 +407,7 @@ class PackageImport(unittest.TestCase):
         app = FastAPI()
         def check(request):
             if request.headers.get('x-atlas-token') != 'test': raise HTTPException(403, 'token')
-        self.patch = patch.object(api, '__file__', str(self.root / 'package_data_api.py')); self.patch.start()
+        self.patch = patch.object(api, '__file__', str(self.root / 'backend' / 'deploy' / 'package_data_api.py')); self.patch.start()
         api.register(app, SimpleNamespace(MASTER_DB=self.db, REPO=self.repo), check)
         self.client = TestClient(app); self.headers = {'x-atlas-token': 'test', 'x-file-name': 'packages.csv'}
 

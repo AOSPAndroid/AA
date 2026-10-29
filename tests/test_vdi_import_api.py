@@ -12,8 +12,8 @@ from unittest.mock import patch
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
-import vdi_data as data
-import vdi_data_api as api
+from backend.directory import vdi_data as data
+from backend.directory import vdi_data_api as api
 from sqlite_fixture import connect as fixture_connect
 from test_vdi_data import csv_bytes, device, directory, user
 

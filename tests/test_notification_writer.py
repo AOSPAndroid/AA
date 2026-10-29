@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 import unittest
 
-from outlook_watcher import MailQueue, utcnow
+from backend.inbox.outlook_watcher import MailQueue, utcnow
 
 WRITER = Path(__file__).resolve().parents[1] / 'output' / 'NotificationWriter.Tests.exe'
 

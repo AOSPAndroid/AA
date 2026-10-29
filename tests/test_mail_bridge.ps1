@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $tokens = $null
 $parseErrors = $null
-$ast = [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $root 'Configure-Outlook-Bridge.ps1'), [ref]$tokens, [ref]$parseErrors)
+$ast = [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $root 'windows\Configure-Outlook-Bridge.ps1'), [ref]$tokens, [ref]$parseErrors)
 if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
 $builder = $ast.Find({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'New-MailBridgeAcl' }, $true)
 $checker = $ast.Find({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Test-MailBridgeAcl' }, $true)
@@ -43,7 +43,7 @@ try {
     @'
 import os
 from pathlib import Path
-from outlook_watcher import MailQueue, utcnow, write_json
+from backend.inbox.outlook_watcher import MailQueue, utcnow, write_json
 base = Path(os.environ['ATLAS_BRIDGE_TEST_DIR'])
 queue = MailQueue(base, utcnow())
 queue.close()
@@ -57,8 +57,8 @@ write_json(base / 'notifications-status.json', {'state': 'watching', 'updated_at
     @'
 import os
 from pathlib import Path
-from mail_inbox import queue_reader, watcher_status
-from notification_inbox import notification_status
+from backend.inbox.mail_inbox import queue_reader, watcher_status
+from backend.inbox.notification_inbox import notification_status
 base = Path(os.environ['ATLAS_BRIDGE_TEST_DIR'])
 with queue_reader(base) as queue:
     assert queue.execute('SELECT count(*) FROM messages').fetchone()[0] == 0

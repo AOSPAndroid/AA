@@ -1,5 +1,5 @@
 import concurrent.futures,json,threading,unittest
-from machine_health import HealthChecks,QUERIES
+from backend.remote.machine_health import HealthChecks,QUERIES
 from fastapi import HTTPException
 class Transport:
  def validate_pc(self,pc):

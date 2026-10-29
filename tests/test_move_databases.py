@@ -2,9 +2,9 @@ import contextlib, io, json, os, sqlite3, tempfile, unittest
 from pathlib import Path
 from unittest.mock import patch
 
-import move_databases
-import runtime_paths
-import update_atlas
+from backend.directory import move_databases
+from backend import runtime_paths
+from backend.launch import update_atlas
 
 
 def make_db(path, rows, wal=False):

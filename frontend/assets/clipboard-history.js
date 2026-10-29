@@ -272,7 +272,7 @@
     host.innerHTML = c.online
       ? `<span class="status-ok">Companion connected</span><span>${esc(c.user)} · ${c.settings.clipboard ? "every copy is captured, even with Atlas closed" : "clipboard capture is off"}${c.clipboard?.paused ? " · paused from the tray" : ""}</span><label><input type="checkbox" id="companionClipboard" ${c.settings.clipboard ? "checked" : ""}> Capture my clipboard</label><small>${esc(mail)}</small>`
       : c.known
-        ? `<span class="status-warn">Companion not running</span><span>Start <b>Start-Atlas-Companion.bat</b> as yourself (not as administrator). Last seen ${esc(when(c.last_seen))}.</span>`
+        ? `<span class="status-warn">Companion not running</span><span>Start <b>windows\\Start-Atlas-Companion.bat</b> as yourself (not as administrator). Last seen ${esc(when(c.last_seen))}.</span>`
         : `<span class="clipboard-chip">Companion not set up</span><span>Run <b>windows\\Install-Atlas-Companion.bat</b> once as yourself to capture every copy from your normal account, even with Atlas closed.</span>`;
     const box = $("companionClipboard");
     if (box) box.onchange = () => json("/api/companion/settings", { clipboard: box.checked }).then((next) => { companion = next; renderCompanion(); }, (error) => status(error.message, "bad"));

@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import Mock
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
-import active_directory as ad
+from backend.remote import active_directory as ad
 
 class ADTests(unittest.TestCase):
  def test_literal_validation_and_domain(self):
@@ -37,7 +37,7 @@ class ADTests(unittest.TestCase):
    ad.lookup(ad.Lookup(kind='user',identity='test'),Mock(return_value='{"error":"No user matched. Check server."}'))
   self.assertIn('No user matched', e.exception.detail)
  def test_token_before_any_query(self):
-  from atlas_api import TOKEN
+  from backend.atlas_api import TOKEN
   app=FastAPI();ps=Mock(return_value='{"details": {}, "groups": []}');ad.register(app,ps)
   with TestClient(app) as client:
    body={'kind':'user','identity':'testuser'}

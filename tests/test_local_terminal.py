@@ -7,8 +7,8 @@ from unittest.mock import patch
 from uuid import uuid4
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
-import local_terminal as terminal
-from atlas_api import TOKEN
+from backend.remote import local_terminal as terminal
+from backend.atlas_api import TOKEN
 
 
 class TerminalTests(unittest.TestCase):

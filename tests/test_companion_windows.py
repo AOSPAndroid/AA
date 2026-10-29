@@ -43,7 +43,7 @@ class WindowsShell(unittest.TestCase):
     def companion(self, clipboard):
         fakes, calls = modules(clipboard)
         patcher = patch.dict(sys.modules, fakes); patcher.start(); self.addCleanup(patcher.stop)
-        import atlas_companion
+        from backend.companion import atlas_companion
         user32 = types.SimpleNamespace(SetTimer=lambda *a: calls.append('SetTimer'), KillTimer=lambda *a: calls.append('KillTimer'),
                                        RemoveClipboardFormatListener=lambda *a: calls.append('RemoveListener'))
         ctypes = patch.object(atlas_companion.ctypes, 'windll', types.SimpleNamespace(user32=user32), create=True)

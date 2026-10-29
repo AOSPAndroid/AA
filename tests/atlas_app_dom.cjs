@@ -64,7 +64,7 @@ const flush = async () => { for (let i = 0; i < 8; i++) await new Promise(setImm
   vm.runInNewContext(fs.readFileSync('frontend/atlas-sw.js', 'utf8'), { self, URL, Response, fetch: async () => { throw Error('Server stopped'); } });
   let offline;
   events.get('fetch')({ request: { url: 'http://localhost:8770/installer', mode: 'navigate' }, respondWith: promise => offline = promise });
-  const response = await offline; assert.equal(response.status, 503); assert.match(await response.text(), /Start-Office-Atlas.bat/);
+  const response = await offline; assert.equal(response.status, 503); assert.match(await response.text(), /Start AA\.bat/);
   events.get('fetch')({ request: { url: 'http://localhost:8770/api/inbox/messages', mode: 'cors' }, respondWith: () => assert.fail('Never intercept or cache mail API') });
   windows.push({ url: 'http://localhost:8770/installer', frameType: 'nested', focus: () => assert.fail('Do not target iframe') });
   windows.push({ url: 'http://localhost:8770/installer?command=workspace', frameType: 'top-level', focus: async () => focused.push(true), postMessage: value => posted.push(value) });

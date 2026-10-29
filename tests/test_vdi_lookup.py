@@ -11,12 +11,12 @@ isolate_backend_database()
 from backend import main, viewer
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
-from desk_directory import machine_context
-from directory_lookup import exact_users, linked_machines, prepare_views, search_directory
-from directory_workbook import schema as directory_schema
-from merge_data import merge_directory, atlas_schema
+from backend.directory.desk_directory import machine_context
+from backend.directory.directory_lookup import exact_users, linked_machines, prepare_views, search_directory
+from backend.directory.directory_workbook import schema as directory_schema
+from backend.directory.merge_data import merge_directory, atlas_schema
 from test_vdi_data import csv_bytes, device, directory, store, user
-import vdi_data
+from backend.directory import vdi_data
 
 
 class VdiLookup(unittest.TestCase):

@@ -1,7 +1,7 @@
 # Inspect setup using real ACL and Task Scheduler definition objects. Never register a task.
 $ErrorActionPreference = 'Stop'
 $tokens = $null; $parseErrors = $null
-$path = Join-Path (Split-Path -Parent $PSScriptRoot) 'Configure-Inbox-Integration.ps1'
+$path = Join-Path (Split-Path -Parent $PSScriptRoot) 'windows\Configure-Inbox-Integration.ps1'
 $ast = [Management.Automation.Language.Parser]::ParseFile($path, [ref]$tokens, [ref]$parseErrors)
 if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
 foreach ($name in @('New-InboxControlAcl', 'New-InboxTaskDefinition')) {
@@ -24,5 +24,5 @@ $actualSid = if ($actualUser -like 'S-1-*') { $actualUser } else { ([Security.Pr
 if ($task.Principal.LogonType -ne 3 -or $task.Principal.RunLevel -ne 0 -or $actualSid -ne $atlas.Value) { throw 'Task must use the mail user, InteractiveToken and Limited.' }
 if ($task.Triggers.Count -ne 0 -or $task.Settings.MultipleInstances -ne 2) { throw 'Task must be on-demand and ignore duplicate starts.' }
 if ($task.Actions.Item(1).Arguments -notmatch '-WindowStyle Hidden' -or $task.Actions.Item(1).Arguments -match 'Bypass') { throw 'Unexpected task command.' }
-if ($task.Actions.Item(1).Arguments -notmatch '"C:\\Atlas Folder\\Run-Inbox-Agent.ps1"') { throw 'Paths with spaces must stay quoted.' }
+if ($task.Actions.Item(1).Arguments -notmatch '"C:\\Atlas Folder\\windows\\Run-Inbox-Agent.ps1"') { throw 'Paths with spaces must stay quoted.' }
 Write-Output 'PASS: private control ACL, interactive limited task, no logon trigger, duplicate start prevention, quoted hidden launch. No task registered.'

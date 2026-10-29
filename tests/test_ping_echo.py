@@ -6,8 +6,8 @@ from subprocess import CompletedProcess
 from unittest.mock import Mock, patch
 
 from backend import main
-from machine_health import HealthChecks
-from reboot_monitor import has_echo_reply, ping_once
+from backend.remote.machine_health import HealthChecks
+from backend.deploy.reboot_monitor import has_echo_reply, ping_once
 
 
 class PingEchoTests(unittest.TestCase):
@@ -40,7 +40,7 @@ class PingEchoTests(unittest.TestCase):
                      patch.object(main, 'run', return_value=completed) as run, \
                      patch.object(main.os.path, 'isdir', return_value=False), \
                      patch.object(main, 'ps', return_value='false'), \
-                     patch('reboot_monitor.subprocess.run', return_value=completed) as reboot_ping:
+                     patch('backend.deploy.reboot_monitor.subprocess.run', return_value=completed) as reboot_ping:
                     self.assertIs(main.ping('FICT-PC')['online'], expected)
                     self.assertIs(main.preflight('FICT-PC')['ping'], expected)
                     health = HealthChecks(transport).check('FICT-PC', 'ping')

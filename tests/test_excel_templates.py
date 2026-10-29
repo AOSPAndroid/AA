@@ -5,9 +5,9 @@ from pathlib import Path
 from types import SimpleNamespace
 import xml.etree.ElementTree as ET
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-import seating_excel as sx
-from refresh_directory import prepare
-from database_manager import register_database_manager
+from backend.seating import seating_excel as sx
+from backend.directory.refresh_directory import prepare
+from backend.database_manager import register_database_manager
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 ROOT=Path(__file__).resolve().parents[1]

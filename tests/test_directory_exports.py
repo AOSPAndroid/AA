@@ -11,11 +11,11 @@ from unittest.mock import patch
 from types import SimpleNamespace
 from xml.etree import ElementTree as ET
 
-import directory_exports as exports
-from directory_workbook import build, NS, REL
-from directory_lookup import prepare_views, search_directory
-from merge_data import merge_directory
-from refresh_directory import prepare
+from backend.directory import directory_exports as exports
+from backend.directory.directory_workbook import build, NS, REL
+from backend.directory.directory_lookup import prepare_views, search_directory
+from backend.directory.merge_data import merge_directory
+from backend.directory.refresh_directory import prepare
 from sqlite_fixture import connect as fixture_connect
 
 
@@ -126,7 +126,7 @@ class ExportTests(unittest.TestCase):
     def test_admin_archive_download_and_legacy_fallback(self):
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
-        from database_manager import register_database_manager
+        from backend.database_manager import register_database_manager
         app=FastAPI()
         register_database_manager(app, SimpleNamespace(MASTER_DB=self.db,jobs={},queue_jobs={}), lambda request:None)
         with TestClient(app,base_url='http://127.0.0.1') as client:
@@ -204,13 +204,13 @@ class ExportTests(unittest.TestCase):
     def test_actual_device_upload_preview_apply_backup_and_seating_preservation(self):
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
-        import database_manager as manager
+        from backend import database_manager as manager
         with fixture_connect(self.db) as c:
             c.execute('create table desk_user_links(desk_id text primary key,user_key text,method text,updated_at text)')
             c.execute("insert into desk_user_links values('D1','uid:u1','confirmed','fixture')")
         sheets=device_sheets();workbook(self.xlsx,sheets)
         app=FastAPI()
-        with patch.object(manager,'__file__',str(self.root/'database_manager.py')):
+        with patch.object(manager,'__file__',str(self.root/'backend'/'database_manager.py')):
             manager.register_database_manager(app,SimpleNamespace(MASTER_DB=self.db,jobs={},queue_jobs={}),lambda request:None)
         with TestClient(app) as client:
             response=client.post('/api/database/preview',content=self.xlsx.read_bytes(),headers={'X-File-Name':'EMEA.xlsx'})

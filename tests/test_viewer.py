@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import patch,Mock
 from fastapi.testclient import TestClient
 from backend import viewer
-import launcher
+from backend.launch import launcher
 from contextlib import closing
 
 class ViewerTests(unittest.TestCase):
@@ -62,7 +62,7 @@ class ViewerTests(unittest.TestCase):
             self.assertEqual(self.client.get(path).status_code,200,path)
 
     def test_scripts_page_lists_built_ins_only(self):
-        from script_library import BUILTIN
+        from backend.deploy.script_library import BUILTIN
         data=self.client.get('/api/script-library').json()
         self.assertEqual([s['id'] for s in data['builtin']],[s['id'] for s in BUILTIN])
         self.assertEqual(data['saved'],[],'Saved scripts stay in the local Admin app')
@@ -94,7 +94,7 @@ class LauncherTests(unittest.TestCase):
         with patch.dict(os.environ,{'ATLAS_ADMIN_PORT':'8770','ATLAS_VIEWER_PORT':'8770'}):
             with self.assertRaises(ValueError):launcher.servers()
     def test_failed_viewer_rolls_back_only_new_admin(self):
-        with tempfile.TemporaryDirectory() as tmp,patch.object(launcher,'ROOT',Path(tmp)),patch('runtime_paths.prepare_runtime_database'):
+        with tempfile.TemporaryDirectory() as tmp,patch.object(launcher,'ROOT',Path(tmp)),patch('backend.runtime_paths.prepare_runtime_database'):
             child=Mock()
             with patch.object(launcher,'start_server',side_effect=[child,RuntimeError('port occupied')]):
                 self.assertEqual(launcher.run(False),1);child.terminate.assert_called_once()

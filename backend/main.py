@@ -9,14 +9,14 @@ from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from backend import __version__
-from directory_lookup import exact_users, linked_machines, search_directory, prepare_views
-from reboot_monitor import has_echo_reply
+from backend.directory.directory_lookup import exact_users, linked_machines, search_directory, prepare_views
+from backend.deploy.reboot_monitor import has_echo_reply
 
 ROOT=Path(__file__).resolve().parent.parent
 WEB=ROOT/'frontend'
 LOGS=ROOT/'logs'
 DATA=ROOT/'data'
-from runtime_paths import database_path
+from backend.runtime_paths import database_path
 MASTER_DB=database_path()
 DB=MASTER_DB
 HISTORY_DB=MASTER_DB
@@ -24,7 +24,7 @@ LOGS.mkdir(parents=True,exist_ok=True)
 DATA.mkdir(parents=True,exist_ok=True)
 
 CONFIG=json.loads((ROOT/'config.json').read_text(encoding='utf-8')) if (ROOT/'config.json').exists() else {}
-from package_paths import package_repository
+from backend.deploy.package_paths import package_repository
 REPO=package_repository(CONFIG,ROOT)
 REMOTE_ROOT=r'C:\Temp\Packages'; NW=0x08000000 if os.name=='nt' else 0
 # Axis stages under its own root; one cleanup clears both. Axis job logs beside it are kept.
@@ -35,12 +35,12 @@ def staging_linked(root):
  return any(item.exists() and linked(item) for item in [root,*root.parents])
 logging.basicConfig(filename=LOGS/'application.log',level=logging.INFO,format='%(asctime)s %(levelname)s %(message)s')
 app=FastAPI(title='Office Atlas',version=__version__,docs_url='/api/docs',redoc_url=None)
-from response_compression import compress_responses
+from backend.response_compression import compress_responses
 compress_responses(app)
-from job_service import JobService, TERMINAL
-from shared_operations import TargetLock, axis_ready
+from backend.job_service import JobService, TERMINAL
+from backend.shared_operations import TargetLock, axis_ready
 from axis.it_tools import describe_install_activity, install_unconfirmed
-import install_watch
+from backend.deploy import install_watch
 job_service=JobService(lambda:HISTORY_DB,guard=axis_ready)
 jobs=job_service.jobs;lock=job_service.lock
 @app.on_event('startup')
@@ -48,7 +48,7 @@ def recover_operations():job_service.recover()
 NAME_RE=re.compile(r'^[A-Za-z0-9_.-]{1,64}$')
 
 def validate_pc(pc):
- from device_inventory import canonical_machine_name,supports_windows
+ from backend.directory.device_inventory import canonical_machine_name,supports_windows
  pc=canonical_machine_name(pc)
  if pc.startswith('INVENTORY-') and ':' in pc:raise HTTPException(400,'This device is inventory only. Windows deployment and remote tools require a PC.')
  if not NAME_RE.fullmatch(pc) or pc.startswith(('-', '.')) or '..' in pc:raise HTTPException(400,'Invalid computer name')
@@ -57,7 +57,7 @@ def validate_pc(pc):
    c.row_factory=sqlite3.Row;c.execute('begin')
    if c.execute("select 1 from sqlite_master where type='table' and name='machines'").fetchone():
     prepare_views(c)
-    from vdi_inventory import find_machines
+    from backend.directory.vdi_inventory import find_machines
     matches=find_machines(c,pc)
     if len(matches)>1:raise HTTPException(400,'Ambiguous inventory hostname; select its fully qualified name.')
     if matches:
@@ -300,7 +300,7 @@ def health():
  u=m=v=0
  if DB.exists():
   with db() as c:
-   from vdi_inventory import count
+   from backend.directory.vdi_inventory import count
    u=c.execute('select count(*) from users').fetchone()[0];m=c.execute('select count(*) from machines').fetchone()[0];v=count(c)
  return {'identity':identity(),'users':u,'machines':m,'vdi_machines':v,'database':DB.exists(),'repository':REPO.is_dir(),'application':'Office Atlas','mode':'admin','version':__version__,'instance_id':os.environ.get('ATLAS_INSTANCE_ID'),'instance_root':str(ROOT)}
 
@@ -312,7 +312,7 @@ def search(term:str,palette:bool=False):
   c.execute('begin')
   result=search_directory(c,term)
   if palette:
-   from desk_directory import palette_search
+   from backend.directory.desk_directory import palette_search
    return palette_search(c,result)
   return result
 @app.get('/api/user/{uid}')
@@ -411,45 +411,45 @@ def disk(pc:str):
  out=ps(f"Get-WmiObject -ComputerName {quote(validate_pc(pc))} Win32_LogicalDisk -Filter 'DriveType=3'|select DeviceID,@{{n='FreeGB';e={{[math]::Round($_.FreeSpace/1GB,1)}}}},@{{n='SizeGB';e={{[math]::Round($_.Size/1GB,1)}}}}|ConvertTo-Json -Compress");d=json.loads(out) if out else [];return d if isinstance(d,list) else [d]
 @app.get('/api/processes/{pc}')
 def processes(pc:str,kind:str='cpu'):
- import remote_processes,sys
+ import sys; from backend.remote import remote_processes
  return remote_processes.list_processes(sys.modules[__name__],pc,kind)
 @app.get('/api/performance/{pc}/threads/{pid}')
 def performance_threads(pc:str,pid:int,created:str,name:str):
- import performance,sys
+ import sys; from backend.remote import performance
  return performance.collect(sys.modules[__name__],pc,'threads',pid=pid,created=created,name=name)
 @app.get('/api/performance/{pc}')
 def performance_snapshot(pc:str,kind:str='cpu'):
- import performance,sys
+ import sys; from backend.remote import performance
  return performance.collect(sys.modules[__name__],pc,kind)
 @app.post('/api/kill')
 def kill(p:Kill):
- import remote_processes,sys
+ import sys; from backend.remote import remote_processes
  return remote_processes.terminate(sys.modules[__name__],p)
 @app.post('/api/remote-registry/enable')
 def enable_remote_registry(p:Machine):
- import service_actions,sys
+ import sys; from backend.remote import service_actions
  result=service_actions.enable_remote_registry(sys.modules[__name__],p.computer)
  logging.info('Enabled RemoteRegistry target=%s operator=%s previous_state=%s startup=%s',result['computer'],identity(),result['previous_state'],result['start_mode'])
  return result
 
 @app.post('/api/services')
 def list_services(p:Machine):
- import service_actions,sys
+ import sys; from backend.remote import service_actions
  return service_actions.list_services(sys.modules[__name__],p.computer)
 
 @app.post('/api/services/stop')
 def stop_service(p:ServiceControl):
- import service_actions,sys
+ import sys; from backend.remote import service_actions
  return service_actions.stop_service(sys.modules[__name__],p)
 
 @app.post('/api/services/start')
 def start_service(p:ServiceControl):
- import service_actions,sys
+ import sys; from backend.remote import service_actions
  return service_actions.start_service(sys.modules[__name__],p)
 
 @app.post('/api/services/restart')
 def restart_service(p:ServiceControl):
- import service_actions,sys
+ import sys; from backend.remote import service_actions
  return service_actions.restart_service(sys.modules[__name__],p)
 
 @app.post('/api/reboot')
@@ -462,7 +462,7 @@ def request_reboot(pc):
  result=ps(f'$ErrorActionPreference="Stop";$o=Get-WmiObject -ComputerName {quote(pc)} Win32_OperatingSystem -EnableAllPrivileges -EA Stop;$o.Reboot().ReturnValue',timeout=30)
  if result.strip()!='0':raise RuntimeError('Windows rejected the reboot request (return '+result.strip()+')')
 
-from reboot_monitor import RebootMonitor
+from backend.deploy.reboot_monitor import RebootMonitor
 reboot_monitor=RebootMonitor(request_reboot)
 
 @app.get('/api/reboots')
@@ -737,7 +737,7 @@ def master_status():
         with master_db() as c:
             result['users']=c.execute('select count(*) from users').fetchone()[0]
             result['machines']=c.execute('select count(*) from machines').fetchone()[0]
-            from vdi_inventory import count
+            from backend.directory.vdi_inventory import count
             result['vdi_machines']=count(c)
             result['assignments']=c.execute('select count(*) from assignments').fetchone()[0]
             row=c.execute("select value from metadata where key='created_at'").fetchone();result['created_at']=row[0] if row else ''
@@ -746,7 +746,7 @@ def master_status():
 
 @app.get('/api/master/resolve/{value}')
 def master_resolve(value:str):
- from directory_lookup import resolve_directory
+ from backend.directory.directory_lookup import resolve_directory
  with db() as c:
   c.execute('begin')
   return resolve_directory(c,value)
@@ -754,7 +754,7 @@ def master_resolve(value:str):
 @app.get('/api/machine/{computer}')
 def machine_record(computer:str):
  if not NAME_RE.fullmatch(computer) or computer.startswith(('-', '.')) or '..' in computer:raise HTTPException(400,'Invalid computer name')
- from desk_directory import machine_context
+ from backend.directory.desk_directory import machine_context
  with db() as c:
   result=machine_context(c,computer)
   if result is None:raise HTTPException(404,'Machine not found in directory')
@@ -774,54 +774,54 @@ def index():
  return HTMLResponse(html)
 
 # Register the app files before Atlas's single-segment static fallback.
-from pwa import register as register_pwa
+from backend.pwa import register as register_pwa
 register_pwa(app)
-from atlas_api import register_atlas
+from backend.atlas_api import register_atlas
 register_atlas(app)
-from psexec_runner import register as register_psexec
+from backend.remote.psexec_runner import register as register_psexec
 register_psexec(app,validate_pc)
-from local_terminal import register as register_terminal
+from backend.remote.local_terminal import register as register_terminal
 register_terminal(app)
 # Scripts: built-in and saved PowerShell scripts run against a list of machines.
-from script_library import register as register_scripts
-from runtime_paths import scripts_path
+from backend.deploy.script_library import register as register_scripts
+from backend.runtime_paths import scripts_path
 register_scripts(app, scripts_path())
 # Personas: saved software bundles, each installed on a machine as one deployment queue,
 # with each desk's new joiner requests from the requests workbook; New joiners tracks both steps.
-from personas import register as register_personas
-from persona_access import Store as PersonaAccess
-from joiners import register as register_joiners
-from runtime_paths import personas_path, persona_access_path, joiners_path
+from backend.deploy.personas import register as register_personas
+from backend.deploy.persona_access import Store as PersonaAccess
+from backend.deploy.joiners import register as register_joiners
+from backend.runtime_paths import personas_path, persona_access_path, joiners_path
 persona_access_store=PersonaAccess(persona_access_path())
 persona_store=register_personas(app, personas_path(), sys.modules[__name__], persona_access_store)
 joiner_store=register_joiners(app, joiners_path(), sys.modules[__name__], persona_store, persona_access_store)
 
 # Independent live health results; retains the application's local-only middleware.
-from machine_health import register_machine_health
+from backend.remote.machine_health import register_machine_health
 import sys as _health_sys
 machine_health_checks=register_machine_health(app,_health_sys.modules[__name__])
 
 # Queue reads existing activity; it never initiates remote scans.
-from action_activity import register as register_activity
+from backend.action_activity import register as register_activity
 import sys
 register_activity(app,sys.modules[__name__])
 
 # Knowledge documents stay in the local Admin runtime, never in published assets.
-from knowledge_base import register as register_knowledge
-from runtime_paths import knowledge_path
+from backend.knowledge_base import register as register_knowledge
+from backend.runtime_paths import knowledge_path
 # Articles first: "/api/knowledge/articles" must not be read as a diagram ID.
-from knowledge_articles import register as register_articles
+from backend.knowledge_articles import register as register_articles
 register_articles(app, knowledge_path())
 register_knowledge(app, knowledge_path())
 
 # Private local Outlook queue: intentionally absent from backend.viewer.
-from mail_inbox import register as register_inbox
+from backend.inbox.mail_inbox import register as register_inbox
 _inbox_catalogue={'at':0.0,'repo':None,'items':[]}
 def inbox_packages():
  # Cached briefly: listing a OneDrive-synced share on every message click would be slow.
  now=time.monotonic();cache=_inbox_catalogue
  if cache['repo']==str(REPO) and now-cache['at']<120:return cache['items']
- from package_data import load,join_metadata
+ from backend.deploy.package_data import load,join_metadata
  names=sorted((p.name for p in REPO.iterdir() if p.is_dir()),key=str.casefold) if REPO.is_dir() else []
  with db() as c:
   saved={r['folder']:r['display_name'] for r in c.execute('select folder,display_name from package_catalog where repository=?',(str(REPO.resolve()),))}
@@ -843,22 +843,22 @@ def knowledge_diagrams():
  return documents
 def inbox_documents():
  # Diagrams and articles; articles carry their tags and linked issue categories.
- from knowledge_articles import all_articles
+ from backend.knowledge_articles import all_articles
  articles=[{'id':'article:'+a['id'],'title':a['title'],'notes':a['markdown'][:20000]+'\n'+' '.join(a['tags']),'categories':a['categories']}
            for a in all_articles(knowledge_path())]
  return knowledge_diagrams()+articles
 register_inbox(app, db, packages=inbox_packages, documents=inbox_documents)
-from package_matching import prewarm as prewarm_package_aliases
+from backend.deploy.package_matching import prewarm as prewarm_package_aliases
 prewarm_package_aliases()
 
 # Search everything (Admin only): articles, diagrams, Live Inbox requests and deployments.
 import hashlib
-from search_index import SearchIndex, register as register_search
+from backend.search_index import SearchIndex, register as register_search
 def _signature(rows):
  return hashlib.sha256(json.dumps(rows,sort_keys=True,default=str).encode()).hexdigest()
 def search_articles():
- from knowledge_articles import all_articles,plain_text
- from inbox_analysis import CATEGORIES
+ from backend.knowledge_articles import all_articles,plain_text
+ from backend.inbox.inbox_analysis import CATEGORIES
  labels={key:label for key,label,*_ in CATEGORIES}
  articles=all_articles(knowledge_path())
  rows=[{'ref':a['id'],'title':a['title'],'at':a['updated'],'extra':{'tags':a['tags'],'categories':a['categories']},
@@ -874,7 +874,7 @@ def search_deployments():
    'body':' '.join(str(r[k] or '') for k in ('state','details','operator','package','target')),'at':r['started'] or '',
    'extra':{k:r[k] for k in ('target','package','action','state','finished')}} for r in rows]
 def search_inbox(after):
- from mail_inbox import mail_directory,queue_reader
+ from backend.inbox.mail_inbox import mail_directory,queue_reader
  with queue_reader(mail_directory()) as queue:
   if queue is None:return 0,[]
   newest=queue.execute('select coalesce(max(id),0) from messages').fetchone()[0]
@@ -883,7 +883,7 @@ def search_inbox(after):
    'body':f"{r['sender_name'] or ''} {r['sender_address'] or ''}\n{(r['body'] or '')[:20000]}",
    'extra':{'sender':r['sender_name'] or r['sender_address'] or ''}} for r in rows]
 def search_message(message_id):
- from mail_inbox import mail_directory,queue_reader
+ from backend.inbox.mail_inbox import mail_directory,queue_reader
  with queue_reader(mail_directory()) as queue:
   row=queue.execute('select subject,body from messages where id=?',(message_id,)).fetchone() if queue else None
  if row is None:raise HTTPException(404,'Message not found in the local inbox.')
@@ -893,11 +893,11 @@ search_index=SearchIndex(knowledge_path().parent/'search-index.sqlite3',
 register_search(app,search_index,search_message)
 # The Atlas Companion runs in the operator's normal Windows session (clipboard, Outlook) and
 # reports here; Live Inbox's collector switches control it once it has connected.
-from inbox_control import register as register_inbox_control, InboxIntegration
-from companion_server import register as register_companion, CompanionInbox
-from runtime_paths import companion_state_path, companion_inbox_path
+from backend.inbox.inbox_control import register as register_inbox_control, InboxIntegration
+from backend.companion.companion_server import register as register_companion, CompanionInbox
+from backend.runtime_paths import companion_state_path, companion_inbox_path
 def _admin_token(request):
- from atlas_api import TOKEN
+ from backend.atlas_api import TOKEN
  if not secrets.compare_digest(request.headers.get('x-atlas-token',''),TOKEN):raise HTTPException(403,'Refresh the page before saving')
 _companion=register_companion(app,sys.modules[__name__],_admin_token,companion_state_path,companion_inbox_path)
 register_inbox_control(app,CompanionInbox(_companion,InboxIntegration()))
@@ -905,5 +905,5 @@ register_inbox_control(app,CompanionInbox(_companion,InboxIntegration()))
 # Bundled open-source Draw.io static editor (no server-side editor endpoints).
 app.mount('/drawio', StaticFiles(directory=ROOT/'frontend/drawio', html=True), name='drawio')
 
-from active_directory import register as register_active_directory
+from backend.remote.active_directory import register as register_active_directory
 register_active_directory(app, ps)

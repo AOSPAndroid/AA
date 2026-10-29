@@ -10,9 +10,9 @@ from unittest.mock import patch
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
-import database_manager as dm
-from directory_pair import combine
-from directory_workbook import build, directory_parts, iter_rows
+from backend import database_manager as dm
+from backend.directory.directory_pair import combine
+from backend.directory.directory_workbook import build, directory_parts, iter_rows
 from sqlite_fixture import connect as fixture_connect
 from test_directory_exports import device_sheets, workbook
 

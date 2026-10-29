@@ -3,7 +3,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-import remote_software as rs
+from backend.remote import remote_software as rs
 from fastapi import FastAPI,HTTPException
 from fastapi.testclient import TestClient
 SID='S-1-5-21-1-2-3-1001';GUID='{11111111-2222-3333-4444-555555555555}'

@@ -138,8 +138,8 @@ class LocalGitFixture(unittest.TestCase):
         return self.root / 'data' / 'office_atlas.db'
 
     def manager(self, **overrides):
-        from update_atlas import Updater
-        quiet = patch('update_atlas.print', create=True)
+        from backend.launch.update_atlas import Updater
+        quiet = patch('backend.launch.update_atlas.print', create=True)
         quiet.start(); self.addCleanup(quiet.stop)
         self.events = []
         hooks = dict(root=self.root, repository=str(self.upstream), git=shutil.which('git'),
@@ -165,7 +165,7 @@ class LocalGitFixture(unittest.TestCase):
         return databases
 
     def assert_refused(self, manager):
-        from update_atlas import UpdateError
+        from backend.launch.update_atlas import UpdateError
         with self.assertRaises(UpdateError):
             manager.update(no_start=True)
         self.assertNotIn('stop', self.events)
@@ -341,7 +341,7 @@ class UpdateRefusals(LocalGitFixture):
     def test_owned_admin_activity_aggregate_blocks_update_without_real_http(self):
         self.clone(); self.persistent(); self.release(); record = self.server_record()
         opener, calls = self.fake_http({'count': 1})
-        with patch('update_atlas.urllib.request.build_opener', return_value=opener):
+        with patch('backend.launch.update_atlas.urllib.request.build_opener', return_value=opener):
             self.assert_refused(self.manager(active=None))
         self.assertEqual(calls, ['http://127.0.0.1:23300/api/health', 'http://127.0.0.1:23300/api/actions'])
         self.assertTrue(record.exists()); self.assertEqual(git(self.root, 'rev-parse', 'HEAD'), self.old_head)
@@ -351,21 +351,21 @@ class UpdateRefusals(LocalGitFixture):
         for actions in ({'count': False}, {'count': True}, {'count': -1}, {'count': '0'}, []):
             with self.subTest(actions=actions):
                 opener, _ = self.fake_http(actions)
-                with patch('update_atlas.urllib.request.build_opener', return_value=opener):
+                with patch('backend.launch.update_atlas.urllib.request.build_opener', return_value=opener):
                     self.assert_refused(self.manager(active=None))
                 self.assertEqual(git(self.root, 'rev-parse', 'HEAD'), self.old_head)
 
     def test_changed_admin_identity_is_not_stopped(self):
         self.clone(); self.persistent(); self.release(); record = self.server_record()
         opener, calls = self.fake_http({'count': 0}, health={'application': 'Office Atlas', 'mode': 'admin', 'instance_id': 'stale-instance'})
-        with patch('update_atlas.urllib.request.build_opener', return_value=opener):
+        with patch('backend.launch.update_atlas.urllib.request.build_opener', return_value=opener):
             self.assert_refused(self.manager(active=None))
         self.assertEqual(calls, ['http://127.0.0.1:23300/api/health']); self.assertTrue(record.exists())
 
     def test_foreign_viewer_record_blocks_before_admin_http_or_stop(self):
         self.clone(); self.persistent(); self.release()
         foreign = self.server_record(mode='viewer', root=self.parent / 'another-installation')
-        with patch('update_atlas.urllib.request.build_opener', side_effect=AssertionError('No real or foreign HTTP request allowed')):
+        with patch('backend.launch.update_atlas.urllib.request.build_opener', side_effect=AssertionError('No real or foreign HTTP request allowed')):
             self.assert_refused(self.manager(active=None))
         self.assertTrue(foreign.exists()); self.assertEqual(git(self.root, 'rev-parse', 'HEAD'), self.old_head)
 
@@ -380,7 +380,7 @@ class UpdateRefusals(LocalGitFixture):
             self.assertEqual(manager.environment['ATLAS_ADMIN_PORT'], '23300')
             self.assertEqual(manager.environment['ATLAS_VIEWER_PORT'], '23301')
         manager = self.manager(active=None, stop=stop, start=start)
-        with patch('update_atlas.urllib.request.build_opener', return_value=opener):
+        with patch('backend.launch.update_atlas.urllib.request.build_opener', return_value=opener):
             result = manager.update(no_start=False)
         self.assertTrue(result['started']); self.assertEqual(self.events, ['stop', 'start'])
 
@@ -445,7 +445,7 @@ class UpdateRefusals(LocalGitFixture):
 
 class UpdateFailures(LocalGitFixture):
     def test_completed_git_move_followed_by_interrupt_removes_created_metadata_and_restores_code(self):
-        from update_atlas import UpdateError
+        from backend.launch.update_atlas import UpdateError
         self.raw_zip(); database = self.persistent(); self.release()
         manager = self.manager(); original = os.replace; interrupted = []
         def move_then_cancel(source, destination):
@@ -456,7 +456,7 @@ class UpdateFailures(LocalGitFixture):
                 self.assertEqual((self.root / 'backend/main.py').read_text(), 'VERSION = "new"\n')
                 raise KeyboardInterrupt('Fictional cancellation just after Git move')
             return result
-        with patch('update_atlas.os.replace', side_effect=move_then_cancel):
+        with patch('backend.launch.update_atlas.os.replace', side_effect=move_then_cancel):
             with self.assertRaises(UpdateError):
                 manager.update(no_start=True)
         self.assertTrue(interrupted); self.assertFalse((self.root / '.git').exists())
@@ -465,7 +465,7 @@ class UpdateFailures(LocalGitFixture):
         self.assertEqual(values(database), ['local-user-data']); self.assertNotIn('start', self.events)
 
     def test_git_metadata_install_failure_restores_copied_code_and_runtime_data(self):
-        from update_atlas import UpdateError
+        from backend.launch.update_atlas import UpdateError
         self.raw_zip(); database = self.persistent(); self.release()
         manager = self.manager(); original = os.replace; attempts = []
         def deny_git_move(source, destination):
@@ -474,7 +474,7 @@ class UpdateFailures(LocalGitFixture):
                 self.assertEqual((self.root / 'backend/main.py').read_text(), 'VERSION = "new"\n')
                 raise OSError('Fictional Git metadata move refusal')
             return original(source, destination)
-        with patch('update_atlas.os.replace', side_effect=deny_git_move):
+        with patch('backend.launch.update_atlas.os.replace', side_effect=deny_git_move):
             with self.assertRaises(UpdateError):
                 manager.update(no_start=True)
         self.assertEqual(len(attempts), 1)
@@ -484,7 +484,7 @@ class UpdateFailures(LocalGitFixture):
         self.assertEqual(values(database), ['local-user-data']); self.assertNotIn('start', self.events)
 
     def test_keyboard_interrupt_after_partial_apply_restores_old_code(self):
-        from update_atlas import UpdateError
+        from backend.launch.update_atlas import UpdateError
         self.raw_zip(); database = self.persistent(); self.release()
         manager = self.manager(); original = manager._copy_code; interrupted = []
         def cancel(source, destination):
@@ -502,7 +502,7 @@ class UpdateFailures(LocalGitFixture):
         self.assertEqual(values(database), ['local-user-data']); self.assertNotIn('start', self.events)
 
     def test_fetch_failure_keeps_code_data_and_configuration_without_stopping(self):
-        from update_atlas import UpdateError
+        from backend.launch.update_atlas import UpdateError
         self.clone(); database = self.persistent(); self.release(); manager = self.manager()
         original = manager.git_run
         def offline(*arguments, **kwargs):
@@ -523,7 +523,7 @@ class UpdateFailures(LocalGitFixture):
         self.assertEqual(values(database), ['local-user-data'])
 
     def test_partial_stop_failure_blocks_code_changes_and_does_not_restart(self):
-        from update_atlas import UpdateError
+        from backend.launch.update_atlas import UpdateError
         self.clone(); database = self.persistent(); self.release()
         viewer = self.root / 'data/viewer-server.json'; viewer.write_text('{"fixture":true}')
         admin = self.root / 'data/server.json'; admin.write_text('{"fixture":true}')
@@ -538,7 +538,7 @@ class UpdateFailures(LocalGitFixture):
         self.assertEqual(values(database), ['local-user-data']); self.assertNotIn('start', self.events)
 
     def test_partial_zip_code_copy_failure_rolls_back_code_and_keeps_stopped_records_absent(self):
-        from update_atlas import UpdateError
+        from backend.launch.update_atlas import UpdateError
         self.raw_zip(); database = self.persistent(); self.release(extra={'a-new.py': '# new fictional tool\n'})
         server = self.root / 'data/server.json'; server.write_text('{"fixture":true}')
         old_code = {name: (self.root / name).read_bytes() for name in ('backend/main.py', 'frontend/app.js', 'README.md')}
@@ -565,7 +565,7 @@ class UpdateFailures(LocalGitFixture):
         self.assertNotIn('start', self.events)
 
     def test_dependency_failure_restores_clone_head_and_source_but_leaves_servers_stopped(self):
-        from update_atlas import UpdateError
+        from backend.launch.update_atlas import UpdateError
         self.clone(); database = self.persistent()
         self.release(extra={'requirements.txt': '# changed fictional dependencies\n'})
         server = self.root / 'data/server.json'; server.write_text('{"fixture":true}')
@@ -586,7 +586,7 @@ class UpdateFailures(LocalGitFixture):
 
 class OwnedGitCleanup(unittest.TestCase):
     def test_readonly_owned_git_cleanup_makes_file_writable_then_retries_failed_operation(self):
-        from update_atlas import remove_created_git
+        from backend.launch.update_atlas import remove_created_git
         with tempfile.TemporaryDirectory() as temporary:
             owned = Path(temporary) / '.git'; owned.mkdir()
             object_file = owned / 'fictional-object'; object_file.write_bytes(b'fictional Git object')
@@ -597,7 +597,7 @@ class OwnedGitCleanup(unittest.TestCase):
                 self.assertEqual(Path(path), owned)
                 onexc(failed_operation, str(object_file), PermissionError('Fictional read-only Git object'))
             expected_mode = object_file.stat().st_mode | stat.S_IWRITE
-            with patch('update_atlas.shutil.rmtree', side_effect=failed_rmtree), patch('update_atlas.os.chmod') as chmod:
+            with patch('backend.launch.update_atlas.shutil.rmtree', side_effect=failed_rmtree), patch('backend.launch.update_atlas.os.chmod') as chmod:
                 remove_created_git(owned)
             chmod.assert_called_once_with(str(object_file), expected_mode)
             self.assertEqual(attempts, [str(object_file)])
@@ -606,16 +606,16 @@ class OwnedGitCleanup(unittest.TestCase):
 
 class AAUpdateBoundary(unittest.TestCase):
     def test_atlas_updater_refuses_aa_before_any_external_action(self):
-        from update_atlas import Updater, UpdateError
+        from backend.launch.update_atlas import Updater, UpdateError
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            (root / 'aa_launcher.py').write_text('# AA', encoding='utf-8')
+            (root / 'Start AA.bat').write_text('@echo off', encoding='utf-8')
             manager = Updater(root)
             with patch.object(manager, 'run', side_effect=AssertionError('No commands allowed')):
                 for check in (True, False):
                     with self.assertRaisesRegex(UpdateError, 'AOSPAndroid/AA'):
                         manager.update(check=check)
-            self.assertEqual([p.name for p in root.iterdir()], ['aa_launcher.py'])
+            self.assertEqual([p.name for p in root.iterdir()], ['Start AA.bat'])
 
 
 if __name__ == '__main__':

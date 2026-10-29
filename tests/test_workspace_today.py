@@ -2,7 +2,7 @@ from sqlite_fixture import isolate_backend_database
 isolate_backend_database()
 import unittest
 from backend import main
-from update_atlas import Updater, REPOSITORY
+from backend.launch.update_atlas import Updater, REPOSITORY
 
 class WorkspaceToday(unittest.TestCase):
     def test_today_uses_server_date_and_keeps_recorded_status(self):

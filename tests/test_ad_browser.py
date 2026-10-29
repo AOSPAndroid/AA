@@ -2,10 +2,10 @@ import json,subprocess,unittest,shutil
 from unittest.mock import Mock
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-import active_directory as ad
+from backend.remote import active_directory as ad
 class BrowserTests(unittest.TestCase):
  def test_transport_validation_and_token(self):
-  from atlas_api import TOKEN
+  from backend.atlas_api import TOKEN
   app=FastAPI();ps=Mock(return_value='{"items":[]}');ad.register(app,ps)
   with TestClient(app) as c:
    self.assertEqual(c.post('/api/active-directory/browse',json={}).status_code,403);ps.assert_not_called()

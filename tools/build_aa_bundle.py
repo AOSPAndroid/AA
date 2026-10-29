@@ -35,7 +35,7 @@ def main():
         archive.writestr('AA/axis/LLAMA-CPP-VERSION.txt', 'llama.cpp b11815\n')
     with zipfile.ZipFile(args.output) as archive:
         assert archive.testzip() is None
-        required = ('Start AA.bat', 'Stop AA.bat', 'aa_launcher.py', 'backend/axis_api.py',
+        required = ('Start AA.bat', 'Stop AA.bat', 'windows/Python_Settings.bat', 'backend/launch/aa_launcher.py', 'backend/axis_api.py',
                     'backend/axis_operations.py', 'backend/axis_sources.py', 'frontend/assets/axis-chat.js',
                     'atlas/official-index.html', 'axis/agent.py', 'axis/aa_client.py', 'axis/start.py', 'axis/join_model.py', 'axis/Join Model.bat',
                     'axis/models.json', 'axis/skill_library.py', 'axis/skills/pc-health/SKILL.md',

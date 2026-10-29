@@ -2,8 +2,8 @@ from sqlite_fixture import connect as fixture_connect
 import unittest,tempfile,json,sys
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-import atlas_store as store
-from official_atlas import apply_visual_matches
+from backend import atlas_store as store
+from backend.seating.official_atlas import apply_visual_matches
 class VisualMatches(unittest.TestCase):
  def test_migration_and_guards(self):
   with tempfile.TemporaryDirectory() as tmp:

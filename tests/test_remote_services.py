@@ -10,7 +10,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from fastapi import HTTPException
-import service_actions as services
+from backend.remote import service_actions as services
 
 
 class RemoteServices(unittest.TestCase):

@@ -1,6 +1,6 @@
 """Copy a validated Windows build into the repository's distributable package.
 
-Run Build-Notification-Listener.ps1 with -MakeAppxPath first. Copies only the
+Run notification-listener/Build-Notification-Listener.ps1 with -MakeAppxPath first. Copies only the
 known package payload, never mail queues, accounts, settings or logs.
 """
 import hashlib
@@ -14,7 +14,7 @@ PAYLOAD = ('AppxManifest.xml', 'Atlas.NotificationListener.exe', 'Atlas.Notifica
            'Assets/Square150x150Logo.png', 'Assets/Square44x44Logo.png', 'Assets/StoreLogo.png')
 SOURCES = ('notification-listener/Program.cs', 'notification-listener/Store.cs',
            'notification-listener/AppxManifest.xml', 'notification-listener/app.manifest',
-           'inbox_schema.sql', 'Build-Notification-Listener.ps1')
+           'backend/inbox/inbox_schema.sql', 'notification-listener/Build-Notification-Listener.ps1')
 
 
 def digest(path):

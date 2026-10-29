@@ -8,11 +8,11 @@ from unittest.mock import patch
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from sqlite_fixture import connect
-from directory_workbook import schema
-from directory_lookup import prepare_views
-from identity_links import rebuild_links
-import screen_reader
-from screen_reader import register, title_names
+from backend.directory.directory_workbook import schema
+from backend.directory.directory_lookup import prepare_views
+from backend.directory.identity_links import rebuild_links
+from backend.inbox import screen_reader
+from backend.inbox.screen_reader import register, title_names
 
 TEAMS = 'Chat | Alex Morgan | Microsoft Teams'
 

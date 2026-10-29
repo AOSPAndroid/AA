@@ -3,14 +3,14 @@ setlocal
 rem Kept in windows\; the AA files are one folder up.
 for %%I in ("%~dp0..") do set "AA_ROOT=%%~fI\"
 rem Run once in the normal Outlook/Teams account. Optional first argument: approved signed MSIX.
-call "%AA_ROOT%Python_Settings.bat"
+call "%~dp0Python_Settings.bat"
 if errorlevel 1 goto failed
 "%PY%" -m pip install -r "%AA_ROOT%requirements-outlook.txt"
 if errorlevel 1 goto failed
 if "%~1"=="" (
-  powershell.exe -NoProfile -File "%AA_ROOT%Install-Notification-Listener.ps1"
+  powershell.exe -NoProfile -File "%~dp0Install-Notification-Listener.ps1"
 ) else (
-  powershell.exe -NoProfile -File "%AA_ROOT%Install-Notification-Listener.ps1" -PackagePath "%~1"
+  powershell.exe -NoProfile -File "%~dp0Install-Notification-Listener.ps1" -PackagePath "%~1"
 )
 if errorlevel 1 goto notifications
 echo Collectors installed. Open Atlas Admin, Live Inbox, then Connect collectors.

@@ -6,8 +6,8 @@ from pathlib import Path
 from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 from backend import main as m
-import atlas_store
-from merge_data import import_atlas,merge_directory
+from backend import atlas_store
+from backend.directory.merge_data import import_atlas,merge_directory
 from fastapi.testclient import TestClient
 
 class MergedAtlas(unittest.TestCase):
@@ -142,11 +142,11 @@ class MergedAtlas(unittest.TestCase):
   self.assertEqual(self.post('/api/catalog/metadata',body).status_code,409)
   found=self.client.get('/api/catalog',params={'term':'Friendly'}).json()['items'];self.assertEqual(found[0]['folder'],'Example');self.assertEqual(found[0]['version'],'2.0')
   self.assertEqual(self.client.get('/api/catalog/details',params={'folder':'../outside'}).status_code,400)
-  from package_catalog import inspect_package
+  from backend.deploy.package_catalog import inspect_package
   self.assertFalse(inspect_package(pkg,limit=1)['complete'])
 
  def test_11a_catalog_enrichment_excludes_raw_records_and_source_payloads(self):
-  import package_data as data
+  from backend.deploy import package_data as data
   rows,_=data.parse_csv(b'name,state,custom_note\nExample,Live,Original one\nExample,Live,Original two\n../Example,Work in Progress,Keep literal path\n')
   columns=['name_key',*data.FIELDS,*data.SOURCE_FIELDS,'source','imported_at']
   with atlas_store.connect() as c:
@@ -166,7 +166,7 @@ class MergedAtlas(unittest.TestCase):
   self.assertEqual(self.client.get('/api/catalog/details',params={'folder':'../Example'}).status_code,400)
 
  def test_12_refresh_backup_preserves_catalogue_and_paris(self):
-  from refresh_directory import apply_refresh
+  from backend.directory.refresh_directory import apply_refresh
   with m.db() as c:
    before={t:[tuple(r) for r in c.execute('select * from '+t)] for t in ('records','history','desk_user_links','deployments','package_catalog')}
   backup=apply_refresh(self.db,self.original,self.base/'backups')

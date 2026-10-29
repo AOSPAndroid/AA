@@ -26,7 +26,7 @@ AA_ROOT = os.path.dirname(HERE)
 PART_SIZE = 1900000000
 RELEASES = "https://github.com/AOSPAndroid/Axis/releases/tag/"
 def in_aa():
-    return os.path.isfile(os.path.join(AA_ROOT, "aa_launcher.py"))
+    return os.path.isfile(os.path.join(AA_ROOT, "Start AA.bat"))
 
 
 def load_models():

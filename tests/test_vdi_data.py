@@ -9,8 +9,8 @@ import unittest
 import zipfile
 from unittest.mock import patch
 
-import vdi_data as data
-from directory_workbook import schema as directory_schema
+from backend.directory import vdi_data as data
+from backend.directory.directory_workbook import schema as directory_schema
 from sqlite_fixture import connect as fixture_connect
 from test_directory_exports import workbook
 

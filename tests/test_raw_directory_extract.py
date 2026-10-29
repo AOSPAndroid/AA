@@ -7,12 +7,12 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from database_manager import register_database_manager
-from device_inventory import inventory_identity, supports_windows
-from directory_exports import record, copy_archive
-from directory_lookup import linked_machines, prepare_views, search_directory
-from directory_workbook import build
-from merge_data import atlas_schema
+from backend.database_manager import register_database_manager
+from backend.directory.device_inventory import inventory_identity, supports_windows
+from backend.directory.directory_exports import record, copy_archive
+from backend.directory.directory_lookup import linked_machines, prepare_views, search_directory
+from backend.directory.directory_workbook import build
+from backend.directory.merge_data import atlas_schema
 from test_directory_exports import device_sheets, workbook
 
 
@@ -109,14 +109,14 @@ class RawExtractTests(unittest.TestCase):
     def test_preview_apply_backup_retains_duplicate_source_selection_and_phone_guards(self):
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
-        import database_manager as manager
+        from backend import database_manager as manager
         sheets=device_sheets();workbook(self.xlsx,sheets);build(self.xlsx,self.db)
         c=self.connect();atlas_schema(c);c.commit()
         before=c.execute('select machine_name from machines order by id').fetchall()
         phone=['u1','PHONE-1','Mobile Device - Handheld','iphone','APPLE iPhone 13','','In Use','SER-1','','Phone','Paris']
         sheets['devices'] += [phone,list(phone)];workbook(self.xlsx,sheets)
         app=FastAPI()
-        with patch.object(manager,'__file__',str(self.root/'database_manager.py')):
+        with patch.object(manager,'__file__',str(self.root/'backend'/'database_manager.py')):
             register_database_manager(app,SimpleNamespace(MASTER_DB=self.db,jobs={},queue_jobs={}),lambda request:None)
         with TestClient(app) as client:
             response=client.post('/api/database/preview',content=self.xlsx.read_bytes(),headers={'X-File-Name':'emea2oct.xlsx'})

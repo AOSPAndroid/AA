@@ -7,11 +7,11 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-import directory_exports as exports
-from device_inventory import ASSET_COLUMNS
-from directory_lookup import linked_machines, prepare_views, search_directory
-from directory_workbook import build
-from merge_data import merge_directory
+from backend.directory import directory_exports as exports
+from backend.directory.device_inventory import ASSET_COLUMNS
+from backend.directory.directory_lookup import linked_machines, prepare_views, search_directory
+from backend.directory.directory_workbook import build
+from backend.directory.merge_data import merge_directory
 from test_directory_exports import device_sheets, workbook
 
 
@@ -75,7 +75,7 @@ class DeviceInventoryTests(unittest.TestCase):
     def test_phone_actions_rejected_before_windows_transport(self):
         from backend import main as m
         from fastapi.testclient import TestClient
-        from atlas_api import TOKEN
+        from backend.atlas_api import TOKEN
         headers={'x-atlas-token':TOKEN}
         con=self.connection();con.execute("update machines set source_ci='CORPMOBILE01' where machine_name='INVENTORY-SERIAL:RAW-EXAMPLE123'");con.commit()
         with patch.object(m,'MASTER_DB',self.db), patch.object(m,'run') as run, patch.object(m,'ps') as ps, TestClient(m.app,base_url='http://127.0.0.1',client=('127.0.0.1',50000)) as client:

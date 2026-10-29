@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from fastapi import HTTPException
-import performance as p
+from backend.remote import performance as p
 
 
 class Performance(unittest.TestCase):

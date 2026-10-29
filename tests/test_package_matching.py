@@ -9,8 +9,8 @@ import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
-import package_matching
-from inbox_analysis import analyse
+from backend.deploy import package_matching
+from backend.inbox.inbox_analysis import analyse
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOGUE = [

@@ -186,7 +186,7 @@ ALWAYS_NOTE = "ALWAYS.md"   # loaded into every conversation
 MAX_ALWAYS = 2000           # chars of ALWAYS.md put in the prompt
 # Inside AA, Axis also writes its deployments into Atlas's history; standalone Axis only reads Atlas.
 AA_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-IN_AA = os.path.isfile(os.path.join(AA_ROOT, "aa_launcher.py"))
+IN_AA = os.path.isfile(os.path.join(AA_ROOT, "Start AA.bat"))
 MEMORY_FILE = "MEMORY.md"   # in the state folder: runtime data, loaded into every conversation
 MAX_MEMORY = 4000           # chars; remember refuses beyond this so the prompt holds all of it
 MAX_MEMORY_ENTRY = 300

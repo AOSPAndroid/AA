@@ -6,8 +6,8 @@ from unittest.mock import patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from knowledge_articles import all_articles, excerpt, plain_text, register
-from knowledge_base import register as register_diagrams
+from backend.knowledge_articles import all_articles, excerpt, plain_text, register
+from backend.knowledge_base import register as register_diagrams
 
 TOKEN = {'X-Atlas-Token': 'test-token'}
 
@@ -16,7 +16,7 @@ class KnowledgeArticles(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.path = Path(self.tmp.name) / 'knowledge.sqlite3'
-        self.token = patch('atlas_api.TOKEN', 'test-token')
+        self.token = patch('backend.atlas_api.TOKEN', 'test-token')
         self.token.start()
         # Same order as backend/main.py: article routes before the diagrams' /api/knowledge/{doc_id}.
         self.app = FastAPI()

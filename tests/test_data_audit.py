@@ -10,12 +10,12 @@ from unittest.mock import patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-import desk_moves
-import package_data_api
-from directory_lookup import linked_machines, prepare_views, search_directory
-from directory_workbook import NS, col_idx, iter_rows, norm, schema
-from identity_links import rebuild_links
-from seating_excel import account_index
+from backend.seating import desk_moves
+from backend.deploy import package_data_api
+from backend.directory.directory_lookup import linked_machines, prepare_views, search_directory
+from backend.directory.directory_workbook import NS, col_idx, iter_rows, norm, schema
+from backend.directory.identity_links import rebuild_links
+from backend.seating.seating_excel import account_index
 from sqlite_fixture import FixtureConnection, connect as fixture_connect
 
 
@@ -99,7 +99,7 @@ class RuntimeBackups(unittest.TestCase):
             install = root / 'install'; install.mkdir()
             database = runtime / 'directory.db'
             app = FastAPI()
-            with patch.object(package_data_api, '__file__', str(install / 'package_data_api.py')):
+            with patch.object(package_data_api, '__file__', str(install / 'backend' / 'deploy' / 'package_data_api.py')):
                 package_data_api.register(app, SimpleNamespace(MASTER_DB=database, REPO=None), lambda request: None)
                 with TestClient(app) as client:
                     preview = client.post('/api/package-data/import/preview', content=b'name,state\nixExample,Live\n', headers={'x-file-name': 'packages.csv'})
@@ -132,7 +132,7 @@ class RuntimeBackups(unittest.TestCase):
             workbook(path, {'Desk moves': [desk_moves.HEADERS,
                 ['02A000001', '2', 'Alice Fictional', 'IT', '', 'assigned', 'desk', '.1', '.2', '0', '1', '02A000002'],
                 ['02A000002', '2', 'Bob Fictional', 'IT', '', 'assigned', 'desk', '.1', '.2', '0', '1', '02A000001']]})
-            with patch.object(desk_moves, '__file__', str(install / 'desk_moves.py')):
+            with patch.object(desk_moves, '__file__', str(install / 'backend' / 'seating' / 'desk_moves.py')):
                 desk_moves.register_desk_moves(app, SimpleNamespace(MASTER_DB=database), lambda request: None, lambda: False)
             with TestClient(app) as client:
                 preview = client.post('/api/desk-moves/preview', content=path.read_bytes())
@@ -145,8 +145,8 @@ class RuntimeBackups(unittest.TestCase):
 
 class DeskSnapshotConsistency(unittest.TestCase):
     def test_concurrent_refresh_does_not_replace_cached_person_inside_one_lookup(self):
-        from desk_directory import resolve_person
-        from merge_data import atlas_schema
+        from backend.directory.desk_directory import resolve_person
+        from backend.directory.merge_data import atlas_schema
 
         class RefreshDuringLookup(FixtureConnection):
             replacement = None

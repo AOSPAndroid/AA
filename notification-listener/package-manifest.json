@@ -7,8 +7,8 @@
     "notification-listener/Store.cs": "96809575609e8103b0c2dc31aa73158e5987e1581fd75ea29c0ab7fdaa0b0534",
     "notification-listener/AppxManifest.xml": "5645127d89b1042ef720cad189ea2f2e7dcd8cce29f37c28230fc6f9ce9389b9",
     "notification-listener/app.manifest": "5372e1bc3fed933becfff39866073341d95bd194293f2846c76774242d44868e",
-    "inbox_schema.sql": "af15abc07e4f707d7b1c47db2b2ceba02c3cf43aa0170e50d01b71e7b5a761af",
-    "Build-Notification-Listener.ps1": "765fc4a2aeaa832a1f10583a404cc9af59116c30d0c764f69a2a901bf6a12b7b"
+    "backend/inbox/inbox_schema.sql": "af15abc07e4f707d7b1c47db2b2ceba02c3cf43aa0170e50d01b71e7b5a761af",
+    "notification-listener/Build-Notification-Listener.ps1": "9df0432cb82256a136b90aa39825701b8457a804ab9f88b86b8c3990b3d01e48"
   },
   "package_sha256": {
     "package/AppxManifest.xml": "4c3b63984298a64a63f279346d64df886ce152f42001f4fe57179880f772bf0e",

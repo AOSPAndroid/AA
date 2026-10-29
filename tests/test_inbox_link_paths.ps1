@@ -3,7 +3,7 @@
 # Windows the same code follows junctions. Registers nothing.
 $ErrorActionPreference = 'Stop'
 $tokens = $null; $parseErrors = $null
-$path = Join-Path (Split-Path -Parent $PSScriptRoot) 'Configure-Inbox-Integration.ps1'
+$path = Join-Path (Split-Path -Parent $PSScriptRoot) 'windows\Configure-Inbox-Integration.ps1'
 $ast = [Management.Automation.Language.Parser]::ParseFile($path, [ref]$tokens, [ref]$parseErrors)
 if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
 if ($ast.Extent.Text -notmatch '\$python = Resolve-LinkedPath \(\(Resolve-Path -LiteralPath \$PythonPath\)\.Path\)') { throw 'Setup must resolve the Python path before checking it.' }

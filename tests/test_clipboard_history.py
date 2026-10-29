@@ -9,11 +9,11 @@ from unittest.mock import patch
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
-import clipboard_history
-from clipboard_history import History, candidates, enrich, register
-from directory_lookup import prepare_views
-from directory_workbook import schema
-from identity_links import rebuild_links
+from backend.inbox import clipboard_history
+from backend.inbox.clipboard_history import History, candidates, enrich, register
+from backend.directory.directory_lookup import prepare_views
+from backend.directory.directory_workbook import schema
+from backend.directory.identity_links import rebuild_links
 from sqlite_fixture import connect
 
 
@@ -88,7 +88,7 @@ class ClipboardHistory(unittest.TestCase):
         self.assertEqual([i['text'] for i in self.client.get('/api/clipboard').json()['items']], ['note 4', 'note 3', 'note 2'])
 
     def test_live_inbox_reads_land_in_the_history(self):
-        import screen_reader
+        from backend.inbox import screen_reader
         screen_reader.remember('please look at LAPTOP-0001', 'inbox')
         self.assertEqual(self.history.load()[0]['machines'][0]['name'], 'LAPTOP-0001')
 

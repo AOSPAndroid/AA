@@ -10,9 +10,9 @@ import zipfile
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-from device_inventory import device_kind, inventory_identity, supports_windows
-from directory_exports import record
-from directory_workbook import NS, REL, build
+from backend.directory.device_inventory import device_kind, inventory_identity, supports_windows
+from backend.directory.directory_exports import record
+from backend.directory.directory_workbook import NS, REL, build
 
 
 def write_workbook(path, sheets):
@@ -354,7 +354,7 @@ class InventoryIdentityMatchingTests(unittest.TestCase):
             self.assertEqual([field['value'] for field in archived['fields']], devices[index])
 
     def test_fresh_import_has_indexed_alias_and_machine_short_lookups(self):
-        from directory_lookup import MACHINE_SHORT_SQL
+        from backend.directory.directory_lookup import MACHINE_SHORT_SQL
         con = self.load([
             ['ci', 'model_category', 'domain'],
             ['PC1.example.invalid', 'Computer', ''],

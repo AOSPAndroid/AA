@@ -5,8 +5,8 @@ import unittest
 import zipfile
 from pathlib import Path
 
-from atlas_store import ClosingConnection
-from seating_grid import name_key, read_plan
+from backend.atlas_store import ClosingConnection
+from backend.seating.seating_grid import name_key, read_plan
 
 NS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'
 

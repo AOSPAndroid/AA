@@ -10,13 +10,13 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
-import atlas_store as store
-from atlas_store import ClosingConnection
+from backend import atlas_store as store
+from backend.atlas_store import ClosingConnection
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
-from desk_moves import snapshot
-from seating_sync import SeatingSync, Settings, large, register, seating_version
+from backend.seating.desk_moves import snapshot
+from backend.seating.seating_sync import SeatingSync, Settings, large, register, seating_version
 from sqlite_fixture import connect as fixture_connect
 from test_directory_exports import workbook
 
@@ -146,7 +146,7 @@ class LiveFloorPlan(unittest.TestCase):
         with sqlite3.connect(self.db, factory=ClosingConnection) as c:
             store.save_record(c, dict(original, **details, verified=True), original, 'fixture later desk edit')
         history = json.dumps(self.sync.state['history'], sort_keys=True)
-        with patch('seating_sync.apply_sheet', side_effect=store.Conflict('fixture concurrent edit')):
+        with patch('backend.seating.seating_sync.apply_sheet', side_effect=store.Conflict('fixture concurrent edit')):
             with self.assertRaises(HTTPException) as caught:
                 self.sync.undo(update['backup'])
             self.assertEqual(caught.exception.status_code, 409)
@@ -219,7 +219,7 @@ class LiveFloorPlan(unittest.TestCase):
         first = self.hold_plan()
         second = self.hold_plan('new-plan.xlsx', count=66, age=60)
         self.assertNotEqual(first['id'], second['id'])
-        with patch('seating_sync.apply_sheet') as apply:
+        with patch('backend.seating.seating_sync.apply_sheet') as apply:
             with self.assertRaises(HTTPException) as caught:
                 self.sync.apply_held(first['id'])
             self.assertEqual(caught.exception.status_code, 409)
@@ -233,7 +233,7 @@ class LiveFloorPlan(unittest.TestCase):
         first = self.hold_plan()
         restarted = SeatingSync(self.db, self.sync.state_path, self.sync.backups)
         self.assertIsNone(restarted.summary()['held'], 'Only state, not the proposal, is persisted')
-        with patch('seating_sync.apply_sheet') as apply:
+        with patch('backend.seating.seating_sync.apply_sheet') as apply:
             rebuilt = restarted.check()
             apply.assert_not_called()
         self.assertEqual(rebuilt['status']['state'], 'held')
@@ -248,10 +248,10 @@ class LiveFloorPlan(unittest.TestCase):
         def token(request):
             if request.headers.get('x-atlas-token') != 'fixture':
                 raise HTTPException(403, 'Token required')
-        with patch('seating_sync.SeatingSync', return_value=self.sync):
+        with patch('backend.seating.seating_sync.SeatingSync', return_value=self.sync):
             register(app, SimpleNamespace(MASTER_DB=str(self.db)), token, lambda: False, self.sync.state_path)
         client = TestClient(app)
-        with patch('seating_sync.apply_sheet') as apply:
+        with patch('backend.seating.seating_sync.apply_sheet') as apply:
             self.assertEqual(client.post('/api/seating-sync/apply', json={'id': held['id']}).status_code, 403)
             self.assertEqual(client.post('/api/seating-sync/apply', json={}, headers={'x-atlas-token': 'fixture'}).status_code, 422)
             response = client.post('/api/seating-sync/apply', json={'id': 'old-review'}, headers={'x-atlas-token': 'fixture'})

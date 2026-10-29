@@ -6,9 +6,9 @@ import unittest
 import zipfile
 from pathlib import Path
 
-from database_manager import compare, compare_rows
-from directory_workbook import NS, iter_rows, schema, workbook_scope
-from merge_data import atlas_schema
+from backend.database_manager import compare, compare_rows
+from backend.directory.directory_workbook import NS, iter_rows, schema, workbook_scope
+from backend.directory.merge_data import atlas_schema
 
 
 class AuditOptimizations(unittest.TestCase):

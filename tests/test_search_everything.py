@@ -6,8 +6,8 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
-import search_index
-from search_index import SearchIndex, fts_query, key_terms, register
+from backend import search_index
+from backend.search_index import SearchIndex, fts_query, key_terms, register
 from sqlite_fixture import connect as fixture_connect
 
 BOILERPLATE = 'This message is confidential and intended for the addressee only.'

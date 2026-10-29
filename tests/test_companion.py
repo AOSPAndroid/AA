@@ -13,15 +13,15 @@ from unittest.mock import patch
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
-import clipboard_history
-import companion_core as core
-import companion_server
-import mail_inbox
-from directory_lookup import prepare_views
-from directory_workbook import schema
-from identity_links import rebuild_links
-from inbox_control import IntegrationError
-from outlook_watcher import MailQueue, utcnow
+from backend.inbox import clipboard_history
+from backend.companion import companion_core as core
+from backend.companion import companion_server
+from backend.inbox import mail_inbox
+from backend.directory.directory_lookup import prepare_views
+from backend.directory.directory_workbook import schema
+from backend.directory.identity_links import rebuild_links
+from backend.inbox.inbox_control import IntegrationError
+from backend.inbox.outlook_watcher import MailQueue, utcnow
 from sqlite_fixture import connect
 
 
@@ -74,7 +74,7 @@ class Companion(unittest.TestCase):
                                                 folder=root / 'ProgramData', url='http://127.0.0.1:8770')
         for module, name in ((clipboard_history, 'history'), (companion_server, 'companion')):
             self.addCleanup(setattr, module, name, None)
-        windows = patch('screen_reader.windows', return_value=True); windows.start(); self.addCleanup(windows.stop)
+        windows = patch('backend.inbox.screen_reader.windows', return_value=True); windows.start(); self.addCleanup(windows.stop)
         self.http = TestClient(app); self.addCleanup(self.http.close)
         url, token = core.read_connection(root / 'ProgramData' / 'connection.json')
         self.client = core.Client(url, token, opener=Opener(self.http))

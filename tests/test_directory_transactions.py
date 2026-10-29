@@ -15,11 +15,11 @@ from unittest.mock import patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-import database_manager as manager
-import refresh_directory
-import runtime_paths
-from directory_workbook import build
-from merge_data import atlas_schema, merge_directory, build as build_shared
+from backend import database_manager as manager
+from backend.directory import refresh_directory
+from backend import runtime_paths
+from backend.directory.directory_workbook import build
+from backend.directory.merge_data import atlas_schema, merge_directory, build as build_shared
 from sqlite_fixture import connect as fixture_connect
 from test_directory_exports import device_sheets, workbook
 
@@ -155,13 +155,13 @@ class DirectoryTransactions(unittest.TestCase):
         self.assertEqual(metadata['directory.source_file'], 'replacement.xlsx')
         self.assertEqual(json.loads(metadata['directory.import_resolution']), restored_stats)
         self.assertEqual(metadata['atlas.seeded'], 'keep-target')
-        from identity_links import MATCHING_VERSION
+        from backend.directory.identity_links import MATCHING_VERSION
         self.assertEqual(metadata['directory.matching_version'], MATCHING_VERSION)
         self.assertEqual({k for k in metadata if k.startswith('directory.')}, {'directory.schema_version', 'directory.created_at', 'directory.source_file', 'directory.import_resolution', 'directory.generation', 'directory.matching_version'})
 
     def test_same_timestamp_refresh_invalidates_cached_names_before_reused_user_ids(self):
-        from desk_directory import resolve_person
-        from directory_lookup import prepare_views
+        from backend.directory.desk_directory import resolve_person
+        from backend.directory.directory_lookup import prepare_views
 
         previous = self.root / 'previous.db'
         with fixture_connect(self.db) as source, fixture_connect(previous) as target:
@@ -190,7 +190,7 @@ class DirectoryTransactions(unittest.TestCase):
         with fixture_connect(self.db) as source, fixture_connect(root_seed) as target:
             source.backup(target)
         with patch.dict(os.environ, {'ATLAS_DB_PATH': str(self.db)}), patch.object(sys, 'argv', ['merge_data.py', '--refresh-directory', str(self.new_db)]), contextlib.redirect_stdout(io.StringIO()):
-            runpy.run_path(str(Path(manager.__file__).parent / 'merge_data.py'), run_name='__main__')
+            runpy.run_path(str(Path(manager.__file__).parent / 'directory' / 'merge_data.py'), run_name='__main__')
         self.assertEqual(self.person(), 'Replacement Person')
         self.assertEqual(self.person(root_seed), 'Original Person')
 
@@ -203,7 +203,7 @@ class DirectoryTransactions(unittest.TestCase):
         self.assertEqual(self.person(), 'Replacement Person')
 
     def bootstrap_fixture(self):
-        import atlas_store
+        from backend import atlas_store
 
         assets = self.root / 'fictional-atlas'
         assets.mkdir()

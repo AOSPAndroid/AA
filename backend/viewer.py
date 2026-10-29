@@ -12,15 +12,15 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
-from directory_lookup import exact_users, linked_machines, search_directory, prepare_views
-from desk_directory import desk_context,person_desks,machine_context,palette_search
-import directory_exports
+from backend.directory.directory_lookup import exact_users, linked_machines, search_directory, prepare_views
+from backend.directory.desk_directory import desk_context,person_desks,machine_context,palette_search
+from backend.directory import directory_exports
 from backend import __version__
-from response_compression import compress_responses
-from static_responses import cached_file, prewarm
+from backend.response_compression import compress_responses
+from backend.static_responses import cached_file, prewarm
 
 ROOT = Path(__file__).resolve().parent.parent
-from runtime_paths import database_path
+from backend.runtime_paths import database_path
 DB = database_path()
 ATLAS = ROOT / 'atlas'
 app = FastAPI(title='Atlas read-only viewer', version=__version__, docs_url=None, redoc_url=None, openapi_url=None)
@@ -55,7 +55,7 @@ def health():
     with connect() as con:
         con.execute('select body from official_records limit 1').fetchone()
         counts = {key: con.execute(f'select count(*) from {key}').fetchone()[0] for key in ('users','machines','assignments')}
-        from vdi_inventory import count
+        from backend.directory.vdi_inventory import count
         counts['vdi_machines'] = count(con)
     return {'application': 'Office Atlas', 'mode': 'viewer', 'version': __version__, 'read_only': True, 'instance_id': os.environ.get('ATLAS_INSTANCE_ID'), 'identity': 'Demo · read-only directory', 'database': True, 'repository': False, **counts}
 
@@ -75,14 +75,14 @@ def master_status():
 def packages(term: str = Query('', max_length=200), state: str = Query('', max_length=200),
              coverage: str = Query('', pattern='^(|matched|source-only|metadata-only|ambiguous)$'),
              offset: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=200)):
-    from package_data import browse
+    from backend.deploy.package_data import browse
     with connect() as con:
         return browse(con, term=term, state=state, coverage=coverage, offset=offset, limit=limit)
 
 
 @app.get('/api/master/resolve/{key}')
 def resolve(key: str):
-    from directory_lookup import resolve_directory
+    from backend.directory.directory_lookup import resolve_directory
     with connect() as con:
         con.execute('begin')
         return resolve_directory(con,key)
@@ -96,7 +96,7 @@ def palette_desks():
 
 @app.get('/api/official/version')
 def official_version():
-    from seating_sync import seating_version
+    from backend.seating.seating_sync import seating_version
     with connect() as con:
         return seating_version(con)
 
@@ -145,13 +145,13 @@ def user(uid: str):
 @app.get('/api/script-library')
 def script_library():
     # Built-in scripts ship with Atlas; saved scripts and runs stay in the local Admin app.
-    from script_library import BUILTIN, EXPORT_HELPERS, HELPERS, MAX_TARGETS
+    from backend.deploy.script_library import BUILTIN, EXPORT_HELPERS, HELPERS, MAX_TARGETS
     return {'builtin': BUILTIN, 'saved': [], 'helpers': HELPERS.strip(), 'export_helpers': EXPORT_HELPERS.strip(), 'max_targets': MAX_TARGETS}
 
 
 @app.get('/api/vdi-data/record/{key:path}')
 def vdi_record(key:str):
-    from vdi_data import record
+    from backend.directory.vdi_data import record
     with connect() as con:
         result=record(con,key,include_unmapped=False)
         if result is None:

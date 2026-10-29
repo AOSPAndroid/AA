@@ -114,7 +114,7 @@ class AtlasOperationTests(unittest.TestCase):
             if request.computer == 'PC2':
                 return {'outcome': 'pending', 'state': 'Stop Pending', 'message': 'Still stopping'}
             return {'outcome': 'restarted', 'state': 'Running'}
-        with patch('service_actions.list_services', side_effect=services), patch('service_actions.restart_service', side_effect=restart):
+        with patch('backend.remote.service_actions.list_services', side_effect=services), patch('backend.remote.service_actions.restart_service', side_effect=restart):
             result = self.ops.call('bulk_service_action', {'computers': ['PC1', 'PC2'], 'action': 'service_restart', 'name': 'Spooler'})
         self.assertEqual(result['succeeded'], 1)
         self.assertEqual([(r['computer'], r['ok']) for r in result['results']], [('PC1', True), ('PC2', False)])
@@ -131,7 +131,7 @@ class AtlasOperationTests(unittest.TestCase):
         self.assertEqual(self.confirm.call_count, 1)
 
     def test_declined_or_invalid_bulk_service_actions_contact_no_pc(self):
-        with patch('service_actions.list_services') as read, patch('service_actions.restart_service') as change:
+        with patch('backend.remote.service_actions.list_services') as read, patch('backend.remote.service_actions.restart_service') as change:
             self.confirm.return_value = False
             result = self.ops.call('bulk_service_action', {'computers': ['PC1'], 'action': 'service_restart', 'name': 'Spooler'})
             self.assertEqual(result['state'], 'declined')
@@ -142,7 +142,7 @@ class AtlasOperationTests(unittest.TestCase):
         change.assert_not_called()
 
     def test_bulk_services_keep_atlas_locks_and_protected_service_checks(self):
-        with patch('service_actions.list_services', return_value={'items': [dict(SERVICE, can_restart=False, restart_reason='Protected service')]}), patch('service_actions.restart_service') as change:
+        with patch('backend.remote.service_actions.list_services', return_value={'items': [dict(SERVICE, can_restart=False, restart_reason='Protected service')]}), patch('backend.remote.service_actions.restart_service') as change:
             result = self.ops.call('bulk_service_action', {'computers': ['PC1'], 'action': 'service_restart', 'name': 'Spooler'})
             self.assertEqual(result['succeeded'], 0)
             self.assertIn('Protected', result['results'][0]['error'])
@@ -150,7 +150,7 @@ class AtlasOperationTests(unittest.TestCase):
         guard = app.target_lock('PC1')
         self.assertTrue(guard.acquire(blocking=False))
         try:
-            with patch('service_actions.list_services') as read:
+            with patch('backend.remote.service_actions.list_services') as read:
                 result = self.ops.call('bulk_service_action', {'computers': ['PC1'], 'action': 'service_restart', 'name': 'Spooler'})
         finally:
             guard.release()

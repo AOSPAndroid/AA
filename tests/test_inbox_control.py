@@ -9,9 +9,9 @@ from unittest.mock import patch, Mock
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-import inbox_control as control
-from inbox_agent import Agent
-import outlook_watcher as outlook
+from backend.inbox import inbox_control as control
+from backend.inbox.inbox_agent import Agent
+from backend.inbox import outlook_watcher as outlook
 
 
 class InboxControlTests(unittest.TestCase):
@@ -39,7 +39,7 @@ class InboxControlTests(unittest.TestCase):
         second = self.integration.command('start')
         self.assertTrue(first['desired']['running'])
         self.assertNotEqual(first['desired']['revision'], second['desired']['revision'])
-        self.assertEqual(self.ps.call_args.args, (self.root / 'Invoke-Inbox-Task.ps1', '-Configuration', self.integration.path))
+        self.assertEqual(self.ps.call_args.args, (self.root / 'windows' / 'Invoke-Inbox-Task.ps1', '-Configuration', self.integration.path))
         stopped = self.integration.command('stop')
         self.assertFalse(stopped['desired']['running'])
         self.assertEqual(self.ps.call_count, 2, 'Stop is cooperative and never kills a user process')
@@ -141,12 +141,12 @@ class InboxControlTests(unittest.TestCase):
                 self.integration.command('preferences', outlook=False)
 
     def test_backend_uses_saved_bridge_without_environment_variables(self):
-        from mail_inbox import mail_directory
+        from backend.inbox.mail_inbox import mail_directory
         with patch.object(control, 'InboxIntegration', return_value=self.integration), patch.dict('os.environ', {'ATLAS_MAIL_DIR': str(self.root / 'wrong')}):
             self.assertEqual(mail_directory(), self.queue.resolve())
 
     def test_all_local_launch_paths_share_lifecycle_hook(self):
-        import launcher
+        from backend.launch import launcher
         with patch.object(launcher, 'ROOT', self.root), patch.object(launcher, 'start_server'), \
              patch.object(launcher, 'running', return_value=True), patch.object(launcher, 'read_record', return_value={}), \
              patch.object(control, 'launcher_action') as lifecycle:

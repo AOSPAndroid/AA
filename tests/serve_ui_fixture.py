@@ -5,10 +5,10 @@ import sys,tempfile,sqlite3,json,subprocess,os
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 from backend import main as m
-import atlas_store as store
+from backend import atlas_store as store
 import uvicorn
 # All collector control routes in this fixture are simulated, including setup.
-import inbox_control
+from backend.inbox import inbox_control
 fixture_control = dict(configured=True, state='running', agent_running=True, pending=False,
                        mail_user='EXAMPLE\\MailUser', atlas_user='EXAMPLE\\AtlasAdmin', directory='C:\\Example\\Inbox',
                        desired=dict(running=True, outlook=True, notifications=True, outlook_previews=False))
@@ -30,16 +30,16 @@ inbox_control.InboxIntegration.configure=lambda self,*args:fixture_control
 with tempfile.TemporaryDirectory() as tmp:
  base=Path(tmp);db=base/'fixture.db';a=sqlite3.connect(m.MASTER_DB);b=sqlite3.connect(db);a.backup(b);a.close();b.close()
  m.MASTER_DB=m.DB=m.HISTORY_DB=store.DB=db
- import clipboard_history
+ from backend.inbox import clipboard_history
  if clipboard_history.history: clipboard_history.history._path=base/'clipboard-history.json'
  m.persona_store.path=base/'personas.json';m.persona_access_store.path=base/'persona-access.json';m.joiner_store.path=base/'joiners.json'
- import companion_server
+ from backend.companion import companion_server
  if companion_server.companion:
   companion_server.companion._state_path=base/'companion-state.json';companion_server.companion._inbox=base/'companion-inbox';companion_server.companion.state={}
  if '--inbox' in sys.argv:
-  from outlook_watcher import MailQueue, stamp, utcnow
-  from identity_links import rebuild_links
-  import mail_inbox
+  from backend.inbox.outlook_watcher import MailQueue, stamp, utcnow
+  from backend.directory.identity_links import rebuild_links
+  from backend.inbox import mail_inbox
   os.environ['ATLAS_MAIL_DIR']=str(base/'mail')
   with sqlite3.connect(db) as c:
    uid=c.execute('select coalesce(max(id),0)+1 from users').fetchone()[0]
@@ -69,7 +69,7 @@ with tempfile.TemporaryDirectory() as tmp:
  m.ps=lambda *a,**k:'True'
  if '--inbox' in sys.argv:
   # Fictional screen reading: no screenshot, OCR or clipboard access.
-  import screen_reader
+  from backend.inbox import screen_reader
   screen_reader.windows=lambda:True
   plain_ps=m.ps
   def fake_ps(script,*a,**k):
@@ -78,7 +78,7 @@ with tempfile.TemporaryDirectory() as tmp:
    text='EXAMPLE-LAPTOP-01' if mode=='clipboard' else 'Alex Morgan 09:41\nHi, my laptop is very slow since this morning and Outlook keeps freezing.\nalex@example.test\nFICTIONAL SCREEN TEXT'
    return json.dumps(dict(source=mode,title='Chat | Alex Morgan | Microsoft Teams',process='ms-teams',text=text,lines=4,language='en-GB'))
   m.ps=fake_ps
- import psexec_runner as px
+ from backend.remote import psexec_runner as px
  def fake_pstools(args,**options):
   assert args.count('-accepteula')==1,'The selected tool must receive EULA acceptance'
   script='import json; print("SIMULATED PSTOOLS LAUNCH"); print('+repr(json.dumps(args))+')'

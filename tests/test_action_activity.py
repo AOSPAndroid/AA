@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from action_activity import register
+from backend.action_activity import register
 
 
 class ActivityTests(unittest.TestCase):
@@ -15,7 +15,7 @@ class ActivityTests(unittest.TestCase):
         self.app=FastAPI()
         register(self.app,self.backend)
         self.client=TestClient(self.app)
-        self.psexec=patch('psexec_runner.runner.jobs',{});self.psexec.start()
+        self.psexec=patch('backend.remote.psexec_runner.runner.jobs',{});self.psexec.start()
 
     def tearDown(self):
         self.client.close();self.psexec.stop()
@@ -48,7 +48,7 @@ class ActivityTests(unittest.TestCase):
             old={'state':'complete','updated':now-1000},
             recent={'state':'launched','updated':now})
         self.backend.queue_jobs['q']={'state':'paused','updated':now,'items':[{'job':'child','target':'ONE','state':'running'}]}
-        from psexec_runner import runner
+        from backend.remote.psexec_runner import runner
         runner.jobs['px']={'title':'Command','target':'THREE','state':'running','output':'hello','finished':None}
         result=self.client.get('/api/actions').json()
         self.assertEqual(result['count'],3)

@@ -8,8 +8,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
-from directory_workbook import schema
-from directory_lookup import prepare_views, search_directory, windows_login
+from backend.directory.directory_workbook import schema
+from backend.directory.directory_lookup import prepare_views, search_directory, windows_login
 
 
 def add_user(c, uid, login, name='Example Person'):

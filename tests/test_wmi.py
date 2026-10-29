@@ -7,9 +7,9 @@ from install_fixture import finished
 from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 from backend import main as app
-import install_watch
+from backend.deploy import install_watch
 from fastapi.testclient import TestClient
-from identity_links import build_index,candidates
+from backend.directory.identity_links import build_index,candidates
 
 class Regression(unittest.TestCase):
  @classmethod

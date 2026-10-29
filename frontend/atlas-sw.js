@@ -9,7 +9,7 @@ self.addEventListener("fetch", event => {
   event.respondWith(fetch(event.request).catch(() => new Response(`<!doctype html>
     <html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Start Atlas</title><style>body{font:15px/1.6 system-ui;background:#f8f9fb;color:#172b3a;max-width:480px;margin:12vh auto;padding:24px}a{color:#007fa3}</style>
-    <h1>Atlas is not running</h1><p>Start Atlas using your usual Start-Office-Atlas.bat or Start-All-Atlas.bat launcher, then reopen the app.</p>
+    <h1>Atlas is not running</h1><p>Start Atlas with Start AA.bat, then reopen the app.</p>
     <p>On your work PC, run the launcher from the elevated Atlas account and keep your normal Outlook/Teams account signed in.</p>
     <a href="/installer?command=inbox">Retry Atlas</a></html>`, {
       status: 503, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
