@@ -138,8 +138,9 @@ TOOLS = [
             "content": {"type": "string"}}, "required": ["path", "content"]}}},
     {"type": "function", "function": {
         "name": "run_command",
-        "description": ("Run a Windows PowerShell command in the working directory and return its output. "
-                        "Non-interactive: it cannot answer prompts." if os.name == "nt" else
+        "description": ("Run a Windows PowerShell command on this PC, in the working directory, and return its output. "
+                        "Non-interactive: it cannot answer prompts. It never reaches other PCs (no PsExec, remote sessions, "
+                        "WMI, -ComputerName or admin shares); use the IT tools for those." if os.name == "nt" else
                         "Run a shell command (sh) in the working directory and return its output."),
         "parameters": {"type": "object", "properties": {
             "command": {"type": "string"}}, "required": ["command"]}}},
@@ -928,6 +929,11 @@ class Agent:
                 return "Wrote %s" % args["path"]
             if name == "run_command":
                 command = args["command"]
+                # This PC only: other PCs are reached through the IT tools, with their own checks and approvals.
+                # Refused before anyone is asked; PowerShell checks again as the command runs.
+                elsewhere = runs_elsewhere(command) if os.name == "nt" else None
+                if elsewhere:
+                    return refused_elsewhere(elsewhere)
                 # On Windows, read-only commands run straight away; anything else asks first. With private
                 # inbox or clipboard text in the conversation every command asks: a lookup can leak it via DNS.
                 proc = None
@@ -935,12 +941,14 @@ class Agent:
                     proc = run_shell(command, self.workdir, check_read_only=True)
                     if proc.returncode == NEEDS_APPROVAL and b"__NEEDS_APPROVAL__" in proc.stdout:
                         proc = None
-                    else:
+                    elif not ran_elsewhere(proc):
                         self.ui.notice("Read-only command; approval was not needed")
                 if proc is None:
                     if not self.confirm("run: %s" % command):
                         return "User declined to run the command."
                     proc = run_shell(command, self.workdir)
+                if ran_elsewhere(proc):
+                    return refused_elsewhere(decode(proc.stdout).split("__RUNS_ELSEWHERE__", 1)[1].strip() or "another PC")
                 out = (decode(proc.stdout) + decode(proc.stderr)).strip()
                 return "exit code %d\n%s" % (proc.returncode, out)
             return "Error: unknown tool %r." % name
@@ -1066,9 +1074,140 @@ try { $__readOnly = Test-ReadOnly $__src } catch { }
 if (-not $__readOnly) { '__NEEDS_APPROVAL__'; exit 97 }
 """
 
+# Axis's PowerShell tool works on this PC only. Remote execution, remote sessions, WMI, -ComputerName and admin
+# shares belong to the IT tools, which reach other PCs with Atlas's checks, locks and approvals. Reachability
+# checks (ping, Test-Connection, DNS) stay allowed. Checked by PowerShell's own parser as the command runs.
+REMOTE_CHECK = r"""
+function Test-RunsElsewhere([string]$src, [int]$depth = 0) {
+  $tokens = $null; $errors = $null
+  $ast = [System.Management.Automation.Language.Parser]::ParseInput($src, [ref]$tokens, [ref]$errors)
+  if ($errors.Count) { return $null }  # nothing runs; PowerShell reports the syntax error
+  $remote = @('psexec','psexec64','paexec','winrs','invoke-command','icm','enter-pssession','etsn','new-pssession','nsn',
+    'invoke-wmimethod','iwmi','invoke-cimmethod','new-cimsession','register-wmievent','register-cimindicationevent')
+  $reach = @('test-connection','test-netconnection','resolve-dnsname','test-wsman','ping','tracert','pathping','nslookup')
+  $flags = @{schtasks='/s'; tasklist='/s'; taskkill='/s'; systeminfo='/s'; getmac='/s'; driverquery='/s'; openfiles='/s';
+    eventcreate='/s'; shutdown='/m'; wmic='/node'; msg='/server'; qprocess='/server'; query='/server'; quser='/server'; logoff='/server'}
+  $types = @('wmiclass','wmi','wmisearcher','system.management.managementclass','system.management.managementobject',
+    'system.management.managementscope','management.managementclass','management.managementobject','management.managementscope')
+  foreach ($node in $ast.FindAll({ $true }, $true)) {
+    if ($node -is [System.Management.Automation.Language.CommandAst]) {
+      $n = [string]$node.GetCommandName()
+      $n = ($n -split '[\\/]')[-1].ToLowerInvariant() -replace '\.exe$', ''
+      if ($remote -contains $n) { return $n }
+      if ($n -in @('invoke-expression','iex')) { return 'Invoke-Expression (code built at run time)' }
+      $first = $node.CommandElements[0]
+      if ($node.InvocationOperator -ne 'Unknown' -and ($first -is [System.Management.Automation.Language.ParenExpressionAst] -or
+          $first -is [System.Management.Automation.Language.SubExpressionAst])) { return 'a command name built at run time' }
+      foreach ($e in @($node.CommandElements | Select-Object -Skip 1)) {
+        if ($e -is [System.Management.Automation.Language.CommandParameterAst]) {
+          $p = $e.ParameterName.ToLowerInvariant()  # PowerShell accepts any unambiguous prefix (-Comp)
+          if ($n -in @('powershell','pwsh') -and $p -in @('e','ec','en','enc','enco','encodedcommand')) { return 'an encoded command' }
+          $far = $p -in @('cn','pscomputername','tosession','fromsession') -or ($p.Length -ge 3 -and ('computername'.StartsWith($p) -or 'cimsession'.StartsWith($p))) -or ($p.Length -ge 4 -and 'session'.StartsWith($p))
+          if ($reach -notcontains $n -and $far) {
+            return ($n + ' -' + $e.ParameterName)
+          }
+          continue
+        }
+        $text = $e.Extent.Text.Trim([char[]]"'`"").ToLowerInvariant()
+        if ($flags.ContainsKey($n) -and ($text -eq $flags[$n] -or $text -like ($flags[$n] + ':*'))) { return ($n + ' ' + $flags[$n]) }
+        if ($reach -notcontains $n -and $text -match '^\\\\[^\\\s]+\\?$') { return ($n + ' ' + $text) }
+        if ($n -eq 'reg' -and $text -like '\\*') { return ('reg ' + $text) }  # reg query \\PC\HKLM\...
+      }
+    }
+    if ($node -is [System.Management.Automation.Language.TypeExpressionAst] -or $node -is [System.Management.Automation.Language.TypeConstraintAst]) {
+      if ($types -contains $node.TypeName.FullName.ToLowerInvariant()) { return ('[' + $node.TypeName.FullName + ']') }
+    }
+    if ($node -is [System.Management.Automation.Language.InvokeMemberExpressionAst] -and
+        $node.Member -is [System.Management.Automation.Language.StringConstantExpressionAst] -and $node.Member.Value -eq 'OpenRemoteBaseKey') { return 'OpenRemoteBaseKey' }
+    if ($node -is [System.Management.Automation.Language.StringConstantExpressionAst] -or $node -is [System.Management.Automation.Language.ExpandableStringExpressionAst]) {
+      if ([string]$node.Value -match '^\\\\[^\\\s]+\\(?:[a-z]\$|admin\$|ipc\$)') { return 'an administrative share' }
+      # Text that is itself a command (powershell -Command "...", cmd /c "...") is checked the same way.
+      if ($depth -lt 2 -and ([string]$node.Value).Length -gt 3 -and $node.Value -ne $src) {
+        $inner = Test-RunsElsewhere ([string]$node.Value) ($depth + 1)
+        if ($inner) { return $inner }
+      }
+    }
+  }
+  return $null
+}
+$__elsewhere = 'a command Axis could not check'
+try { $__elsewhere = Test-RunsElsewhere $__src } catch { }
+if ($__elsewhere) { '__RUNS_ELSEWHERE__ ' + $__elsewhere; exit 96 }
+"""
+RUNS_ELSEWHERE = 96
+REMOTE_NAMES = ("psexec", "psexec64", "paexec", "winrs", "invoke-command", "icm", "enter-pssession", "etsn", "new-pssession", "nsn",
+                "invoke-wmimethod", "iwmi", "invoke-cimmethod", "new-cimsession", "register-wmievent", "register-cimindicationevent")
+REACH_NAMES = ("test-connection", "test-netconnection", "resolve-dnsname", "test-wsman", "ping", "tracert", "pathping", "nslookup")
+REMOTE_FLAGS = {"schtasks": "/s", "tasklist": "/s", "taskkill": "/s", "systeminfo": "/s", "getmac": "/s", "driverquery": "/s",
+                "openfiles": "/s", "eventcreate": "/s", "shutdown": "/m", "wmic": "/node", "msg": "/server", "qprocess": "/server",
+                "query": "/server", "quser": "/server", "logoff": "/server"}
+REMOTE_TYPES = re.compile(r"\[\s*(?:system\.)?(?:management\.management(?:class|object|scope)|wmiclass|wmi|wmisearcher)\s*\]", re.I)
+ADMIN_SHARE = re.compile(r"\\\\[^\\\s'\"]+\\(?:[a-z]\$|admin\$|ipc\$)", re.I)
+
+
+def runs_elsewhere(command):
+    """What in a command would run on, or reach into, another PC; None for this PC only. Checked before asking.
+    A first pass over plain text: PowerShell's parser checks again as the command runs (REMOTE_CHECK)."""
+    if REMOTE_TYPES.search(command):
+        return REMOTE_TYPES.search(command).group(0)
+    if re.search(r"openremotebasekey", command, re.I):
+        return "OpenRemoteBaseKey"
+    if ADMIN_SHARE.search(command):
+        return "an administrative share"
+    for statement in re.split(r"[;|\n{}()]|&&|\|\|", command):
+        words = [word.strip("'\"`") for word in statement.split()]
+        if words and words[0] in ("&", "."):
+            words = words[1:]
+        if not words:
+            continue
+        name = re.split(r"[\\/]", words[0])[-1].lower()
+        name = name[:-4] if name.endswith(".exe") else name
+        if name in REMOTE_NAMES:
+            return name
+        if name in ("invoke-expression", "iex"):
+            return "Invoke-Expression (code built at run time)"
+        for word in words[1:]:
+            lowered = word.lower()
+            # A remote command inside text another program runs (powershell -Command "...", cmd /c "...").
+            program = re.sub(r"\.exe$", "", re.split(r"[\\/]", lowered)[-1])
+            if program in REMOTE_NAMES:
+                return program
+            if name in ("powershell", "pwsh") and lowered in ("-e", "-ec", "-en", "-enc", "-enco", "-encodedcommand"):
+                return "an encoded command"
+            if name not in REACH_NAMES and remote_parameter(lowered):
+                return "%s %s" % (name, word.split(":")[0])
+            if name in REMOTE_FLAGS and (lowered == REMOTE_FLAGS[name] or lowered.startswith(REMOTE_FLAGS[name] + ":")):
+                return "%s %s" % (name, REMOTE_FLAGS[name])
+            if name not in REACH_NAMES and re.fullmatch(r"\\\\[^\\\s]+\\?", word):
+                return "%s %s" % (name, word)
+            if name == "reg" and word.startswith("\\\\"):  # reg query \\PC\HKLM\...
+                return "reg %s" % word
+    return None
+
+
+def remote_parameter(word):
+    """-ComputerName, -CimSession, -Session and their unambiguous prefixes (PowerShell accepts -Comp)."""
+    if not word.startswith("-"):
+        return False
+    p = word[1:].split(":")[0]
+    return (p in ("cn", "pscomputername", "tosession", "fromsession") or (len(p) >= 3 and ("computername".startswith(p) or "cimsession".startswith(p)))
+            or (len(p) >= 4 and "session".startswith(p)))
+
+
+def ran_elsewhere(proc):
+    return proc.returncode == RUNS_ELSEWHERE and b"__RUNS_ELSEWHERE__" in proc.stdout
+
+
+def refused_elsewhere(what):
+    return ("Refused: run_command works on this PC only (%s reaches another PC). Use inspect_computer, inspect_computers, "
+            "deploy_package, computer_action, bulk_service_action or open_remote_tool for other PCs; they use Atlas's checks "
+            "and approvals. Do not try another way to run code on a remote PC." % what)
+
+
 # Formats output at a fixed width (a console-less or narrow window would cut tables)
 # and keeps a meaningful exit code: the last program's, else 1 if PowerShell logged an error.
 POWERSHELL_WRAPPER = """$__src = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('%s'))
+%s
 %s
 $__errors = $Error.Count
 . ([scriptblock]::Create($__src)) | Out-String -Width 250 -Stream
@@ -1083,7 +1222,7 @@ def shell_command(command, check_read_only=False):
     if os.name != "nt":
         return command
     source = base64.b64encode(command.encode("utf-8")).decode("ascii")
-    return powershell(POWERSHELL_WRAPPER % (source, READ_ONLY_CHECK if check_read_only else ""))
+    return powershell(POWERSHELL_WRAPPER % (source, REMOTE_CHECK, READ_ONLY_CHECK if check_read_only else ""))
 
 
 def run_shell(command, cwd, check_read_only=False):

@@ -2,6 +2,15 @@
 
 Atlas's map and Axis chat in one application.
 
+**Plain deployment launch.** A deployment now starts only the package's own install
+script on the PC, with one readable command line that saves its output and exit
+code: `powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "… & 'C:\Temp\Packages\<package>\<script>' …"`.
+Nothing is encoded, compressed or compiled on the PC any more. Atlas waits for the
+installers the script hands off to, and lists the software that changed, by reading
+the PC over WMI from the Admin PC. Axis's PowerShell tool now works on this PC
+only: PsExec, remote sessions, WMI process creation, `-ComputerName` and admin
+shares are refused; Axis reaches other PCs only through its Atlas tools.
+
 **New joiners.** Save the new joiner requests workbook (`ListOfRequests.xlsx`,
 one sheet per desk) in `C:\AtlasXL` and Atlas reads each desk's access requests,
 adding a persona per desk. On the new **New joiners** page, pick someone from
