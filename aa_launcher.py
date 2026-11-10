@@ -218,6 +218,8 @@ def stop():
     for mode in ("admin", "viewer"):
         record = atlas.read_record(mode)
         if record and (not record.get("root") or not _same_path(record["root"], ROOT)):
+            if type(record.get("pid")) is int and atlas.discard_stale_record(mode, record):
+                continue
             raise RuntimeError("The %s record belongs to another installation; nothing was stopped." % mode)
     failed = 0
     try:

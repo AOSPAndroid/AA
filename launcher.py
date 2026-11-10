@@ -18,19 +18,50 @@ def servers():
 def record_path(mode):return paths(ROOT).root/('server.json' if mode=='admin' else 'viewer-server.json')
 def read_record(mode):
     path=record_path(mode)
-    return json.loads(path.read_text()) if path.is_file() else None
+    if not path.is_file():return None
+    try:record=json.loads(path.read_text(encoding='utf-8'))
+    except json.JSONDecodeError as error:raise ValueError(f'Invalid {mode} server JSON. Record retained: {path}') from error
+    if not isinstance(record,dict):raise ValueError(f'Invalid {mode} server record: {path}')
+    return record
+
+def same_root(record):
+    root=record.get('root')
+    return isinstance(root,str) and bool(root.strip()) and os.path.normcase(os.path.realpath(root))==os.path.normcase(os.path.realpath(ROOT))
 
 def running(spec,record):
-    if not record or record.get('port')!=spec['port'] or record.get('root')!=str(ROOT):return False
+    if not record or record.get('port')!=spec['port'] or not same_root(record):return False
     try:
         opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
         with opener.open(f"http://127.0.0.1:{spec['port']}/api/health",timeout=2) as response:result=json.load(response)
         return result.get('application')=='Office Atlas' and result.get('mode')==spec['mode'] and result.get('instance_id')==record['instance_id']
     except Exception:return False
 
+def discard_stale_record(mode,record):
+    """Forget an exited/replaced process; never terminate it to recover a marker."""
+    path=record_path(mode)
+    pid=record.get('pid')
+    if type(pid) is not int or not 0<pid<=0xffffffff:
+        raise RuntimeError(f'Invalid PID in {mode} server record: {path}')
+    try:
+        with WindowsProcess(pid) as process:
+            actual=process.metadata()
+    except ProcessLookupError:
+        reason='the recorded process has exited'
+    except OSError as error:
+        raise RuntimeError(f'Cannot inspect {mode} PID {pid}: {error}. Record retained: {path}') from error
+    else:
+        created=record.get('created')
+        if not isinstance(created,str) or not created.isdigit() or created==actual['created']:
+            return False
+        reason='its PID now belongs to a different process'
+    path.unlink(missing_ok=True)
+    print(f'Cleared stale {mode} server record: {reason}.')
+    return True
+
 def stop_record(mode,record):
-    if record.get('root')!=str(ROOT) or not record.get('created') or not record.get('executable'):
-        print('Cannot verify this older server record. Stop it with the launcher that created it; record retained.')
+    if discard_stale_record(mode,record):return 0
+    if not same_root(record) or not record.get('created') or not record.get('executable'):
+        print(f'Cannot verify this live server (PID {record["pid"]}). Stop it with its original launcher. Record retained: {record_path(mode)}')
         return 1
     try:
         with WindowsProcess(int(record['pid']),terminate=True) as process:
@@ -47,17 +78,23 @@ def stop_record(mode,record):
 def stop():
     from inbox_control import launcher_action
     collectors_stopped=launcher_action('stop')
-    failed=0 if collectors_stopped is not False else 1
+    failed=0
     for mode in ('viewer','admin'):
-        record=read_record(mode)
-        if record:failed |= stop_record(mode,record)
-    print('Atlas servers stopped.' if not failed else 'Atlas shutdown needs attention. Any unresponsive server record was retained; check collector status before updating.')
-    return failed
+        try:
+            record=read_record(mode)
+            if record:failed |= stop_record(mode,record)
+        except (OSError,ValueError,RuntimeError) as error:
+            failed=1
+            print(f'Cannot stop {mode}: {error}')
+    print('AA servers stopped.' if not failed else 'AA server shutdown needs attention; see the record/PID details above.')
+    if collectors_stopped is False:print('Configured inbox collectors did not stop. Check collector status before updating.')
+    return int(bool(failed or collectors_stopped is False))
 
 def start_server(spec):
     previous=read_record(spec['mode'])
     if running(spec,previous):return None
-    if previous:raise RuntimeError(f"An unresponsive {spec['mode']} server record exists. Run Stop-All-Atlas.bat before restarting.")
+    if previous and not discard_stale_record(spec['mode'],previous):
+        raise RuntimeError(f"The recorded {spec['mode']} process (PID {previous['pid']}) still exists but is not responding. Run Stop AA.bat. Record: {record_path(spec['mode'])}")
     with socket.socket() as probe:
         if os.name=='nt':probe.setsockopt(socket.SOL_SOCKET,socket.SO_EXCLUSIVEADDRUSE,1)
         probe.bind((spec['host'],spec['port']))

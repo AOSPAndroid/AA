@@ -8,6 +8,7 @@
     "Invoke-Inbox-Task.ps1",
     "Python_Settings.bat",
     "README.md",
+    "Repair-AA-Startup.ps1",
     "Run-Inbox-Agent.ps1",
     "Start AA.bat",
     "Start-All-Atlas.bat",

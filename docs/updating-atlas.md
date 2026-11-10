@@ -58,3 +58,24 @@ health endpoint reports resolved locations for checking configuration.
 
 The retired Atlas updater cannot replace AA. Compatibility start/stop shortcuts forward
 to AA. No AA change deploys over standalone Atlas, standalone Axis or the hosted Preview.
+
+## Startup blocked by an old server record
+
+An empty port 8770 can still leave an older launcher reporting an “unresponsive admin
+server record.” The record is an ownership marker, separate from the listening server.
+Current startup and shutdown discard markers only after verifying the recorded process
+has exited or its PID was reused. They never stop another process to recover a marker.
+
+For an older download, copy `Repair-AA-Startup.ps1` beside `Start AA.bat` and run from
+PowerShell in that folder:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Repair-AA-Startup.ps1
+& '.\Start AA.bat'
+```
+
+The repair checks both the old `data` folder and the configured workspace. It archives
+only the Admin/Viewer ownership records for PIDs confirmed absent. A running PID, a failed
+process query or an invalid record is retained with its path for diagnosis. Databases,
+models, chats and inbox configuration are not modified. If startup still fails, inspect
+`logs/admin-startup.log` in the workspace for the backend error.
