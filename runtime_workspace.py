@@ -61,12 +61,15 @@ def restore(source, destination):
             raise ValueError('Workspace archive is too large.')
         names=set()
         for info in entries:
-            name=PurePosixPath(info.filename)
-            if (name.is_absolute() or '..' in name.parts or '\\' in info.filename or ':' in info.filename
-                    or not name.parts or info.filename.casefold() in names or ((info.external_attr>>16)&0o170000)==0o120000
+            # ZipInfo normalizes backslashes on Windows and truncates NULs.
+            # Validate the original member name before using its normalized path.
+            raw=info.orig_filename
+            name=PurePosixPath(raw)
+            if (name.is_absolute() or '..' in name.parts or '\\' in raw or ':' in raw or '\x00' in raw
+                    or not name.parts or raw.casefold() in names or ((info.external_attr>>16)&0o170000)==0o120000
                     or name.name in EPHEMERAL):
                 raise ValueError('Unsafe or duplicate workspace entry.')
-            names.add(info.filename.casefold())
+            names.add(raw.casefold())
         destination.parent.mkdir(parents=True,exist_ok=True)
         with tempfile.TemporaryDirectory(prefix='.aa-restore-',dir=destination.parent) as tmp:
             staging=Path(tmp)/'workspace';staging.mkdir()

@@ -57,12 +57,15 @@ class Workspace(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)/'runtime';root.mkdir();(root/'server.json').write_text('{}')
             with self.assertRaises(ValueError):export(root,Path(tmp)/'backup.zip')
-            for name in ('../escape','/absolute','C:/outside','x\\outside'):
+            for name in ('../escape','/absolute','C:/outside','x\\outside','x\x00ignored'):
                 archive=Path(tmp)/'bad.zip'
                 with zipfile.ZipFile(archive,'w') as z:
                     # ZipInfo normally normalizes Windows separators; retain the
                     # malformed raw name to exercise restore's portable check.
                     entry=zipfile.ZipInfo('placeholder');entry.filename=name
                     z.writestr('AA-WORKSPACE.json',json.dumps({'format':1}));z.writestr(entry,'bad')
-                with self.assertRaises(ValueError):restore(archive,Path(tmp)/'target')
+                # Exercise Windows reader normalization on every CI platform.
+                for separator in ('/','\\'):
+                    with self.subTest(name=name,separator=separator),patch('zipfile.os.sep',separator),self.assertRaises(ValueError):
+                        restore(archive,Path(tmp)/'target')
                 self.assertFalse((Path(tmp)/'target').exists())
