@@ -1,3 +1,10 @@
 # Preserve exact package payload bytes: hashes and the MSIX must agree after checkout.
 notification-listener/package/** -text whitespace=cr-at-eol
 notification-listener/*.msix -text
+
+# The formatter and generated browser assets use LF on every development platform.
+*.js text eol=lf
+*.jsx text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.mjs text eol=lf
