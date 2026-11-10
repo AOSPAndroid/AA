@@ -1,5 +1,6 @@
 """Retention and reconciliation remain bounded without connecting to a mailbox."""
 from datetime import timedelta
+from contextlib import closing
 import os
 from pathlib import Path
 import tempfile
@@ -14,8 +15,8 @@ class Retention(unittest.TestCase):
         return dict(entry_id=str(key),received_at=stamp(at),conversation_id='',sender_name='Example',sender_address='example@example.test',subject='Fictional printer',body='Fictional retained message',body_truncated=0)
 
     def test_age_count_limits_and_recent_reconciliation(self):
-        with tempfile.TemporaryDirectory() as tmp,patch.dict(os.environ,{'AA_MAIL_MAX_MESSAGES':'100','AA_MAIL_RETENTION_DAYS':'90','AA_MAIL_RECONCILE_DAYS':'7'}):
-            now=utcnow();queue=MailQueue(Path(tmp),now-timedelta(days=180));self.addCleanup(queue.close)
+        now=utcnow()
+        with tempfile.TemporaryDirectory() as tmp,patch.dict(os.environ,{'AA_MAIL_MAX_MESSAGES':'100','AA_MAIL_RETENTION_DAYS':'90','AA_MAIL_RECONCILE_DAYS':'7'}),closing(MailQueue(Path(tmp),now-timedelta(days=180))) as queue:
             queue.insert('example',self.message('old',now-timedelta(days=100)))
             for i in range(120):queue.insert('example',self.message(i,now))
             queue.prune(now);self.assertEqual(queue.count(),100)

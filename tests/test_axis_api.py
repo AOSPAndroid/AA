@@ -64,7 +64,7 @@ class AxisAPI(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        root = Path(self.temp.name)
+        root = Path(self.temp.name).resolve()
         # Atlas's operations as Axis's Windows tools read them; nothing here runs.
         self.backend = SimpleNamespace(ROOT=root, MASTER_DB=root / "test.db", REPO=root / "packages",
                                        validate_pc=self.validate_pc, jobs={}, lock=threading.RLock(),
@@ -246,7 +246,7 @@ class AxisAPI(unittest.TestCase):
     def test_memory_command_reads_the_shared_state_file_without_the_model(self):
         with patch.object(api, "model_status", side_effect=AssertionError("No inference for slash commands")):
             self.assertIn("Nothing remembered", events(self.post(message="/memory"))[1]["text"])
-            memory = Path(self.temp.name) / "data" / "axis" / "state" / axis_agent.MEMORY_FILE
+            memory = self.backend.ROOT / "data" / "axis" / "state" / axis_agent.MEMORY_FILE
             memory.parent.mkdir(parents=True)
             memory.write_text("# Axis memory\n\n- Prefer PC1 for tests\n", encoding="utf-8")
             text = events(self.post(message="/memory"))[1]["text"]
@@ -254,7 +254,7 @@ class AxisAPI(unittest.TestCase):
         self.assertIn(str(memory), text)
 
     def test_skills_commands_read_bundled_and_custom_guides_without_model(self):
-        custom = Path(self.temp.name) / "data" / "axis" / "skills" / "printer-check" / "SKILL.md"
+        custom = self.backend.ROOT / "data" / "axis" / "skills" / "printer-check" / "SKILL.md"
         custom.parent.mkdir(parents=True)
         custom.write_text("---\nname: printer-check\ndescription: Local printer procedure.\n---\nInspect the requested PC only.\n", encoding="utf-8")
         with patch.object(api, "model_status", side_effect=AssertionError("No inference for slash commands")):

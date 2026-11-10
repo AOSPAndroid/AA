@@ -2,6 +2,7 @@
 from sqlite_fixture import isolate_backend_database
 isolate_backend_database()
 import json,sqlite3,sys,tempfile,unittest
+from contextlib import closing
 from pathlib import Path
 from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
@@ -58,13 +59,13 @@ class MergedAtlas(unittest.TestCase):
   result=self.client.get('/api/desks/'+vacant['id']+'/context').json()
   self.assertIsNone(result['user']);self.assertEqual(result['machines'],[])
  def test_unconfirmed_ambiguous_is_not_selected(self):
-  with sqlite3.connect(self.db) as c:
+  with closing(sqlite3.connect(self.db)) as c,c:
    c.execute("insert into users(id,canonical_key,user_id,user_id_norm,full_name,full_name_norm) values(1001,'fixture:duplicate','FIXTURE-DUP','fixture-dup','Demo Arden','demo arden')")
   assigned={'name':'Demo Arden'}
   fixture=self.create_desk('ambiguous-unconfirmed','unconfirmed',assigned['name'])
   ctx=self.client.get('/api/desks/'+fixture['id']+'/context').json()
   self.assertEqual(ctx['match_method'],'ambiguous');self.assertIsNone(ctx['user']);self.assertEqual(ctx['machines'],[])
-  with sqlite3.connect(self.db) as c:c.execute("delete from users where id=1001")
+  with closing(sqlite3.connect(self.db)) as c,c:c.execute("delete from users where id=1001")
  def test_03_link_move_vacate_and_revision(self):
   u=self.pick_user();a=self.create_desk('move-source',hostname='SOURCEPC');b=self.create_desk('move-target','vacant',hostname='TARGETPC')
   r=self.post('/api/desks/'+a['id']+'/link',{'user_key':u['canonical_key'],'revision':a['revision']});self.assertEqual(r.status_code,200);a=r.json()['desk']
@@ -176,7 +177,7 @@ class MergedAtlas(unittest.TestCase):
   self.assertTrue(backup.is_file())
   with m.db() as c:
    for t,rows in before.items():self.assertEqual(rows,[tuple(r) for r in c.execute('select * from '+t)])
-  with sqlite3.connect(backup) as c:
+  with closing(sqlite3.connect(backup)) as c:
    self.assertEqual(c.execute('pragma integrity_check').fetchone()[0],'ok')
    self.assertEqual(c.execute('select version from package_catalog where folder="Example"').fetchone()[0],'2.0')
 

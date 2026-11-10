@@ -20,7 +20,8 @@ def make_db(path, rows, wal=False):
 class MoveDatabases(unittest.TestCase):
     def setUp(self):
         tmp = tempfile.TemporaryDirectory(); self.addCleanup(tmp.cleanup)
-        self.root = Path(tmp.name) / 'Atlas'; self.dest = Path(tmp.name) / 'F' / 'Atlas' / 'DB'
+        base = Path(tmp.name).resolve()
+        self.root = base / 'Atlas'; self.dest = base / 'F' / 'Atlas' / 'DB'
         (self.root / 'office_atlas.db').parent.mkdir(parents=True)
         make_db(self.root / 'office_atlas.db', 1).close()  # tracked seed
         self.main = make_db(self.root / 'data' / 'office_atlas.db', 25, wal=True)

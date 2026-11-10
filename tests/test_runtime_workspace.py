@@ -1,5 +1,6 @@
 """Stopped workspace snapshots preserve SQLite WAL data and reject unsafe restores."""
 import json
+from contextlib import closing
 import os
 from pathlib import Path
 import sqlite3
@@ -14,7 +15,7 @@ from runtime_paths import paths
 class Workspace(unittest.TestCase):
     def test_paths_and_export_restore_cover_the_workspace(self):
         with tempfile.TemporaryDirectory() as tmp:
-            base=Path(tmp);root=base/'runtime';root.mkdir()
+            base=Path(tmp).resolve();root=base/'runtime';root.mkdir()
             with patch.dict(os.environ,{'AA_DATA_HOME':str(root)},clear=True):
                 self.assertEqual(paths().database,root/'office_atlas.db')
                 self.assertEqual(paths().axis,root/'axis')
@@ -24,7 +25,7 @@ class Workspace(unittest.TestCase):
                 database.execute("insert into evidence values('retained')");database.commit()
                 (root/'axis/chats').mkdir(parents=True);(root/'axis/chats/example.json').write_text('{"messages":[]}')
                 archive=base/'workspace.zip';export(root,archive);restore(archive,base/'restored')
-                with sqlite3.connect(base/'restored/office_atlas.db') as copy:
+                with closing(sqlite3.connect(base/'restored/office_atlas.db')) as copy:
                     self.assertEqual(copy.execute('select value from evidence').fetchone()[0],'retained')
                 self.assertTrue((base/'restored/axis/chats/example.json').is_file())
             finally:database.close()
@@ -32,9 +33,9 @@ class Workspace(unittest.TestCase):
     def test_external_database_override_is_included_as_the_main_database(self):
         with tempfile.TemporaryDirectory() as tmp:
             base=Path(tmp);runtime=base/'runtime';runtime.mkdir();external=base/'external.db'
-            with sqlite3.connect(external) as con:con.execute('create table retained(value text)')
+            with closing(sqlite3.connect(external)) as con,con:con.execute('create table retained(value text)')
             archive=base/'backup.zip';export(runtime,archive,external);restore(archive,base/'restored')
-            with sqlite3.connect(base/'restored/office_atlas.db') as con:
+            with closing(sqlite3.connect(base/'restored/office_atlas.db')) as con:
                 self.assertIsNotNone(con.execute("select name from sqlite_master where name='retained'").fetchone())
 
     def test_source_seed_cannot_be_selected_as_the_runtime(self):
@@ -59,6 +60,9 @@ class Workspace(unittest.TestCase):
             for name in ('../escape','/absolute','C:/outside','x\\outside'):
                 archive=Path(tmp)/'bad.zip'
                 with zipfile.ZipFile(archive,'w') as z:
-                    z.writestr('AA-WORKSPACE.json',json.dumps({'format':1}));z.writestr(name,'bad')
+                    # ZipInfo normally normalizes Windows separators; retain the
+                    # malformed raw name to exercise restore's portable check.
+                    entry=zipfile.ZipInfo('placeholder');entry.filename=name
+                    z.writestr('AA-WORKSPACE.json',json.dumps({'format':1}));z.writestr(entry,'bad')
                 with self.assertRaises(ValueError):restore(archive,Path(tmp)/'target')
                 self.assertFalse((Path(tmp)/'target').exists())
