@@ -91,12 +91,13 @@ def apply_directory(db,candidate,source,report,expected,busy=None):
   c.execute('insert or replace into metadata values(?,?)',('directory.created_at',at))
  return apply_refresh(db,candidate,Path(db).parent/'backups',before_merge=validate_current,after_merge=record_import)
 
-def register_database_manager(app,wmi,check_token):
+def register_database_manager(app,wmi,check_token,initialize=True):
  from urllib.parse import unquote
  root=Path(__file__).parent;staged={};gate=asyncio.Lock()
- with sqlite3.connect(wmi.MASTER_DB,factory=ClosingConnection) as c:c.execute(HISTORY_SCHEMA)
+ if initialize:
+  with sqlite3.connect(wmi.MASTER_DB,factory=ClosingConnection) as c:c.execute(HISTORY_SCHEMA)
  def busy():
-  from shared_operations import axis_busy
+  from backend.services.shared_operations import axis_busy
   return any(j.get('state') not in ('complete','failed','cancelled','interrupted','unknown') for pool in (wmi.jobs,wmi.queue_jobs) for j in list(pool.values())) or axis_busy()
  def clean():
   for id,s in list(staged.items()):

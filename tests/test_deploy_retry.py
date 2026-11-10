@@ -1,7 +1,7 @@
 """Retry and re-queue past deployments with the same options. No remote command runs."""
 from sqlite_fixture import isolate_backend_database
 isolate_backend_database()
-import json, sqlite3, sys, tempfile, unittest, uuid
+import sys, tempfile, unittest, uuid
 from pathlib import Path
 from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]; sys.path.insert(0, str(ROOT))

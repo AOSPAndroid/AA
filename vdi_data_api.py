@@ -41,15 +41,16 @@ def apply_import(database, value):
     return {'count': count, 'backup': backup.name, 'imported_at': at, 'full_snapshot': value['full_snapshot'], **summary}
 
 
-def register(app, wmi, check_token):
+def register(app, wmi, check_token, initialize=True):
     staged = {}; stage_lock = threading.RLock()
     database = Path(wmi.MASTER_DB).resolve()
 
     def connect():
         return sqlite3.connect(database, timeout=20, factory=ClosingConnection)
 
-    with connect() as con:
-        data.initialize(con)
+    if initialize:
+        with connect() as con:
+            data.initialize(con)
 
     def clean():
         now = time.time()

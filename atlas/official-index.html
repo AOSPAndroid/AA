@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script src="/action-capabilities.js"></script>
     <!-- The default floor drawing is the slowest map dependency; fetch it with the page. -->
     <link rel="preload" as="image" href="studio-floor-2.svg?v=3" />
     <link rel="stylesheet" href="/assets/ui-tokens.css?v=75" />
@@ -20,7 +21,6 @@
     <link rel="stylesheet" href="/assets/atlas-shell.css" />
     <link rel="stylesheet" href="/assets/catalogue.css" />
     <script src="/assets/machine-health.js?v=3"></script>
-    <link rel="stylesheet" href="/assets/knowledge-base.css" />
     <link rel="stylesheet" href="/assets/atlas-interactions.css" />
     <link rel="stylesheet" href="/assets/design-system.css" />
   </head>
@@ -223,7 +223,9 @@
       </aside>
     </div>
     <div id="toast" role="status" aria-live="polite"></div>
-    <button type="button" id="axis-chat-toggle" class="axis-ask">Ask Axis</button>
+    <button type="button" id="axis-chat-toggle" class="axis-ask">
+      Ask Axis
+    </button>
     <script type="module" src="official-app.js?v=105"></script>
     <script
       type="module"

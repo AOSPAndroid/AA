@@ -2,9 +2,11 @@
 [CmdletBinding(SupportsShouldProcess = $true)]
 param(
     [Parameter(Mandatory = $true)][string]$MailUser,
-    [Parameter(Mandatory = $true)][string]$PythonPath
+    [Parameter(Mandatory = $true)][string]$PythonPath,
+    [string]$RuntimeFolder
 )
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'windows\Runtime-Paths.ps1')
 
 function Assert-LocalInboxPath([string]$Path) {
     if ($Path.StartsWith('\\') -or $Path.Contains('"')) { throw 'Use a local Atlas folder without quotes in its path.' }
@@ -124,7 +126,7 @@ finally { $hash.Dispose() }
 $taskName = 'Atlas-Inbox-' + $key
 $control = Join-Path ([Environment]::GetFolderPath('CommonApplicationData')) ('Atlas\InboxControl\' + $key)
 $agentConfig = Join-Path $control 'config.json'
-$data = Join-Path $PSScriptRoot 'data'
+$data = if ($RuntimeFolder) { [IO.Path]::GetFullPath($RuntimeFolder) } else { Get-AARuntimeFolder $PSScriptRoot }
 Assert-LocalInboxPath $data
 $service = New-Object -ComObject 'Schedule.Service'
 $service.Connect()

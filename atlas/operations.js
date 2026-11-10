@@ -150,20 +150,54 @@ export function createOperations({
                 () => valid(g) && target === machine.name,
               );
               const note = healthHost.querySelector(":scope > p");
-              if (note)
-                note.textContent = AtlasUI.machineSnapshotNote(machine);
+              if (note) note.textContent = AtlasUI.machineSnapshotNote(machine);
             } else health(g, target);
           }),
       );
-    host().querySelectorAll(".ops-machine").forEach(card => {
-      const m = current.machines[Number(card.querySelector("input").value)], windows = AtlasUI.supportsWindows(m);
-      AtlasContext.bindDevice(card, m, [
-        {id: "specs", label: "View specifications", section: "Remote support", disabled: !windows, reason: "Windows tools require a PC", run: () => window.AtlasHealth.specs(m.name)},
-        {id: "remote-registry", label: "Enable Remote Registry…", section: "Remote support", disabled: !windows, reason: "Windows tools require a PC", run: () => openRemoteRegistry(m.name)},
-        {id: "admin", label: "Open Remote Admin", section: "Remote support", disabled: !windows, reason: "Windows tools require a PC", navigate: true, run: () => AtlasContext.navigate({machine: m.name, command: "admin"})},
-        {id: "deploy", label: "Deploy software…", section: "Deployment", disabled: !windows, reason: "Windows tools require a PC", navigate: true, run: () => AtlasContext.navigate({machine: m.name, command: "deploy"})},
-      ]);
-    });
+    host()
+      .querySelectorAll(".ops-machine")
+      .forEach((card) => {
+        const m = current.machines[Number(card.querySelector("input").value)],
+          windows = AtlasUI.supportsWindows(m);
+        AtlasContext.bindDevice(card, m, [
+          {
+            id: "specs",
+            label: "View specifications",
+            section: "Remote support",
+            disabled: !windows,
+            reason: "Windows tools require a PC",
+            run: () => window.AtlasHealth.specs(m.name),
+          },
+          {
+            id: "remote-registry",
+            label: "Enable Remote Registry…",
+            section: "Remote support",
+            disabled: !windows,
+            reason: "Windows tools require a PC",
+            run: () => openRemoteRegistry(m.name),
+          },
+          {
+            id: "admin",
+            label: "Open Remote Admin",
+            section: "Remote support",
+            disabled: !windows,
+            reason: "Windows tools require a PC",
+            navigate: true,
+            run: () =>
+              AtlasContext.navigate({ machine: m.name, command: "admin" }),
+          },
+          {
+            id: "deploy",
+            label: "Deploy software…",
+            section: "Deployment",
+            disabled: !windows,
+            reason: "Windows tools require a PC",
+            navigate: true,
+            run: () =>
+              AtlasContext.navigate({ machine: m.name, command: "deploy" }),
+          },
+        ]);
+      });
     let filterTimer;
     q("#ops-package-filter").oninput = () => {
       clearTimeout(filterTimer);

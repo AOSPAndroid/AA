@@ -110,7 +110,14 @@
       name.append(detail);
       const state = document.createElement("span");
       state.textContent = item.state;
-      state.className = item.state === "Running" ? "status-ok" : item.state === "Stopped" ? "status-bad" : item.state ? "status-warn" : "";
+      state.className =
+        item.state === "Running"
+          ? "status-ok"
+          : item.state === "Stopped"
+            ? "status-bad"
+            : item.state
+              ? "status-warn"
+              : "";
       row.insertCell().append(state);
       for (const value of [item.start_mode, item.pid ?? "—"])
         row.insertCell().textContent = value;

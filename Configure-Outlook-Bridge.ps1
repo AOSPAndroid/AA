@@ -2,7 +2,7 @@
 .SYNOPSIS
 Prepare a private local queue for Outlook and Atlas running as different users.
 .EXAMPLE
-$bridge = .\Configure-Outlook-Bridge.ps1 -MailUser 'DOMAIN\x01426046' -AtlasUser 'DOMAIN\x01426046_dsk'
+$bridge = .\Configure-Outlook-Bridge.ps1 -MailUser 'EXAMPLE\MailUser' -AtlasUser 'EXAMPLE\AtlasAdmin'
 $env:ATLAS_MAIL_DIR = $bridge.Directory
 
 Run in the elevated Atlas account on the Outlook PC. No credentials are saved.

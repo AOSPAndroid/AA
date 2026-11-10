@@ -4,7 +4,6 @@ isolate_backend_database()
 import hashlib, json, os, tempfile, time, unittest
 from pathlib import Path
 import threading
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from backend import main as app

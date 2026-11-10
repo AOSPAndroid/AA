@@ -222,7 +222,7 @@ test("Ask Axis floats outside the header the real shared shell organizes", async
       1,
       "the page's Ask Axis button is reused, not duplicated",
     );
-    assert.equal(toggle.textContent, "Ask Axis");
+    assert.equal(toggle.textContent.trim(), "Ask Axis");
     assert(toggle.classList.contains("axis-ask"));
     assert.equal(toggle.closest(".atlas-app-header"), null, "Ask Axis floats outside the header");
     assert.equal(toggle.getAttribute("aria-controls"), "axis-chat");

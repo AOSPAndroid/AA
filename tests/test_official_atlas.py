@@ -20,7 +20,7 @@ class OfficialAtlas(unittest.TestCase):
      if r.headers.get('x-atlas-token')!='test':raise HTTPException(403,'token')
     register_official(app,SimpleNamespace(),token);c=TestClient(app)
     with fixture_connect(db) as con:
-     old=store.get_record(con,'L4-089');target=store.get_record(con,'04R021071');self.assertEqual(con.execute('select count(*) from official_records').fetchone()[0],620)
+     source=con.execute("select id from records where json_extract(body,'$.occupancy')='assigned' limit 1").fetchone()[0];old=store.get_record(con,source);target=store.get_record(con,'04R021071');self.assertEqual(con.execute('select count(*) from official_records').fetchone()[0],620)
     body={'source':old['id'],'target':target['id'],'sourceRevision':old['revision'],'targetRevision':target['revision']}
     self.assertEqual(c.post('/api/official/map-occupant',json=body).status_code,403)
     r=c.post('/api/official/map-occupant',json=body,headers={'x-atlas-token':'test'});self.assertEqual(r.status_code,200,r.text)

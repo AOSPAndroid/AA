@@ -1,7 +1,9 @@
-"""Source assets and mutable runtime data have separate lifetimes."""
+"""Resolve installation inputs separately from one configurable runtime workspace."""
+from dataclasses import dataclass
 import json
 import os
 import sqlite3
+import uuid
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -11,73 +13,89 @@ SCRIPTS = 'scripts.json'
 CLIPBOARD = 'clipboard-history.json'
 
 
+def configuration(root=None):
+    path = (root or ROOT) / 'config.json'
+    if not path.exists():
+        return {}
+    data = json.loads(path.read_text(encoding='utf-8'))
+    if not isinstance(data, dict):
+        raise ValueError('config.json must contain an object.')
+    return data
+
+
 def database_folder(root=None):
-    """Folder named by "database_folder" in config.json (for example F:\\Atlas\\DB), or None."""
-    try:
-        config = json.loads(((root or ROOT) / 'config.json').read_text(encoding='utf-8'))
-        folder = config.get('database_folder') if isinstance(config, dict) else None
-    except (OSError, ValueError):
-        return None
+    folder = configuration(root).get('database_folder')
     return Path(folder).expanduser() if isinstance(folder, str) and folder.strip() else None
 
 
+@dataclass(frozen=True)
+class RuntimePaths:
+    root: Path
+    database: Path
+
+    @property
+    def axis(self):
+        return self.root / 'axis'
+
+    @property
+    def logs(self):
+        return self.root / 'logs'
+
+    def diagnostics(self):
+        return {key: str(value) for key, value in {
+            'runtime': self.root, 'database': self.database, 'axis': self.axis,
+            'knowledge': self.root / KNOWLEDGE, 'logs': self.logs}.items()}
+
+
+def paths(root=None):
+    install = root or ROOT
+    config = configuration(install)
+    explicit = os.environ.get('AA_DATA_HOME') or config.get('runtime_folder')
+    folder = explicit or config.get('database_folder')
+    database = os.environ.get('ATLAS_DB_PATH') if root is None or install.resolve() == ROOT.resolve() else None
+    runtime = Path(folder).expanduser() if folder else Path(database).expanduser().parent if database else install / 'data'
+    target=Path(database).expanduser().resolve() if database else (runtime/DATABASE).resolve()
+    if target==(install/DATABASE).resolve():
+        raise ValueError('The distributed seed is read-only. Choose a separate runtime folder/database.')
+    return RuntimePaths(runtime.resolve(),target)
+
+
 def database_path():
-    configured = os.environ.get('ATLAS_DB_PATH')
-    if configured:
-        return Path(configured).expanduser().resolve()
-    folder = database_folder()
-    if folder:
-        # No fallback to the seed: a missing drive must not open an empty-looking Atlas.
-        return folder / DATABASE
-    runtime = ROOT / 'data' / DATABASE
-    return runtime if runtime.exists() else ROOT / DATABASE
+    # Never return the source seed as a writable database.
+    return paths().database
 
 
 def knowledge_path():
-    folder = database_folder()
-    return folder / KNOWLEDGE if folder else ROOT / 'data' / KNOWLEDGE
+    return paths().root / KNOWLEDGE
 
 
 def scripts_path():
-    folder = database_folder()
-    return folder / SCRIPTS if folder else ROOT / 'data' / SCRIPTS
+    return paths().root / SCRIPTS
 
 
 def companion_state_path():
-    return clipboard_path().with_name('companion-state.json')
+    return paths().root / 'companion-state.json'
 
 
 def companion_inbox_path():
-    return clipboard_path().with_name('companion-inbox')
+    return paths().root / 'companion-inbox'
 
 
 def clipboard_path():
-    folder = database_folder()
-    return folder / CLIPBOARD if folder else ROOT / 'data' / CLIPBOARD
+    return paths().root / CLIPBOARD
 
 
 def prepare_runtime_database():
-    """Copy the distributed seed once, using SQLite backup (including WAL data)."""
-    if os.environ.get('ATLAS_DB_PATH'):
-        path = database_path()
-        if not path.is_file():
-            raise ValueError('ATLAS_DB_PATH must point to an existing Atlas database.')
-        return path
-    folder = database_folder()
-    if folder:
-        path = folder / DATABASE
-        if not path.is_file():
-            raise ValueError(f'The Atlas database was not found in {folder}. Check that the drive is connected, '
-                             'or remove "database_folder" from config.json to use the data folder.')
-        return path
-    target = ROOT / 'data' / 'office_atlas.db'
+    resolved = paths()
+    target = resolved.database
     if target.exists():
         return target
+    if os.environ.get('ATLAS_DB_PATH') or database_folder():
+        raise ValueError('The configured Atlas database must exist. Check that the drive is connected and the configuration is correct.')
     target.parent.mkdir(parents=True, exist_ok=True)
-    seed = ROOT / 'office_atlas.db'
-    temporary = target.with_suffix('.migrating')
+    temporary = target.with_name('.' + target.name + '.' + uuid.uuid4().hex + '.migrating')
     try:
-        source = sqlite3.connect(seed.resolve().as_uri() + '?mode=ro', uri=True)
+        source = sqlite3.connect((ROOT / DATABASE).resolve().as_uri() + '?mode=ro', uri=True)
         destination = sqlite3.connect(temporary)
         try:
             source.backup(destination)
@@ -86,7 +104,14 @@ def prepare_runtime_database():
         finally:
             source.close()
             destination.close()
-        os.replace(temporary, target)
+        # Publish without replacing a runtime created by a concurrent launcher.
+        try:
+            if os.name == 'nt':
+                os.rename(temporary, target)
+            else:
+                os.link(temporary, target)
+        except FileExistsError:
+            pass
     finally:
         temporary.unlink(missing_ok=True)
     return target

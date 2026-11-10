@@ -1,3 +1,4 @@
+import "./action-capabilities.js";
 const shortcuts = {
   workspace: "Alt+1",
   admin: "Alt+2",
@@ -29,110 +30,115 @@ const targeted = new Set([
   "software",
   "report",
 ]);
-const viewerCommands = new Set(["ad-browser","ad-support-summary","daas","vdi","ad-open","ad-user-groups","ad-machine-groups","ad-compare","ad-filter-groups","ad-export-groups",
-"kb-layers","kb-format","kb-duplicate","kb-delete","kb-zoom-in","kb-zoom-out","kb-png","knowledge","kb-new","kb-notes","kb-focus","kb-convert","kb-process","kb-decision","kb-database","kb-note","kb-connect","kb-fit","kb-undo","kb-redo","kb-save","kb-export","kb-drawio","kb-svg","kb-import","kb-template-flow","kb-template-network",
-  "workspace",
-  "inbox",
-  "admin",
-  "bulk",
-  "history",
-  "active-directory",
-  "terminal",
-  "scripts",
-  "psexec",
-  "catalogue",
-  "packages",
-  "active",
-  "recent",
-  "queue",
-  "summary",
-  "report",
-  "vlans",
-  "contacts",
-  "atlas",
-  "lookup",
-  "view",
-  "reset",
-  "refresh",
-  "export",
-  "animations",
-  "shortcuts",
-]);
+const viewerCommands = new Set(globalThis.AtlasCapabilities.viewerCommands);
 // Add future data uploads here; their command and direct route share this definition.
 export const DATABASE_UPDATES = Object.freeze({
   "update-users": {
     section: "directory-import",
     title: "Update users",
     detail: "Upload the complete users and devices workbook (both tabs)",
-    keywords: "update users user database import upload excel workbook directory",
+    keywords:
+      "update users user database import upload excel workbook directory",
   },
   "update-devices": {
     section: "directory-import",
     title: "Update devices",
     detail: "Upload the complete users and devices workbook (both tabs)",
-    keywords: "update devices machines computers laptops phones assets database import upload excel workbook",
+    keywords:
+      "update devices machines computers laptops phones assets database import upload excel workbook",
   },
   "update-packages": {
     section: "package-data-import",
     title: "Update package data",
     detail: "Upload the ServiceNow CSV with package states and ownership",
-    keywords: "update packages package data metadata status live packaging csv import upload",
+    keywords:
+      "update packages package data metadata status live packaging csv import upload",
   },
   "update-vdi": {
     section: "vdi-data-import",
     title: "Update VDI data",
-    detail: "Upload Citrix machines, user associations, catalogues and delivery groups",
-    keywords: "update vdi citrix virtual desktops machine catalog catalogue delivery group users csv excel import upload",
+    detail:
+      "Upload Citrix machines, user associations, catalogues and delivery groups",
+    keywords:
+      "update vdi citrix virtual desktops machine catalog catalogue delivery group users csv excel import upload",
   },
   "update-floorplans": {
     section: "floorplan-import",
     title: "Update floor plans",
     detail: "Upload bulk seating changes, desk assignments or moves",
-    keywords: "update floorplan floor plans seating desks moves bulk import upload excel",
+    keywords:
+      "update floorplan floor plans seating desks moves bulk import upload excel",
   },
 });
 // The single command catalogue used by the map and IT console.
 export const COMMANDS = [
   ...Object.entries(DATABASE_UPDATES).map(([id, update]) => [
-    id, update.title, update.detail, update.keywords,
+    id,
+    update.title,
+    update.detail,
+    update.keywords,
   ]),
-  ["packages", "Packages", "Browse package states, ownership and source coverage", "package packages live packaging progress epp requester packager status metadata"],
-  ['ad-browser','AD directory browser','Browse OUs, users, computers, group members and properties','ad browse directory ou tree search group members'],
-  ['ad-open','See AD groups','Open an exact directory account','ad membership groups'],
-  ['ad-user-groups','See user groups','Look up the selected user in AD','ad user groups membership'],
-  ['ad-machine-groups','See machine groups','Look up the selected machine in AD','ad computer machine groups membership'],
-  ['ad-compare','Compare AD groups','Compare two user or computer memberships','ad compare difference common shared groups'],
-  ['ad-filter-groups','Filter AD group names','Contains, starts with, ends with or equals','ad groups filter contains ending starts equals excludes'],
-  ['ad-export-groups','Export AD groups to CSV','Download the current filtered memberships or comparison','ad csv extract export download groups'],
+  [
+    "packages",
+    "Packages",
+    "Browse package states, ownership and source coverage",
+    "package packages live packaging progress epp requester packager status metadata",
+  ],
+  [
+    "ad-browser",
+    "AD directory browser",
+    "Browse OUs, users, computers, group members and properties",
+    "ad browse directory ou tree search group members",
+  ],
+  [
+    "ad-open",
+    "See AD groups",
+    "Open an exact directory account",
+    "ad membership groups",
+  ],
+  [
+    "ad-user-groups",
+    "See user groups",
+    "Look up the selected user in AD",
+    "ad user groups membership",
+  ],
+  [
+    "ad-machine-groups",
+    "See machine groups",
+    "Look up the selected machine in AD",
+    "ad computer machine groups membership",
+  ],
+  [
+    "ad-compare",
+    "Compare AD groups",
+    "Compare two user or computer memberships",
+    "ad compare difference common shared groups",
+  ],
+  [
+    "ad-filter-groups",
+    "Filter AD group names",
+    "Contains, starts with, ends with or equals",
+    "ad groups filter contains ending starts equals excludes",
+  ],
+  [
+    "ad-export-groups",
+    "Export AD groups to CSV",
+    "Download the current filtered memberships or comparison",
+    "ad csv extract export download groups",
+  ],
 
-  ["active-directory", "Active Directory", "Look up user/computer groups, OU and account details", "ad active directory ou organizational unit groups user computer rsat"],
-  ["knowledge", "Knowledge Base", "Open diagrams, notes and runbooks", "knowledge base drawio draw.io diagrams notes"],
-  ["kb-layers", "Show diagram layers", "Open the Draw.io layers panel", "drawio layers"],
-  ["kb-format", "Show format panel", "Open shape styling and formatting", "drawio format"],
-  ["kb-duplicate", "Duplicate selected shapes", "Duplicate the diagram selection", "drawio duplicate"],
-  ["kb-delete", "Delete selected shapes", "Remove the diagram selection", "drawio delete"],
-  ["kb-zoom-in", "Zoom into diagram", "Increase diagram zoom", "drawio zoom-in"],
-  ["kb-zoom-out", "Zoom out of diagram", "Decrease diagram zoom", "drawio zoom-out"],
-  ["kb-png", "Export PNG image", "Download a PNG diagram image", "drawio png"],
-  ["kb-new", "New diagram", "Create a blank knowledge document", "drawio diagram new canvas"],
-  ["kb-notes", "Write notes", "Focus the knowledge notes panel", "drawio knowledge notes write"],
-  ["kb-focus", "Focus knowledge editor", "Hide or restore document and notes panels", "drawio knowledge focus editor panels canvas"],
-  ["kb-convert", "Notes to diagram", "Convert structured notes locally into editable shapes", "drawio notes convert flowchart generate"],
-  ["kb-process", "Add process shape", "Insert a process rectangle", "drawio shape rectangle process"],
-  ["kb-decision", "Add decision shape", "Insert a decision diamond", "drawio diamond decision"],
-  ["kb-database", "Add database shape", "Insert a database cylinder", "drawio database cylinder"],
-  ["kb-note", "Add diagram note", "Insert a sticky note shape", "drawio sticky note annotation"],
-  ["kb-connect", "Connect diagram shapes", "Connect two selected shapes", "drawio edge connector arrow link"],
-  ["kb-fit", "Fit diagram", "Fit the knowledge diagram to the canvas", "drawio zoom fit diagram"],
-  ["kb-undo", "Undo diagram edit", "Undo the latest knowledge document change", "drawio undo diagram"],
-  ["kb-redo", "Redo diagram edit", "Redo a knowledge document change", "drawio redo diagram"],
-  ["kb-save", "Save knowledge document", "Save in Admin or download the preview draft", "drawio save knowledge"],
-  ["kb-export", "Export Atlas diagram", "Download a diagram and notes for backup or sharing", "drawio export json backup"],
-  ["kb-drawio", "Export Draw.io file", "Download an editable .drawio diagram", "drawio export xml diagrams.net"],
-  ["kb-svg", "Export diagram image", "Download the current canvas as SVG", "drawio svg image export"],
-  ["kb-import", "Open Atlas diagram file", "Open an Atlas JSON or Draw.io XML file", "drawio import open file"],
-  ["kb-template-flow", "Incident triage diagram", "Start a troubleshooting flowchart", "drawio template flowchart triage"],
-  ["kb-template-network", "Office network diagram", "Start an editable network diagram", "drawio template network"],
+  [
+    "active-directory",
+    "Active Directory",
+    "Look up user/computer groups, OU and account details",
+    "ad active directory ou organizational unit groups user computer rsat",
+  ],
+  [
+    "knowledge",
+    "Knowledge Base",
+    "Read and edit support articles",
+    "knowledge base articles runbooks notes",
+  ],
   [
     "remote-registry",
     "Enable Remote Registry",
@@ -223,8 +229,18 @@ export const COMMANDS = [
     "Review recent operations",
     "history results",
   ],
-  ["terminal", "Terminal & PowerShell ISE", "Open the local command console and script editor", "terminal powershell ise cmd script console"],
-  ["scripts", "Scripts", "Run PowerShell scripts on a list of machines: services, processes, health, software", "scripts script powershell services disable enable tanium processes kill uptime disk gpupdate restart bulk machines"],
+  [
+    "terminal",
+    "Terminal & PowerShell ISE",
+    "Open the local command console and script editor",
+    "terminal powershell ise cmd script console",
+  ],
+  [
+    "scripts",
+    "Scripts",
+    "Run PowerShell scripts on a list of machines: services, processes, health, software",
+    "scripts script powershell services disable enable tanium processes kill uptime disk gpupdate restart bulk machines",
+  ],
   [
     "psexec",
     "PsTools / PsExec",
@@ -374,8 +390,9 @@ export const MAP_COMMANDS = new Set([
 ]);
 export function commandUrl(id, target = "") {
   if (!COMMANDS.some((c) => c.id === id)) throw Error("Unknown Atlas command");
-  if (Object.hasOwn(DATABASE_UPDATES, id)) return "/manage-database#" + DATABASE_UPDATES[id].section;
+  if (Object.hasOwn(DATABASE_UPDATES, id))
+    return "/manage-database#" + DATABASE_UPDATES[id].section;
   const query = new URLSearchParams({ command: id });
-  if (target && id !== "knowledge" && !id.startsWith("kb-")) query.set("machine", target);
+  if (target && id !== "knowledge") query.set("machine", target);
   return (MAP_COMMANDS.has(id) ? "/" : "/installer") + "?" + query;
 }

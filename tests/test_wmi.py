@@ -22,6 +22,12 @@ class Regression(unittest.TestCase):
   with app.master_db() as c:
    cls.user=dict(c.execute("select * from users where user_id<>'' and email<>'' and id in (select user_id_ref from assignments) limit 1").fetchone())
    cls.machine=c.execute('select machine_name from machines where id in (select machine_id from assignments) limit 1').fetchone()[0]
+ def setUp(self):
+  from backend.services.job_service import JobService
+  service=JobService(lambda:app.HISTORY_DB)
+  self.addCleanup(service.pool.shutdown,wait=True)
+  p=patch.multiple(app,job_service=service,jobs=service.jobs,queue_jobs=service.queues,lock=service.lock)
+  p.start();self.addCleanup(p.stop)
  @classmethod
  def tearDownClass(cls):
   cls.client.close();cls.identity.stop();app.HISTORY_DB=cls.original_history;app.REPO=cls.original_repo;cls.tmp.cleanup()

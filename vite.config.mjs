@@ -11,7 +11,7 @@ export default defineConfig({
     emptyOutDir: false,
     target: "es2020",
     modulePreload: false,
-    chunkSizeWarningLimit: 520,
+    chunkSizeWarningLimit: 500,
     cssCodeSplit: false,
     rollupOptions: {
       input: resolve(import.meta.dirname, "frontend/react/entry.jsx"),

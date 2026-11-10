@@ -109,7 +109,7 @@ def plan_sheet(c, rows, layout='official', complete=False, labels=frozenset(), l
                 notes.append(f'{d}: {name} kept as written; several accounts have this name.')
             else: warnings.append(f'{d}: {name} has no confirmed account link; machine lookup remains unconfirmed. Fill Account to link explicitly.')
         if status=='assigned' and not name: problem(f'{prefix}: assigned desk needs a name or account.'); continue
-        team=row.get('team',old['team']).strip() or 'Unassigned'
+        team=row.get('team',old['team']).strip()
         label=name or (old['name'] if status==old['occupancy'] and not occupant(old) else ('Vacant desk' if status=='vacant' else 'Unconfirmed desk'))
         r=dict(old,name=label,team=team,occupancy=status)
         try: store.validate(r)

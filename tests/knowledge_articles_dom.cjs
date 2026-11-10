@@ -47,8 +47,7 @@ function fakeLibraries(w, calls) {
   await A.open(); await sleep(20);
   const kb = d.getElementById('knowledge');
   assert.equal(kb.dataset.kbMode, 'articles', 'Articles are the default view');
-  const [articlesTab, diagramsTab] = kb.querySelectorAll('.kb-modes [role="tab"]');
-  assert.equal(articlesTab.getAttribute('aria-selected'), 'true');
+  assert.equal(kb.querySelector('iframe'),null,'The retired diagram editor is absent');
   assert.deepEqual([...kb.querySelectorAll('.kb-result strong')].map((s) => s.textContent), ['Outlook keeps freezing', 'VPN']);
   assert.deepEqual([...kb.querySelectorAll('.kb-tag-filter button')].map((b) => b.textContent), ['email 1', 'network 1', 'outlook 1']);
   kb.querySelector('.kb-tag-filter button:nth-child(2)').click();
@@ -78,7 +77,7 @@ function fakeLibraries(w, calls) {
   search.value = 'freez'; search.dispatchEvent(new w.Event('input')); await sleep(260);
   assert.match(requests.at(-1).url, /\/api\/search-everything\?q=freez&kinds=article&limit=40/);
   kb.querySelector('.kb-scope input').click(); await sleep(20);
-  assert.match(requests.at(-1).url, /kinds=article,diagram,inbox,deployment/, 'Everything adds requests, deployments and diagrams');
+  assert.match(requests.at(-1).url, /kinds=article,inbox,deployment/, 'Everything adds requests and deployments');
   assert.equal(kb.querySelectorAll('.kb-result').length, 3);
   assert.deepEqual([...kb.querySelectorAll('.kb-result mark')].map((m) => m.textContent), ['freezing', 'freezes', 'freezes']);
   assert.equal(kb.querySelector('.kb-result img'), null, 'Snippet markup stays text');
@@ -121,15 +120,9 @@ function fakeLibraries(w, calls) {
   assert.match(view.querySelector('.kb-article-editor [role="status"]').textContent, /title/);
   view.querySelector('.kb-article-editor .kb-article-actions button[type="button"]').click(); await sleep(10);
 
-  // Live Inbox links: article ids open the article; anything else is a diagram.
-  diagramsTab.click();
-  assert.equal(kb.dataset.kbMode, 'diagrams');
-  assert.equal(w.localStorage.getItem('atlas.kb.mode'), 'diagrams', 'The chosen view is remembered');
+  // Live Inbox article links still open the correct runbook.
   await A.show('article:vpn'); await sleep(20);
-  assert.equal(kb.dataset.kbMode, 'articles');
   assert(requests.some((r) => r.url === '/api/knowledge/articles/vpn'));
-  await A.show('network-map').catch(() => {});
-  assert.equal(kb.dataset.kbMode, 'diagrams');
   assert.deepEqual(f.errors, []);
   w.close();
 

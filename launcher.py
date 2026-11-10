@@ -2,16 +2,20 @@
 import argparse,json,os,socket,subprocess,sys,time,urllib.request,uuid,webbrowser
 from pathlib import Path
 ROOT=Path(__file__).resolve().parent
+from runtime_paths import paths, configuration
+from windows_process import WindowsProcess
 
 def servers():
     admin=int(os.environ.get('ATLAS_ADMIN_PORT','8770'))
     viewer=int(os.environ.get('ATLAS_VIEWER_PORT','8771'))
     if admin==viewer or not all(1024<=p<=65535 for p in (admin,viewer)):
         raise ValueError('Choose two different ports between 1024 and 65535.')
-    return [dict(mode='admin',module='backend.main:app',host='127.0.0.1',port=admin),
-            dict(mode='viewer',module='backend.viewer:app',host='0.0.0.0',port=viewer)]
+    sharing=configuration(ROOT).get('share_viewer') is True
+    if 'AA_SHARE_VIEWER' in os.environ:sharing=os.environ['AA_SHARE_VIEWER'].lower() in ('1','true','yes')
+    return [dict(mode='admin',module='backend.factory:create_app',host='127.0.0.1',port=admin),
+            dict(mode='viewer',module='backend.viewer:app',host='0.0.0.0' if sharing else '127.0.0.1',port=viewer)]
 
-def record_path(mode):return ROOT/'data'/('server.json' if mode=='admin' else 'viewer-server.json')
+def record_path(mode):return paths(ROOT).root/('server.json' if mode=='admin' else 'viewer-server.json')
 def read_record(mode):
     path=record_path(mode)
     return json.loads(path.read_text()) if path.is_file() else None
@@ -25,12 +29,20 @@ def running(spec,record):
     except Exception:return False
 
 def stop_record(mode,record):
-    pid=int(record['pid']);module='backend.viewer:app' if mode=='viewer' else 'backend.main:app'
-    literal=lambda s:"'"+s.replace("'","''")+"'"
-    script=f"$p=Get-CimInstance Win32_Process -Filter 'ProcessId={pid}';if(-not $p){{exit 0}};if($p.CommandLine.Contains({literal(str(ROOT))}) -and $p.CommandLine.Contains({literal(module)}) -and $p.CommandLine.Contains('uvicorn')){{Stop-Process -Id {pid} -ErrorAction Stop}}else{{throw 'PID no longer belongs to this application; not stopped'}}"
-    result=subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-Command',script],creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
-    if result.returncode:return result.returncode
-    record_path(mode).unlink(missing_ok=True);return 0
+    if record.get('root')!=str(ROOT) or not record.get('created') or not record.get('executable'):
+        print('Cannot verify this older server record. Stop it with the launcher that created it; record retained.')
+        return 1
+    try:
+        with WindowsProcess(int(record['pid']),terminate=True) as process:
+            actual=process.metadata()
+            if actual['created']!=record['created'] or os.path.normcase(actual['executable'])!=os.path.normcase(record['executable']):
+                print('Server PID belongs to a different process; it was not stopped.')
+                return 1
+            process.stop()
+    except ProcessLookupError:
+        pass
+    record_path(mode).unlink(missing_ok=True)
+    return 0
 
 def stop():
     from inbox_control import launcher_action
@@ -49,12 +61,18 @@ def start_server(spec):
     with socket.socket() as probe:
         if os.name=='nt':probe.setsockopt(socket.SOL_SOCKET,socket.SO_EXCLUSIVEADDRUSE,1)
         probe.bind((spec['host'],spec['port']))
-    instance=uuid.uuid4().hex;log_path=ROOT/'logs'/(spec['mode']+'-startup.log')
+    instance=uuid.uuid4().hex;log_path=paths(ROOT).logs/(spec['mode']+'-startup.log')
     environment=dict(os.environ,ATLAS_INSTANCE_ID=instance)
     with log_path.open('a',encoding='utf-8') as log:
-        child=subprocess.Popen([sys.executable,'-m','uvicorn',spec['module'],'--app-dir',str(ROOT),'--host',spec['host'],'--port',str(spec['port']),'--no-proxy-headers'],cwd=ROOT,env=environment,stdout=log,stderr=subprocess.STDOUT,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+        child=subprocess.Popen([sys.executable,'-m','uvicorn',spec['module'],*(['--factory'] if spec['mode']=='admin' else []),'--app-dir',str(ROOT),'--host',spec['host'],'--port',str(spec['port']),'--no-proxy-headers'],cwd=ROOT,env=environment,stdout=log,stderr=subprocess.STDOUT,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
     record=dict(spec,pid=child.pid,root=str(ROOT),instance_id=instance)
-    record_path(spec['mode']).write_text(json.dumps(record),encoding='utf-8')
+    if os.name=='nt':
+        try:
+            with WindowsProcess(child.pid) as process:record.update(process.metadata())
+        except BaseException:
+            child.terminate();child.wait(timeout=10);raise
+    temporary=record_path(spec['mode']).with_suffix('.tmp')
+    temporary.write_text(json.dumps(record),encoding='utf-8');temporary.replace(record_path(spec['mode']))
     try:
         for _ in range(60):
             if child.poll() is not None:raise RuntimeError(f"{spec['mode']} startup failed. See {log_path}")
@@ -75,7 +93,7 @@ def run(open_browser=True):
     try:import fastapi,uvicorn  # noqa: F401 -- verify dependencies can actually import
     except ImportError:
         print('Dependencies missing. Run windows\\Install_Dependencies.bat using this same Python.');return 1
-    for directory in ('logs','data'):(ROOT/directory).mkdir(exist_ok=True)
+    for directory in (paths(ROOT).logs,paths(ROOT).root):directory.mkdir(parents=True,exist_ok=True)
     # Existing servers keep their database until explicitly stopped.
     if not any(running(spec,read_record(spec['mode'])) for spec in specs):
         from runtime_paths import prepare_runtime_database
@@ -91,9 +109,9 @@ def run(open_browser=True):
             child.terminate();child.wait(timeout=10);record_path(spec['mode']).unlink(missing_ok=True)
         print(str(error));return 1
     admin_url=f"http://127.0.0.1:{specs[0]['port']}";viewer_url=f"http://127.0.0.1:{specs[1]['port']}"
-    urls=share_urls(specs[1]['port'])
-    message=f'Admin: {admin_url}\nViewer preview: {viewer_url}\nShare on your network:\n'+'\n'.join(urls or [f"http://YOUR-IP:{specs[1]['port']}"])
-    (ROOT/'data'/'share-addresses.txt').write_text(message+'\n',encoding='utf-8');print(message)
+    urls=share_urls(specs[1]['port']) if specs[1]['host']=='0.0.0.0' else []
+    message=f'Admin: {admin_url}\nViewer preview: {viewer_url}\nShare on your network:\n'+'\n'.join(urls or ['Off. Set share_viewer in config.json or AA_SHARE_VIEWER=1 to share.'])
+    (paths(ROOT).root/'share-addresses.txt').write_text(message+'\n',encoding='utf-8');print(message)
     from inbox_control import launcher_action
     launcher_action('start')
     if open_browser:webbrowser.open(admin_url);webbrowser.open(viewer_url)

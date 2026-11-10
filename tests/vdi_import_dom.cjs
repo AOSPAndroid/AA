@@ -88,7 +88,7 @@ const preview = mode => ({id:'vdi-stage',source:'citrix.csv',full_snapshot:mode,
  staleFailure.resolve(response({detail:'Old source rejected'},400));await failing;
  assert.match(get('message').textContent,/new.csv selected/,'Late errors from an old file cannot overwrite new selection feedback');
  assert(get('review').hidden&&get('apply').disabled);
- const registry=new vm.SourceTextModule(fs.readFileSync('atlas/command-registry.js','utf8'),{context:f.context});await registry.link(()=>{});await registry.evaluate();
+ const registry=new vm.SourceTextModule(fs.readFileSync('atlas/command-registry.js','utf8'),{context:f.context});await registry.link(async()=>{const caps=new vm.SourceTextModule(fs.readFileSync('atlas/action-capabilities.js','utf8'),{context:f.context});await caps.link(()=>{});return caps;});await registry.evaluate();
  const command=registry.namespace.COMMANDS.find(c=>c.id==='update-vdi');
  assert(command&&!command.viewer&&!command.requiresTarget);assert.equal(registry.namespace.commandUrl('update-vdi','FICT-PC'),'/manage-database#vdi-data-import');
  assert.deepEqual(f.errors,[]);w.close();

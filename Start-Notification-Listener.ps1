@@ -1,13 +1,14 @@
 [CmdletBinding()]
 param([string]$DataDirectory = $env:ATLAS_MAIL_DIR, [switch]$AutoStart, [switch]$Background)
 $ErrorActionPreference = 'Stop'
-$savedConfig = Join-Path $PSScriptRoot 'data\inbox-integration.json'
+. (Join-Path $PSScriptRoot 'windows\Runtime-Paths.ps1')
+$savedConfig = Join-Path (Get-AARuntimeFolder $PSScriptRoot) 'inbox-integration.json'
 if (-not $PSBoundParameters.ContainsKey('DataDirectory') -and (Test-Path -LiteralPath $savedConfig)) {
     $DataDirectory = (Get-Content -LiteralPath $savedConfig -Raw | ConvertFrom-Json).directory
 }
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 if ([Security.Principal.WindowsPrincipal]::new($identity).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    throw 'Run normally as the Teams/Outlook account (x01426046), not from elevated Atlas.'
+    throw 'Run normally as your Teams/Outlook account, not from elevated Atlas.'
 }
 $package = Get-AppxPackage -Name Atlas.NotificationListener | Select-Object -First 1
 if (-not $package) { throw 'Install the Atlas Notification Listener package for this Windows account first. See docs/notification-listener.md.' }

@@ -8,6 +8,8 @@ import ipaddress
 import json
 from pathlib import Path
 import queue
+import logging
+from runtime_paths import paths
 import re
 import secrets
 import socket
@@ -133,7 +135,7 @@ def model_settings(root, model):
     except (OSError, ValueError, TypeError, AttributeError):
         pass
     try:
-        saved = json.loads((root / "data" / "axis" / "model-settings.json").read_text(encoding="utf-8"))
+        saved = json.loads((paths(root).axis / "model-settings.json").read_text(encoding="utf-8"))
         if saved.get("model") == model:
             settings.update({key: saved[key] for key in ("ctx", "think", "sampling") if key in saved})
     except (OSError, ValueError, TypeError, AttributeError):
@@ -353,6 +355,7 @@ class Session:
         self.transcript = transcript or []
         self.saved_messages = saved_messages  # A saved chat's conversation, continued by its next agent
         self.saved_configuration = saved_configuration  # only under the same model, database and packages.
+        self.persistence_error = None
         self.saved_private = saved_private  # The saved conversation read Live Inbox or clipboard text.
         self.lock = threading.Lock()
 
@@ -421,7 +424,7 @@ class Sessions:
         self.backend = backend
         self.sources = sources
         self.root = Path(backend.ROOT)
-        self.directory = self.root / "data" / "axis"
+        self.directory = paths(self.root).axis
         self.state = self.directory / "state"
         self.chats = self.directory / "chats"
         self.factory = agent_factory
@@ -467,8 +470,10 @@ class Sessions:
                         "private": session.private()})
             for old in sorted(self.chats.glob("*.json"), key=lambda path: path.stat().st_mtime)[:-MAX_CHATS]:
                 old.unlink()
+            session.persistence_error = None
         except (OSError, TypeError, ValueError):
-            pass
+            session.persistence_error = "Chat could not be saved. Check the runtime folder and free disk space."
+            logging.exception("Axis chat persistence failed session=%s", session.id)
 
     def latest(self):
         """The most recent chat, from memory or disk, to show again when the panel opens."""
@@ -514,12 +519,13 @@ class Sessions:
         with self.lock:
             running = sum(session.current is not None for session in self.sessions.values())
         return dict(model_status(), running=running, active_sessions=len(self.sessions),
+                    persistence_error=next((s.persistence_error for s in self.sessions.values() if s.persistence_error), None),
                     database_available=Path(self.backend.MASTER_DB).is_file(), approvals="ask")
 
     def operations(self, confirm):
         """Axis's Windows tools on this Atlas's operations; earlier Axis job files stay readable."""
         # Earlier terminal jobs may also remain in axis\state from before the terminal used AA's chat.
-        return AtlasOperations(self.backend, confirm, legacy_state=(self.state, self.root / "axis" / "state"),
+        return AtlasOperations(self.backend, confirm, legacy_state=(self.state, self.directory / "legacy-state", self.root / "axis" / "state"),
                                outputs=self.state / "outputs")
 
     def _saved_id(self, folder, prefix):
@@ -653,6 +659,11 @@ class Sessions:
             if turn.cancelled.is_set():
                 session.record({"type": "notice", "text": "Request cancelled. Accepted background jobs continue.", "tone": "warning"})
             self.save(session)
+            if session.persistence_error:
+                warning={'type':'notice','tone':'warning','text':session.persistence_error}
+                session.record(warning)
+                try:turn.events.put_nowait(warning)
+                except queue.Full:pass
             with self.lock:
                 if session.current is turn:
                     session.current = None

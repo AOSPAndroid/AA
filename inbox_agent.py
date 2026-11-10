@@ -9,7 +9,6 @@ import json
 import os
 from pathlib import Path
 import subprocess
-import sys
 import time
 from types import SimpleNamespace
 import uuid
@@ -48,6 +47,7 @@ class Agent:
         self.notifications_command = None
         self.last_launch = {'outlook': 0, 'notifications': 0}
         self.errors = {}
+        self.last_retention = None
 
     def desired(self):
         value = read_object(self.control / 'desired.json')
@@ -82,6 +82,16 @@ class Agent:
         show = running and bool(desired.get('show_window')) and desired['show_window'] != self.show_window
         changed = desired.get('revision') != self.revision
         now = time.monotonic()
+        queue=self.directory/'inbox.sqlite3'
+        if running and queue.is_file() and (self.last_retention is None or now-self.last_retention>=3600):
+            import sqlite3
+            try:
+                with sqlite3.connect(queue,timeout=2) as connection:
+                    outlook.prune_messages(connection,outlook.utcnow())
+                self.last_retention=now
+                self.errors.pop('retention',None)
+            except (sqlite3.Error,ValueError) as error:
+                self.errors['retention']=str(error)[:400]
         try:
             if not mail_on:
                 self.stop_outlook()

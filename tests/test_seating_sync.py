@@ -48,11 +48,11 @@ class LiveFloorPlan(unittest.TestCase):
         self.desks = sorted(d for d, r in records.items() if r.get('layout') == 'official' and d.startswith('02R'))
         # Fourteen boxes like the assistants' sheet: two people, team desks, an office, Open.
         self.layout = [
-            ['Private Office (209)\n16m2\nGCAS (Baptiste Flais + Manon Desmazes)\n02R010070', 'Credit Sales\n2R017069', 'Compliance\n2R019069'],
-            ['Jennifer Aidaoui\n02R011079', 'Credit Sales\n02R017071', 'Market Risk\n2R019071'],
-            ['Christophe Duriez\n02R015079', 'Credit Sales\n02R016079', 'Credit Sales\n02R016081'],
-            ['Cedric Authier\n02R011081', 'Pierre Haberer\n02R015081', 'TFS Credit\n02R017073'],
-            ['Oren Ruban (intern)\n02R010086', 'Sandrine Kone\n2R019073', ''],
+            ['Private Office (209)\n16m2\nGCAS (Demo Glen + Demo Heath)\n02R010070', 'Credit Sales\n2R017069', 'Compliance\n2R019069'],
+            ['Demo Birch\n02R011079', 'Credit Sales\n02R017071', 'Market Risk\n2R019071'],
+            ['Demo Arden\n02R015079', 'Credit Sales\n02R016079', 'Credit Sales\n02R016081'],
+            ['Demo Cedar\n02R011081', 'Demo Dale\n02R015081', 'TFS Credit\n02R017073'],
+            ['Demo Elm (intern)\n02R010086', 'Demo Fern\n2R019073', ''],
         ]
 
     def write(self, name, rows, age=120):
@@ -75,16 +75,16 @@ class LiveFloorPlan(unittest.TestCase):
         self.assertEqual(first['last']['file'], 'Hoche Project_20261002.xlsx', 'A newer non-plan workbook is skipped')
         self.assertEqual([fix['desk'] for fix in first['last']['reader']['fixes']], ['02R017069', '02R019069', '02R019071', '02R019073'])
         record, link = official(self.db, '02R010070')
-        self.assertEqual(record['name'], 'Private Office (209) 16m2 GCAS (Baptiste Flais + Manon Desmazes)')
+        self.assertEqual(record['name'], 'Private Office (209) 16m2 GCAS (Demo Glen + Demo Heath)')
         self.assertEqual(record['occupancy'], 'unconfirmed')
         # Christophe moves to a team desk; his old desk opens.
         moved = [row[:] for row in self.layout]
-        moved[2] = ['Open\n02R015079', 'Christophe Duriez\n02R016079', 'Credit Sales\n02R016081']
+        moved[2] = ['Open\n02R015079', 'Demo Arden\n02R016079', 'Credit Sales\n02R016081']
         self.write('Hoche Project_20261020.xlsx', moved, age=60)
         second = self.sync.check()
         self.assertEqual(second['status']['state'], 'synced', second['status'])
         self.assertEqual(second['last']['counts'].get('moved'), 1, second['last'])
-        self.assertEqual(official(self.db, '02R016079')[0]['name'], 'Christophe Duriez')
+        self.assertEqual(official(self.db, '02R016079')[0]['name'], 'Demo Arden')
         self.assertEqual(official(self.db, '02R015079')[0]['occupancy'], 'vacant')
         self.assertTrue(official(self.db, '02R016079')[1], 'The person is linked to their directory account')
         self.assertTrue((self.db.parent / 'backups' / second['history'][0]['backup']).is_file())
@@ -101,7 +101,7 @@ class LiveFloorPlan(unittest.TestCase):
         seats = lambda: [(r['name'], r['team'], r['occupancy'], link) for r, link in (official(self.db, d) for d in ('02R015079', '02R016079'))]
         before = seats()
         moved = [row[:] for row in self.layout]
-        moved[2] = ['Open\n02R015079', 'Christophe Duriez\n02R016079', 'Credit Sales\n02R016081']
+        moved[2] = ['Open\n02R015079', 'Demo Arden\n02R016079', 'Credit Sales\n02R016081']
         self.write('plan.xlsx', moved, age=60)
         update = self.sync.check()['history'][0]
         self.assertEqual(update['desks'], ['02R015079', '02R016079'])
@@ -117,7 +117,7 @@ class LiveFloorPlan(unittest.TestCase):
         # A newer reader reads the unchanged file again.
         self.sync.state['last']['signature'] = self.sync.state['last']['signature'][:3]
         self.assertEqual(self.sync.check()['history'][0]['file'], 'plan.xlsx')
-        self.assertEqual(official(self.db, '02R016079')[0]['name'], 'Christophe Duriez')
+        self.assertEqual(official(self.db, '02R016079')[0]['name'], 'Demo Arden')
 
     def test_a_workbook_with_floor_tabs_beats_a_newer_list(self):
         self.write('Hoche Project_20261002.xlsx', self.layout)
@@ -133,7 +133,7 @@ class LiveFloorPlan(unittest.TestCase):
         self.sync.configure(Settings(folder=str(self.folder), enabled=True))
         self.sync.check()
         moved = [row[:] for row in self.layout]
-        moved[2] = ['Open\n02R015079', 'Christophe Duriez\n02R016079', 'Credit Sales\n02R016081']
+        moved[2] = ['Open\n02R015079', 'Demo Arden\n02R016079', 'Credit Sales\n02R016081']
         self.write('plan.xlsx', moved, age=60)
         return self.sync.check()['history'][0]
 
@@ -260,12 +260,12 @@ class LiveFloorPlan(unittest.TestCase):
 
     def test_the_plan_wins_a_person_on_two_desks_is_placed_on_both(self):
         twice = [row[:] for row in self.layout]
-        twice[2] = ['Christophe Duriez\n02R015079', 'Christophe Duriez\n02R016079', 'Credit Sales\n02R016081']
+        twice[2] = ['Demo Arden\n02R015079', 'Demo Arden\n02R016079', 'Credit Sales\n02R016081']
         self.write('plan.xlsx', twice)
         self.sync.configure(Settings(folder=str(self.folder), enabled=True))
         result = self.sync.check()
         self.assertEqual(result['status']['state'], 'synced', result['status'])
-        self.assertEqual([official(self.db, d)[0]['name'] for d in ('02R015079', '02R016079')], ['Christophe Duriez'] * 2)
+        self.assertEqual([official(self.db, d)[0]['name'] for d in ('02R015079', '02R016079')], ['Demo Arden'] * 2)
         self.assertIn('Same person on 02R015079, 02R016079 in the Excel: placed on each, as written.', result['last']['notes'])
 
     def test_an_old_desk_holding_only_the_name_is_freed(self):
@@ -273,18 +273,18 @@ class LiveFloorPlan(unittest.TestCase):
         spare = next(d for d in self.desks if d not in ('02R015079', '02R016079', '02R010070', '02R011079', '02R011081', '02R015081', '02R016081', '02R017069', '02R017071', '02R017073', '02R019069', '02R019071', '02R019073', '02R010086'))
         with sqlite3.connect(self.db, factory=ClosingConnection) as c:
             body = json.loads(c.execute('select body from official_records where id=?', (spare,)).fetchone()[0])
-            c.execute('update official_records set body=? where id=?', (json.dumps(dict(body, name='Christophe Duriez', occupancy='assigned')), spare))
+            c.execute('update official_records set body=? where id=?', (json.dumps(dict(body, name='Demo Arden', occupancy='assigned')), spare))
             c.execute('delete from desk_user_links where desk_id=?', (spare,))
         self.write('plan.xlsx', self.layout)
         self.sync.configure(Settings(folder=str(self.folder), enabled=True))
         result = self.sync.check()
         self.assertEqual(result['status']['state'], 'synced', result['status'])
         self.assertEqual(official(self.db, spare)[0]['occupancy'], 'vacant', 'The plan places him at 02R015079 only')
-        self.assertEqual(official(self.db, '02R015079')[0]['name'], 'Christophe Duriez')
+        self.assertEqual(official(self.db, '02R015079')[0]['name'], 'Demo Arden')
 
     def test_the_card_lists_people_on_more_than_one_desk(self):
         twice = [row[:] for row in self.layout]
-        twice[2] = ['Christophe Duriez\n02R015079', 'Christophe Duriez\n02R016079', 'Credit Sales\n02R016081']
+        twice[2] = ['Demo Arden\n02R015079', 'Demo Arden\n02R016079', 'Credit Sales\n02R016081']
         self.write('plan.xlsx', twice)
         self.sync.configure(Settings(folder=str(self.folder), enabled=True))
         found = {p['name']: p['desks'] for p in self.sync.check()['duplicates']}

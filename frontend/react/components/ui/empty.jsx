@@ -1,37 +1,31 @@
-import * as React from "react"
+import * as React from "react";
 import { cva } from "class-variance-authority";
-import { cn } from "cn"
+import { cn } from "cn";
 
-function Empty({
-  className,
-  ...props
-}) {
+function Empty({ className, ...props }) {
   return (
     <div
       data-slot="empty"
       className={cn(
         "atl:flex atl:min-w-0 atl:flex-1 atl:flex-col atl:items-center atl:justify-center atl:gap-6 atl:rounded-lg atl:border atl:border-dashed atl:border-border atl:p-6 atl:text-center atl:text-balance atl:md:p-12",
-        className
+        className,
       )}
       {...props}
     />
-  )
+  );
 }
 
-function EmptyHeader({
-  className,
-  ...props
-}) {
+function EmptyHeader({ className, ...props }) {
   return (
     <div
       data-slot="empty-header"
       className={cn(
         "atl:flex atl:max-w-sm atl:flex-col atl:items-center atl:gap-2 atl:text-center",
-        className
+        className,
       )}
       {...props}
     />
-  )
+  );
 }
 
 const emptyMediaVariants = cva(
@@ -46,14 +40,10 @@ const emptyMediaVariants = cva(
     defaultVariants: {
       variant: "default",
     },
-  }
-)
+  },
+);
 
-function EmptyMedia({
-  className,
-  variant = "default",
-  ...props
-}) {
+function EmptyMedia({ className, variant = "default", ...props }) {
   return (
     <div
       data-slot="empty-icon"
@@ -61,52 +51,46 @@ function EmptyMedia({
       className={cn(emptyMediaVariants({ variant, className }))}
       {...props}
     />
-  )
+  );
 }
 
-function EmptyTitle({
-  className,
-  ...props
-}) {
+function EmptyTitle({ className, ...props }) {
   return (
     <div
       data-slot="empty-title"
-      className={cn("atl:text-lg atl:font-medium atl:tracking-tight", className)}
+      className={cn(
+        "atl:text-lg atl:font-medium atl:tracking-tight",
+        className,
+      )}
       {...props}
     />
-  )
+  );
 }
 
-function EmptyDescription({
-  className,
-  ...props
-}) {
+function EmptyDescription({ className, ...props }) {
   return (
     <div
       data-slot="empty-description"
       className={cn(
         "atl:text-sm/relaxed atl:text-muted-foreground atl:[&>a]:underline atl:[&>a]:underline-offset-4 atl:[&>a:hover]:text-primary",
-        className
+        className,
       )}
       {...props}
     />
-  )
+  );
 }
 
-function EmptyContent({
-  className,
-  ...props
-}) {
+function EmptyContent({ className, ...props }) {
   return (
     <div
       data-slot="empty-content"
       className={cn(
         "atl:flex atl:w-full atl:max-w-sm atl:min-w-0 atl:flex-col atl:items-center atl:gap-4 atl:text-sm atl:text-balance",
-        className
+        className,
       )}
       {...props}
     />
-  )
+  );
 }
 
 export {
@@ -116,4 +100,4 @@ export {
   EmptyDescription,
   EmptyContent,
   EmptyMedia,
-}
+};

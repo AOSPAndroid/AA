@@ -182,26 +182,33 @@
       selected = null;
       controls();
     };
-    return AtlasClient.watch("console-software-action", "/api/software-tools/jobs/" + job,
-      data => {
+    return AtlasClient.watch(
+      "console-software-action",
+      "/api/software-tools/jobs/" + job,
+      (data) => {
         failures = 0;
         el("softwareActionLog").textContent =
-          data.events.map(e => `[${e.time || ""}] ${e.message}`).join("\n") || "Queued…";
+          data.events.map((e) => `[${e.time || ""}] ${e.message}`).join("\n") ||
+          "Queued…";
         if (AtlasClient.terminal.has(data.state)) {
           finish();
-          el("softwareActionLog").textContent += `\nState: ${data.state}. Refresh the software list before another action.`;
+          el("softwareActionLog").textContent +=
+            `\nState: ${data.state}. Refresh the software list before another action.`;
         }
-      }, {
-        onError: error => {
+      },
+      {
+        onError: (error) => {
           failures++;
           el("softwareActionLog").textContent =
             `Monitoring unavailable: ${error.message}. Check deployment history; the remote action may still be running.`;
           if (failures >= 8) {
             finish();
-            el("softwareActionLog").textContent += "\nMonitoring stopped after eight failed attempts. Refresh inventory only after checking the operation state.";
+            el("softwareActionLog").textContent +=
+              "\nMonitoring stopped after eight failed attempts. Refresh inventory only after checking the operation state.";
           }
         },
-      });
+      },
+    );
   }
   document.addEventListener("DOMContentLoaded", () => {
     el("adminSoftware").onclick = () =>

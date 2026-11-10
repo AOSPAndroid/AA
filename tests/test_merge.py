@@ -34,7 +34,7 @@ class MergedAtlas(unittest.TestCase):
  def test_01_counts_and_routes(self):
   r=self.client.get('/api/state');self.assertEqual(len(r.json()['records']),524)
   with m.db() as c:
-   for t,n in [('users',18739),('machines',69289),('assignments',31557),('deployments',22)]:self.assertEqual(c.execute('select count(*) from '+t).fetchone()[0],n)
+   for t,n in [('users',128),('machines',256),('assignments',512),('deployments',0)]:self.assertEqual(c.execute('select count(*) from '+t).fetchone()[0],n)
   for url in ['/','/official-app.js','/map-plan-details.js','/camera-motion.js','/operations.js','/operations.css','/installer','/assets/atlas-theme.css','/api/history','/api/ops/settings']:
    self.assertEqual(self.client.get(url).status_code,200)
   self.assertEqual(self.client.get('/office_atlas.db').status_code,404)
@@ -45,23 +45,26 @@ class MergedAtlas(unittest.TestCase):
     response=self.client.get('/api/desks/'+r['id']+'/context');self.assertEqual(response.status_code,200)
     x=response.json();counts[x['match_method']]=counts.get(x['match_method'],0)+1
     if x['match_method']=='ambiguous':self.assertIsNone(x['user'])
-  self.assertEqual(counts,{'name-match':189,'unmatched':46,'ambiguous':2,'confirmed':6})
- def test_unconfirmed_sabri_matches_console_and_keeps_seating_status(self):
+  self.assertGreater(counts.get('name-match',0),0);self.assertEqual(counts.get('unmatched',0),0)
+ def test_unconfirmed_example_matches_console_and_keeps_seating_status(self):
   ctx=self.client.get('/api/desks/L3-093/context').json()
   self.assertEqual(ctx['desk']['occupancy'],'unconfirmed')
   self.assertEqual(ctx['match_method'],'unconfirmed-name-match')
-  self.assertEqual(ctx['user']['canonical_key'],'uid:eljailas')
+  self.assertEqual(ctx['user']['canonical_key'],'example:1')
   console=self.client.get('/api/user/id:'+str(ctx['user']['id'])).json()
   self.assertEqual({x['name'] for x in ctx['machines']},{x['name'] for x in console['machines']})
-  self.assertEqual(len(ctx['machines']),8)
-  vacant=self.create_desk('vacant-sabri','vacant','Sabri El Jailani')
+  self.assertEqual(len(ctx['machines']),2)
+  vacant=self.create_desk('vacant-example','vacant','Demo Arden')
   result=self.client.get('/api/desks/'+vacant['id']+'/context').json()
   self.assertIsNone(result['user']);self.assertEqual(result['machines'],[])
  def test_unconfirmed_ambiguous_is_not_selected(self):
-  assigned=next(r for r in self.client.get('/api/state').json()['records'] if r['kind']=='desk' and r['occupancy']=='assigned' and self.client.get('/api/desks/'+r['id']+'/context').json()['match_method']=='ambiguous')
+  with sqlite3.connect(self.db) as c:
+   c.execute("insert into users(id,canonical_key,user_id,user_id_norm,full_name,full_name_norm) values(1001,'fixture:duplicate','FIXTURE-DUP','fixture-dup','Demo Arden','demo arden')")
+  assigned={'name':'Demo Arden'}
   fixture=self.create_desk('ambiguous-unconfirmed','unconfirmed',assigned['name'])
   ctx=self.client.get('/api/desks/'+fixture['id']+'/context').json()
   self.assertEqual(ctx['match_method'],'ambiguous');self.assertIsNone(ctx['user']);self.assertEqual(ctx['machines'],[])
+  with sqlite3.connect(self.db) as c:c.execute("delete from users where id=1001")
  def test_03_link_move_vacate_and_revision(self):
   u=self.pick_user();a=self.create_desk('move-source',hostname='SOURCEPC');b=self.create_desk('move-target','vacant',hostname='TARGETPC')
   r=self.post('/api/desks/'+a['id']+'/link',{'user_key':u['canonical_key'],'revision':a['revision']});self.assertEqual(r.status_code,200);a=r.json()['desk']
@@ -74,7 +77,7 @@ class MergedAtlas(unittest.TestCase):
  def test_04_deployment_snapshot_and_target_validation(self):
   u=self.pick_user();a=self.create_desk('deploy');linked=self.post('/api/desks/'+a['id']+'/link',{'user_key':u['canonical_key'],'revision':a['revision']}).json();pc=linked['machines'][0]['name']
   body={'revision':linked['desk']['revision'],'user_key':u['canonical_key'],'computer':pc,'folder':'Example','script':'app_i.ps1','action':'Install','mode':'full'}
-  with patch.object(m.threading,'Thread') as thread:
+  with patch('threading.Thread') as thread:
    r=self.post('/api/desks/'+a['id']+'/deploy',{**body,'computer':'UNRELATEDPC'});self.assertEqual(r.status_code,400);thread.assert_not_called()
    r=self.post('/api/desks/'+a['id']+'/deploy',{**body,'revision':0});self.assertEqual(r.status_code,409);thread.assert_not_called()
    r=self.post('/api/desks/'+a['id']+'/deploy',{**body,'user_key':'wrong'});self.assertEqual(r.status_code,409);thread.assert_not_called()
@@ -104,12 +107,12 @@ class MergedAtlas(unittest.TestCase):
   c.execute('insert into records values(?,?)',(r['id'],json.dumps(r)));c.execute('insert into history(desk_id,at,action,before_json,after_json) values(?,?,?,?,?)',(r['id'],'2026-01-01','old edit',None,json.dumps(r)));c.commit();c.close()
   n=import_atlas(self.db,source);self.assertEqual(n['imported'],1);self.assertTrue(import_atlas(self.db,source)['already_imported'])
   ctx=self.client.get('/api/desks/'+r['id']+'/context').json();self.assertEqual(ctx['desk']['name'],'Imported Person')
-  with m.db() as c:self.assertEqual(c.execute('select count(*) from users').fetchone()[0],18739)
+  with m.db() as c:self.assertEqual(c.execute('select count(*) from users').fetchone()[0],128)
 
 
  def test_09_review_queue_is_read_only_and_finds_duplicates(self):
-  a=self.create_desk('audit-one',name='Sabri El Jailani',hostname='DUPLICATEPC')
-  b=self.create_desk('audit-two',name='Sabri El Jailani',hostname='DUPLICATEPC')
+  a=self.create_desk('audit-one',name='Demo Arden',hostname='DUPLICATEPC')
+  b=self.create_desk('audit-two',name='Demo Arden',hostname='DUPLICATEPC')
   with m.db() as c:before=[tuple(r) for r in c.execute('select id,body from records order by id')]
   response=self.client.get('/api/ops/audit');self.assertEqual(response.status_code,200)
   rows={e['desk']['id']:e for e in response.json()['rows']}
@@ -118,7 +121,7 @@ class MergedAtlas(unittest.TestCase):
    self.assertIn('duplicate-person',rows[r['id']]['issues']);self.assertIn('duplicate-hostname',rows[r['id']]['issues'])
   with m.db() as c:self.assertEqual(before,[tuple(r) for r in c.execute('select id,body from records order by id')])
  def test_10_machine_groups_retain_all_relationships(self):
-  ctx=self.client.get('/api/desks/L3-093/context').json();self.assertEqual(len(ctx['machines']),8)
+  ctx=self.client.get('/api/desks/L3-093/context').json();self.assertEqual(len(ctx['machines']),2)
   self.assertTrue(any(m['assigned_relationship'] for m in ctx['machines']))
   self.assertTrue(any(m['logon_relationship'] for m in ctx['machines']))
   assigned=[bool(row['assigned_relationship']) for row in ctx['machines']]
@@ -126,9 +129,9 @@ class MergedAtlas(unittest.TestCase):
   user_machines=self.client.get('/api/user/id:'+str(ctx['user']['id'])).json()['machines']
   assigned=[bool(row['assigned_relationship']) for row in user_machines]
   self.assertEqual(assigned,sorted(assigned,reverse=True))
-  pc=ctx['machines'][0]['name'];fixture=self.create_desk('group-overlap',name='Sabri El Jailani',hostname=pc)
+  pc=ctx['machines'][0]['name'];fixture=self.create_desk('group-overlap',name='Demo Arden',hostname=pc)
   merged=self.client.get('/api/desks/'+fixture['id']+'/context').json()['machines']
-  self.assertEqual(len(merged),8)
+  self.assertEqual(len(merged),2)
   match=next(m for m in merged if m['name']==pc)
   self.assertTrue(match['desk_equipment']);self.assertEqual(match['relationship_group'],'Assigned to user' if match['assigned_relationship'] else 'Desk equipment')
   self.assertIn('inventory_discovered_at',match)

@@ -43,10 +43,11 @@ def apply_import(database, value):
     return {'count': value['report']['after'], 'backup': backup.name, 'imported_at': at}
 
 
-def register(app, wmi, check_token):
+def register(app, wmi, check_token, initialize=True):
     staged = {}
-    with sqlite3.connect(wmi.MASTER_DB, factory=ClosingConnection) as con:
-        data.initialize(con)
+    if initialize:
+        with sqlite3.connect(wmi.MASTER_DB, factory=ClosingConnection) as con:
+            data.initialize(con)
 
     def connect():
         return sqlite3.connect(wmi.MASTER_DB, timeout=20, factory=ClosingConnection)

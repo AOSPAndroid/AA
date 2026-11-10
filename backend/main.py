@@ -1,10 +1,10 @@
 from __future__ import annotations
 from datetime import datetime
-import base64, hashlib, json, logging, os, re, secrets, shutil, sqlite3, subprocess, sys, threading, time, uuid, zlib
+import base64, hashlib, json, logging, os, re, secrets, shutil, sqlite3, subprocess, sys, time, uuid, zlib
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Literal
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -14,8 +14,9 @@ from reboot_monitor import has_echo_reply
 
 ROOT=Path(__file__).resolve().parent.parent
 WEB=ROOT/'frontend'
-LOGS=ROOT/'logs'
-DATA=ROOT/'data'
+from runtime_paths import paths as runtime_paths
+LOGS=runtime_paths().logs
+DATA=runtime_paths().root
 from runtime_paths import database_path
 MASTER_DB=database_path()
 DB=MASTER_DB
@@ -34,16 +35,21 @@ def staging_linked(root):
  from axis.it_tools import linked
  return any(item.exists() and linked(item) for item in [root,*root.parents])
 logging.basicConfig(filename=LOGS/'application.log',level=logging.INFO,format='%(asctime)s %(levelname)s %(message)s')
-app=FastAPI(title='Office Atlas',version=__version__,docs_url='/api/docs',redoc_url=None)
+from backend.lifecycle import Application
+app=Application(title='AA',version=__version__,docs_url='/api/docs',redoc_url=None)
+@app.on_event('shutdown')
+def close_workers():
+ if getattr(app.state,'managed_runtime',False):job_service.pool.shutdown(wait=False,cancel_futures=True)
 from response_compression import compress_responses
 compress_responses(app)
-from job_service import JobService, TERMINAL
-from shared_operations import TargetLock, axis_ready
+from backend.services.job_service import JobService, TERMINAL
+from backend.services.shared_operations import TargetLock, axis_ready
 from axis.it_tools import describe_install_activity, install_activity_finish, install_activity_setup, install_unconfirmed, read_install_activity
 job_service=JobService(lambda:HISTORY_DB,guard=axis_ready)
 jobs=job_service.jobs;lock=job_service.lock
 @app.on_event('startup')
-def recover_operations():job_service.recover()
+def recover_operations():
+ if getattr(app.state,'managed_runtime',False):job_service.recover()
 NAME_RE=re.compile(r'^[A-Za-z0-9_.-]{1,64}$')
 
 def validate_pc(pc):
@@ -274,21 +280,17 @@ def bulk_worker(j,p):
  finally:
   jobs[j].update(state='complete',phase='complete');job_service.save(j)
 
-class ClosingConnection(sqlite3.Connection):
- def __exit__(self,*args):
-  try:return super().__exit__(*args)
-  finally:self.close()
+from backend.services.directory_repository import ClosingConnection, DirectoryRepository
+directory = DirectoryRepository(lambda: MASTER_DB)
+def master_db():return directory.connect(views=False)
+def db():return directory.connect()
 
-def master_db():
- if not MASTER_DB.is_file():raise RuntimeError(f'MasterDB missing: {MASTER_DB}')
- c=sqlite3.connect(MASTER_DB.resolve().as_uri()+'?mode=ro',uri=True,timeout=20,factory=ClosingConnection)
- c.row_factory=sqlite3.Row
- return c
-
-def db():
- c=master_db()
- prepare_views(c)
- return c
+@app.on_event('startup')
+def initialize_runtime():
+ from backend.services.database_schema import initialize
+ if not getattr(app.state,'managed_runtime',False):return
+ if not MASTER_DB.is_file():raise RuntimeError('The configured runtime database is missing. Use the AA application factory.')
+ initialize(MASTER_DB)
 
 @app.middleware('http')
 async def local_only(request:Request,call_next):
@@ -316,7 +318,7 @@ def health():
   with db() as c:
    from vdi_inventory import count
    u=c.execute('select count(*) from users').fetchone()[0];m=c.execute('select count(*) from machines').fetchone()[0];v=count(c)
- return {'identity':identity(),'users':u,'machines':m,'vdi_machines':v,'database':DB.exists(),'repository':REPO.is_dir(),'application':'Office Atlas','mode':'admin','version':__version__,'instance_id':os.environ.get('ATLAS_INSTANCE_ID'),'instance_root':str(ROOT)}
+ return {'paths':runtime_paths().diagnostics(),'identity':identity(),'users':u,'machines':m,'vdi_machines':v,'database':DB.exists(),'repository':REPO.is_dir(),'application':'Office Atlas','mode':'admin','version':__version__,'instance_id':os.environ.get('ATLAS_INSTANCE_ID'),'instance_root':str(ROOT)}
 
 
 
@@ -434,11 +436,11 @@ def performance_snapshot(pc:str,kind:str='cpu'):
 @app.post('/api/kill')
 def kill(p:Kill):
  import remote_processes,sys
- return remote_processes.terminate(sys.modules[__name__],p)
+ return operations.change(validate_pc(p.computer),'Stop process',lambda:remote_processes.terminate(sys.modules[__name__],p))
 @app.post('/api/remote-registry/enable')
 def enable_remote_registry(p:Machine):
  import service_actions,sys
- result=service_actions.enable_remote_registry(sys.modules[__name__],p.computer)
+ result=operations.change(validate_pc(p.computer),'Enable Remote Registry',lambda:service_actions.enable_remote_registry(sys.modules[__name__],p.computer))
  logging.info('Enabled RemoteRegistry target=%s operator=%s previous_state=%s startup=%s',result['computer'],identity(),result['previous_state'],result['start_mode'])
  return result
 
@@ -450,30 +452,34 @@ def list_services(p:Machine):
 @app.post('/api/services/stop')
 def stop_service(p:ServiceControl):
  import service_actions,sys
- return service_actions.stop_service(sys.modules[__name__],p)
+ return operations.change(validate_pc(p.computer),'Stop service '+p.name,lambda:service_actions.stop_service(sys.modules[__name__],p))
 
 @app.post('/api/services/start')
 def start_service(p:ServiceControl):
  import service_actions,sys
- return service_actions.start_service(sys.modules[__name__],p)
+ return operations.change(validate_pc(p.computer),'Start service '+p.name,lambda:service_actions.start_service(sys.modules[__name__],p))
 
 @app.post('/api/services/restart')
 def restart_service(p:ServiceControl):
  import service_actions,sys
- return service_actions.restart_service(sys.modules[__name__],p)
+ return operations.change(validate_pc(p.computer),'Restart service '+p.name,lambda:service_actions.restart_service(sys.modules[__name__],p))
 
 @app.post('/api/reboot')
 def reboot(p:Machine):
  pc=validate_pc(p.computer)
- job_service.target_ready(pc)
- return reboot_monitor.start(pc)
+ return operations.reboot(pc)
 
 def request_reboot(pc):
  result=ps(f'$ErrorActionPreference="Stop";$o=Get-WmiObject -ComputerName {quote(pc)} Win32_OperatingSystem -EnableAllPrivileges -EA Stop;$o.Reboot().ReturnValue',timeout=30)
  if result.strip()!='0':raise RuntimeError('Windows rejected the reboot request (return '+result.strip()+')')
 
 from reboot_monitor import RebootMonitor
-reboot_monitor=RebootMonitor(request_reboot)
+reboot_monitor=RebootMonitor(request_reboot,store=job_service)
+from backend.services.operation_service import OperationService, OperationContext
+operations=OperationService(OperationContext(lambda:job_service,lambda:reboot_monitor,target_lock))
+def operation_guard(pc):
+ axis_ready(pc);operations.no_reboot(pc)
+job_service.guard=operation_guard
 
 @app.get('/api/reboots')
 def reboots():return reboot_monitor.snapshot()
@@ -650,13 +656,14 @@ def operation_recovery():return {'targets':sorted(job_service.unresolved)}
 
 @app.post('/api/operations/recovery/{pc}')
 def acknowledge_recovery(pc:str,body:dict):
+ from backend.services.target_identity import same_target
  pc=validate_pc(pc)
  if body.get('confirmation')!=pc:raise HTTPException(400,'Type the exact hostname after inspecting the target')
  with lock:
   job_service.acknowledge(pc)
   for key,data in list(jobs.items()):
    if data.get('state') in ('unknown','interrupted') or data.get('recovery_required'):
-    if data.get('target')==pc:data['recovery_acknowledged']=True
+    if same_target(data.get('target'),pc):data['recovery_acknowledged']=True
     data.setdefault('acknowledged_targets',[]).append(pc);job_service.save(key)
   for key,data in list(queue_jobs.items()):
    if data.get('state')=='interrupted':
@@ -665,7 +672,7 @@ def acknowledge_recovery(pc:str,body:dict):
 
 @app.get('/api/database-freshness')
 def database_freshness():
-    excel=ROOT/'templates'/'database040926.xlsx'
+    excel=Path(str(CONFIG.get('directory_source') or ROOT/'data'/'no-source-configured.xlsx'))
     db=DB
     return {'database_exists':db.exists(),'excel_exists':excel.exists(),'database_modified':datetime.fromtimestamp(db.stat().st_mtime).isoformat(sep=' ',timespec='seconds') if db.exists() else '', 'excel_modified':datetime.fromtimestamp(excel.stat().st_mtime).isoformat(sep=' ',timespec='seconds') if excel.exists() else '', 'excel_newer':bool(excel.exists() and db.exists() and excel.stat().st_mtime>db.stat().st_mtime), 'database_size':db.stat().st_size if db.exists() else 0}
 
@@ -692,6 +699,7 @@ def active_deployments():
     active_states={'queued','running','monitoring','paused'}
     deployments=[]
     for job_id,job_data in newest_first(jobs):
+        if job_data.get('kind') in ('mutation','reboot'):continue
         state=job_data.get('state','unknown')
         if state not in active_states:continue
         events=job_data.get('events',[])
@@ -724,7 +732,7 @@ def active_deployments():
 @app.get('/api/deployments/recent')
 def recent_deployments():
     result=[]
-    for job_id,job_data in newest_first(jobs)[:20]:
+    for job_id,job_data in [(k,v) for k,v in newest_first(jobs) if v.get('kind') not in ('mutation','reboot')][:20]:
         events=job_data.get('events',[])
         result.append({
             'id':job_id,'kind':'single','state':job_data.get('state','unknown'),
@@ -784,7 +792,7 @@ def index():
 from pwa import register as register_pwa
 register_pwa(app)
 from atlas_api import register_atlas
-register_atlas(app)
+register_atlas(app,initialize=False)
 from psexec_runner import register as register_psexec
 register_psexec(app,validate_pc)
 from local_terminal import register as register_terminal
@@ -801,16 +809,13 @@ machine_health_checks=register_machine_health(app,_health_sys.modules[__name__])
 
 # Queue reads existing activity; it never initiates remote scans.
 from action_activity import register as register_activity
-import sys
 register_activity(app,sys.modules[__name__])
 
 # Knowledge documents stay in the local Admin runtime, never in published assets.
-from knowledge_base import register as register_knowledge
 from runtime_paths import knowledge_path
 # Articles first: "/api/knowledge/articles" must not be read as a diagram ID.
 from knowledge_articles import register as register_articles
 register_articles(app, knowledge_path())
-register_knowledge(app, knowledge_path())
 
 # Private local Outlook queue: intentionally absent from backend.viewer.
 from mail_inbox import register as register_inbox
@@ -827,30 +832,17 @@ def inbox_packages():
  items=[{'folder':n,'display_name':saved.get(n) or (info.get(n) or {}).get('display_name') or n} for n in names]
  cache.update(at=now,repo=str(REPO),items=items)
  return items
-def knowledge_diagrams():
- path=knowledge_path()
- if not path.is_file():return []
- c=sqlite3.connect(path.resolve().as_uri()+'?mode=ro',uri=True,timeout=5,factory=ClosingConnection)
- with c:
-  rows=c.execute('select id,title,body from documents').fetchall()
- documents=[]
- for doc_id,title,body in rows:
-  try:notes=json.loads(body).get('notes','')
-  except (ValueError,AttributeError):notes=''
-  documents.append({'id':doc_id,'title':title,'notes':str(notes)[:20000]})
- return documents
 def inbox_documents():
- # Diagrams and articles; articles carry their tags and linked issue categories.
+ # Articles carry their tags and linked issue categories.
  from knowledge_articles import all_articles
  articles=[{'id':'article:'+a['id'],'title':a['title'],'notes':a['markdown'][:20000]+'\n'+' '.join(a['tags']),'categories':a['categories']}
            for a in all_articles(knowledge_path())]
- return knowledge_diagrams()+articles
+ return articles
 register_inbox(app, db, packages=inbox_packages, documents=inbox_documents)
 from package_matching import prewarm as prewarm_package_aliases
 prewarm_package_aliases()
 
 # Search everything (Admin only): articles, diagrams, Live Inbox requests and deployments.
-import hashlib
 from search_index import SearchIndex, register as register_search
 def _signature(rows):
  return hashlib.sha256(json.dumps(rows,sort_keys=True,default=str).encode()).hexdigest()
@@ -862,9 +854,6 @@ def search_articles():
  rows=[{'ref':a['id'],'title':a['title'],'at':a['updated'],'extra':{'tags':a['tags'],'categories':a['categories']},
         'body':plain_text(a['markdown'])+'\n'+' '.join(a['tags'])+' '+' '.join(labels.get(c,c) for c in a['categories'])} for a in articles]
  return _signature([(a['id'],a['revision']) for a in articles]),rows
-def search_diagrams():
- documents=knowledge_diagrams()
- return _signature([(d['id'],d['title'],d['notes']) for d in documents]),[{'ref':d['id'],'title':d['title'],'body':d['notes']} for d in documents]
 def search_deployments():
  with hist_db() as c:
   rows=[dict(r) for r in c.execute('select id,started,finished,operator,target,package,action,state,details from deployments order by started desc limit 3000')]
@@ -874,12 +863,13 @@ def search_deployments():
 def search_inbox(after):
  from mail_inbox import mail_directory,queue_reader
  with queue_reader(mail_directory()) as queue:
-  if queue is None:return 0,[]
-  newest=queue.execute('select coalesce(max(id),0) from messages').fetchone()[0]
+  if queue is None:return 0,[],[]
+  alive=[r[0] for r in queue.execute('select id from messages')]
+  newest=max(alive,default=0)
   rows=queue.execute('select * from messages where id>? order by id limit 5000',(after,)).fetchall()
  return newest,[{'ref':r['id'],'title':r['subject'] or (r['body'] or '')[:80] or '(No subject)','at':r['received_at'],
    'body':f"{r['sender_name'] or ''} {r['sender_address'] or ''}\n{(r['body'] or '')[:20000]}",
-   'extra':{'sender':r['sender_name'] or r['sender_address'] or ''}} for r in rows]
+   'extra':{'sender':r['sender_name'] or r['sender_address'] or ''}} for r in rows],alive
 def search_message(message_id):
  from mail_inbox import mail_directory,queue_reader
  with queue_reader(mail_directory()) as queue:
@@ -887,7 +877,7 @@ def search_message(message_id):
  if row is None:raise HTTPException(404,'Message not found in the local inbox.')
  return dict(row)
 search_index=SearchIndex(knowledge_path().parent/'search-index.sqlite3',
- {'article':search_articles,'diagram':search_diagrams,'deployment':search_deployments,'inbox':search_inbox})
+ {'article':search_articles,'deployment':search_deployments,'inbox':search_inbox})
 register_search(app,search_index,search_message)
 # The Atlas Companion runs in the operator's normal Windows session (clipboard, Outlook) and
 # reports here; Live Inbox's collector switches control it once it has connected.
@@ -900,8 +890,8 @@ def _admin_token(request):
 _companion=register_companion(app,sys.modules[__name__],_admin_token,companion_state_path,companion_inbox_path)
 register_inbox_control(app,CompanionInbox(_companion,InboxIntegration()))
 
-# Bundled open-source Draw.io static editor (no server-side editor endpoints).
-app.mount('/drawio', StaticFiles(directory=ROOT/'frontend/drawio', html=True), name='drawio')
 
 from active_directory import register as register_active_directory
 register_active_directory(app, ps)
+app.router.on_startup.remove(initialize_runtime)
+app.router.on_startup.insert(0,initialize_runtime)

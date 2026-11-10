@@ -90,7 +90,7 @@ class ViewerTests(unittest.TestCase):
 class LauncherTests(unittest.TestCase):
     def test_ports_and_bind_addresses(self):
         with patch.dict(os.environ,{'ATLAS_ADMIN_PORT':'8770','ATLAS_VIEWER_PORT':'8771'}):
-            a,v=launcher.servers();self.assertEqual(a['host'],'127.0.0.1');self.assertEqual(v['host'],'0.0.0.0')
+            a,v=launcher.servers();self.assertEqual(a['host'],'127.0.0.1');self.assertEqual(v['host'],'127.0.0.1')
         with patch.dict(os.environ,{'ATLAS_ADMIN_PORT':'8770','ATLAS_VIEWER_PORT':'8770'}):
             with self.assertRaises(ValueError):launcher.servers()
     def test_failed_viewer_rolls_back_only_new_admin(self):

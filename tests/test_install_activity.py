@@ -16,7 +16,7 @@ import zlib
 
 from backend import main
 from backend.axis_operations import AtlasOperations
-from job_service import JobService
+from backend.services.job_service import JobService
 
 SETTLED = {"settled": True, "waited_seconds": 95, "still_running": [], "left_running": [], "windows_installer_busy": False,
            "tracking": "job object", "software": {"added": [{"name": "Example App", "version": "2.1"}], "removed": [], "changed": []}}

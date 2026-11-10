@@ -32,11 +32,24 @@ def ping_once(computer):
 
 
 class RebootMonitor:
-    def __init__(self, reboot, ping=ping_once, timeout=900, interval=2, clock=time.monotonic):
+    def __init__(self, reboot, ping=ping_once, timeout=900, interval=2, clock=time.monotonic, store=None):
         self.reboot, self.ping = reboot, ping
         self.timeout, self.interval, self.clock = timeout, interval, clock
         self.lock = threading.RLock()
         self.rows, self.stops = {}, {}
+        self.store = store
+
+    def _save(self, key):
+        if self.store is None:
+            return
+        row = self.rows[key]
+        state = row['state']
+        journal = dict(row, kind='reboot', action_title='Reboot', monitor_state=state,
+                       state='running' if state in ACTIVE else 'complete' if state == 'complete' else 'failed' if state=='not_started' else 'unknown',
+                       recovery_required=state not in ACTIVE and state not in ('complete','not_started'))
+        with self.store.lock:
+            self.store.jobs[key] = journal
+            self.store.save(key)
 
     def _event(self, key, message, state=None):
         with self.lock:
@@ -48,6 +61,7 @@ class RebootMonitor:
                 row['state'] = state
                 if state not in ACTIVE:
                     row['finished'] = self.clock()
+            self._save(key)
 
     def start(self, computer):
         with self.lock:
@@ -60,10 +74,17 @@ class RebootMonitor:
             self.rows[key] = {'id': key, 'target': computer, 'state': 'requesting',
                               'message': 'Requesting reboot', 'events': []}
             self.stops[key] = threading.Event()
+            try:
+                self._save(key)
+            except BaseException:
+                del self.rows[key], self.stops[key]
+                raise
             worker = threading.Thread(target=self._run, args=(key,), daemon=True, name='atlas-reboot')
             try:
                 worker.start()
             except Exception:
+                self.rows[key]['state']='not_started'
+                self._save(key)
                 del self.rows[key], self.stops[key]
                 raise
             return {'job': key, 'target': computer}
@@ -114,6 +135,10 @@ class RebootMonitor:
         with self.lock:
             self._prune()
             rows = copy.deepcopy(list(self.rows.values()))
+        if self.store is not None:
+            with self.store.lock:
+                rows += [dict(copy.deepcopy(row),state=row.get('monitor_state') if row.get('state') == 'complete' else row.get('state'))
+                         for key,row in self.store.jobs.items() if row.get('kind') == 'reboot' and key not in self.rows]
         return {'reboots': rows, 'count': sum(r['state'] in ACTIVE for r in rows)}
 
     def stop(self, key):

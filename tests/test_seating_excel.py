@@ -64,6 +64,15 @@ class SeatingExcel(unittest.TestCase):
   self.assertEqual(self.state(),before)
   with fixture_connect(self.db) as c:c.execute("update users set full_name='new' where canonical_key='key1'")
   with self.assertRaises(sx.store.Conflict):sx.apply_sheet(self.db,p,self.root/'backups','test.xlsx')
+ def test_blank_team_export_roundtrip_is_unchanged(self):
+  with fixture_connect(self.db) as c:
+   for table in ('records','official_records'):
+    for desk,body in c.execute('select id,body from '+table).fetchall():
+     import json
+     row=json.loads(body);row['team']='';c.execute('update '+table+' set body=? where id=?',(json.dumps(row),desk))
+  p=self.root/'blank-teams.xlsx';p.write_bytes(sx.export_sheet(self.db,'official'))
+  with fixture_connect(self.db) as c:plan=sx.plan_sheet(c,sx.read_sheet(p))
+  self.assertFalse(plan['updates'])
  def test_roundtrip_and_formula_rejection(self):
   with fixture_connect(self.db) as c:
    r=sx.store.get_record(c,self.ids[2]);sx.store.save_record(c,dict(r,team='Unassigned'),r,'fixture')

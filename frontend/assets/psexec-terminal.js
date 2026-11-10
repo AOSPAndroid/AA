@@ -44,8 +44,14 @@
     current = data;
     get("RunStatus").textContent =
       `${data.target} · ${data.title} · ${data.state}${data.exit_code == null ? "" : ` · exit ${data.exit_code}`}`;
-    get("RunStatus").dataset.tone = data.exit_code != null ? (Number(data.exit_code) === 0 ? "good" : "bad")
-      : /fail|error|timed out|timeout/i.test(data.state || "") ? "bad" : "";
+    get("RunStatus").dataset.tone =
+      data.exit_code != null
+        ? Number(data.exit_code) === 0
+          ? "good"
+          : "bad"
+        : /fail|error|timed out|timeout/i.test(data.state || "")
+          ? "bad"
+          : "";
     get("Host").textContent =
       `Atlas account: ${data.account} · ${data.host_elevated ? "Elevated" : "Not elevated"}`;
     get("Output").textContent =
@@ -211,17 +217,22 @@
         "Finish the active session before switching transcripts.";
       return;
     }
-    const id = get("Sessions").value, turn = ++transcriptRequest;
+    const id = get("Sessions").value,
+      turn = ++transcriptRequest;
     if (!id) return;
     try {
       const data = await request("/api/psexec/runs/" + id);
-      if (turn === transcriptRequest && get("Sessions").value === id) follow(data);
+      if (turn === transcriptRequest && get("Sessions").value === id)
+        follow(data);
     } catch (e) {
       if (turn === transcriptRequest && get("Sessions").value === id)
         get("TerminalMessage").textContent = e.message;
     }
   };
-  window.addEventListener("pagehide", () => { transcriptRequest++; listRequest++; });
+  window.addEventListener("pagehide", () => {
+    transcriptRequest++;
+    listRequest++;
+  });
   window.AtlasPsExecTerminal = {
     review(payload, command) {
       review = payload;

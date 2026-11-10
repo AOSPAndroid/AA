@@ -17,13 +17,20 @@ class ServiceRoutes(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         database = Path(self.tmp.name) / 'empty.db'
         sqlite3.connect(database).close()
+        from backend.services.job_service import JobService
+        self.service=JobService(lambda:database)
+        self.addCleanup(self.service.pool.shutdown,wait=True)
         self.patches = [
+            patch.object(main,'job_service',self.service),
+            patch.object(main,'jobs',self.service.jobs),
+            patch.object(main,'queue_jobs',self.service.queues),
+            patch.object(main,'lock',self.service.lock),
             patch.object(main, 'MASTER_DB', database),
             patch.object(main, 'ps'),
             patch.object(main, 'identity', return_value='FIXTURE OPERATOR'),
             patch.object(main, 'run', side_effect=AssertionError('Real Windows transport is forbidden')),
         ]
-        self.transport = [item.start() for item in self.patches][1]
+        self.transport = [item.start() for item in self.patches][5]
         self.client = TestClient(main.app, base_url='http://127.0.0.1', client=('127.0.0.1', 12345))
         self.payload = {'computer': 'testpc', 'name': 'FixtureService', 'expected_identity': 'a' * 64}
 
@@ -69,6 +76,8 @@ class ServiceRoutes(unittest.TestCase):
         for action in ('start', 'stop', 'restart'):
             for values in ({'computer': 'OTHER'}, {'name': 'OtherService'}, {'state': 'Start Pending'}):
                 with self.subTest(action=action, values=values):
+                    self.service.acknowledge('TESTPC')
+                    for row in self.service.jobs.values():row['recovery_acknowledged']=True
                     self.transport.return_value = json.dumps({**self.response(action), **values})
                     response = self.client.post('/api/services/' + action, json=self.payload)
                     self.assertEqual(response.status_code, 502, response.text)

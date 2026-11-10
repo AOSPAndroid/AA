@@ -60,12 +60,19 @@
       if (response.status === 403) session = null;
       // Form checks (422) list each refused field; name it instead of a bare status code.
       const fields = Array.isArray(data.detail)
-        ? data.detail.map((item) => `${(item.loc || []).slice(1).join(".") || "value"}: ${item.msg}`).join("; ")
+        ? data.detail
+            .map(
+              (item) =>
+                `${(item.loc || []).slice(1).join(".") || "value"}: ${item.msg}`,
+            )
+            .join("; ")
         : "";
       throw Error(
         typeof data.detail === "string"
           ? data.detail
-          : fields ? `Atlas could not accept this value. ${fields}` : data.error || `Request failed (${response.status}).`,
+          : fields
+            ? `Atlas could not accept this value. ${fields}`
+            : data.error || `Request failed (${response.status}).`,
       );
     }
     return data;

@@ -10,7 +10,7 @@ from unittest.mock import patch
 from fastapi import HTTPException
 from backend import main
 from install_fixture import finished
-from job_service import JobService
+from backend.services.job_service import JobService
 
 
 class RemoteRecovery(unittest.TestCase):

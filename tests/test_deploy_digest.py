@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 from backend import main
 from install_fixture import finished
-from job_service import JobService
+from backend.services.job_service import JobService
 
 
 class DeploymentDigest(unittest.TestCase):

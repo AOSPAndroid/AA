@@ -206,10 +206,16 @@
       if (Array.isArray(data.results)) {
         const count = data.results.length;
         const succeeded = data.results.filter((row) => row?.ok === true).length;
-        return succeeded + " succeeded" + (count > succeeded ? " · " + (count - succeeded) + " to review" : "");
+        return (
+          succeeded +
+          " succeeded" +
+          (count > succeeded ? " · " + (count - succeeded) + " to review" : "")
+        );
       }
       if (Array.isArray(data.items))
-        return data.items.length + (data.items.length === 1 ? " result" : " results");
+        return (
+          data.items.length + (data.items.length === 1 ? " result" : " results")
+        );
       if (Array.isArray(data)) return data.length + " rows";
       if (data.job_id) return "job started";
     }
@@ -440,10 +446,13 @@
       label.textContent = status.ready
         ? status.model || "Model ready"
         : "Model offline · /jobs is still available";
+      if (status.persistence_error) label.textContent += " · Chat not saved";
       label.dataset.ready = String(Boolean(status.ready));
-      label.title = status.ready
-        ? "Running locally"
-        : "Start AA to load the model, then refresh.";
+      label.title =
+        status.persistence_error ||
+        (status.ready
+          ? "Running locally"
+          : "Start AA to load the model, then refresh.");
     } catch (error) {
       label.textContent = "Axis unavailable";
       label.dataset.ready = "false";
