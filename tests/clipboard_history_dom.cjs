@@ -48,11 +48,13 @@ const enrich = (text, source, id) => ({ id, at: '2026-10-20T15:40:00', source, t
   await until(() => $('clipboardCount').textContent === '1');
   assert(d.querySelector('#clipboardToggle [data-atlas-icon], #clipboardToggle svg') || $('clipboardToggle').dataset.atlasIcon === 'clipboard');
 
-  // The Clipboard page has its own place in the sidebar, beside Workspace and Live Inbox.
-  const nav = [...d.querySelectorAll('nav [data-page]')].map(b => b.dataset.page);
-  assert.equal(nav[nav.indexOf('inbox') + 1], 'clipboard');
+  // Clipboard stays one click from the header and opens its grouped sidebar entry.
+  const clipboardNav=d.querySelector('nav [data-page="clipboard"]');
+  assert.equal(clipboardNav.closest('details').id,'console-tools');
+  assert($('clipboardToggle'));
   assert.equal(w.eval('navigationIcons.clipboard'), w.AtlasUI.icon('clipboard'));
   run("page('clipboard')");
+  assert($('console-tools').open);
   assert($('clipboard').classList.contains('active'));
   assert.equal(d.querySelector('nav [data-page="clipboard"]').getAttribute('aria-current'), 'page');
   assert.equal($('pageTitle').textContent, 'Clipboard');
