@@ -50,7 +50,8 @@ def field_map(kind):
     mapping = {alias: (column, label) for source, column, label in FIELDS.get(kind, ())
                for alias in (source, column)}
     if kind == 'machine':
-        mapping.update(ci=mapping['name'], model=mapping['model_id'])
+        mapping.update(ci=mapping['name'], configuration_item=mapping['name'],
+                       configuration_item_name=mapping['name'], ci_name=mapping['name'], model=mapping['model_id'])
     return mapping
 
 

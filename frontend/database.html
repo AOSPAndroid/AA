@@ -503,7 +503,7 @@
           </p>
           <p>
             Upload the raw export. Repeated short names are reconciled using the
-            newest updated record, or the last CSV row when no update date is
+            newest updated record, or the last export row when no update date is
             supplied. Missing or unusual short names are kept as metadata only.
             Every original row is preserved.
           </p>
@@ -512,20 +512,20 @@
           </p>
           <div class="atlas-import-controls" id="package-data-controls">
             <label
-              >ServiceNow package export (.csv)<input
+              >ServiceNow package export (.csv or .xlsx)<input
                 id="package-data-file"
                 type="file"
-                accept=".csv,text/csv"
+                accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             /></label>
             <button id="package-data-validate" class="primary" type="button">
               Validate and preview
             </button>
             <p id="package-data-message" role="status" aria-live="polite">
-              Choose the ServiceNow package CSV.
+              Choose the ServiceNow package CSV or Excel export.
             </p>
             <progress
               id="package-data-progress"
-              aria-label="Processing package CSV"
+              aria-label="Processing package export"
               hidden
             ></progress>
             <section

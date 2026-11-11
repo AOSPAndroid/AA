@@ -81,7 +81,7 @@
       ...(data.files || []).map((file) => {
         const group = groups[groupOf[file.kind]];
         const outcome = !file.kind
-          ? "not an export Atlas reads"
+          ? file.reason || "not an export Atlas reads"
           : !file.used
             ? "older copy, not used"
             : group

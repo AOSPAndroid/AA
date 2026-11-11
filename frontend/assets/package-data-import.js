@@ -1,4 +1,4 @@
-/* Independent package CSV workflow; no directory or SharePoint-file changes. */
+/* Independent package export workflow; no directory or SharePoint-file changes. */
 (() => {
   const $ = (id) => document.getElementById("package-data-" + id);
   if (!$("file")) return;
@@ -60,7 +60,7 @@
         " Source coverage will be checked when the folder is connected.";
     $("warnings").textContent = [
       r.duplicates
-        ? `${r.duplicates.toLocaleString()} duplicate rows reconciled automatically; ${(r.conflicting_duplicates || 0).toLocaleString()} differing records. Newest valid updated record wins, otherwise the last CSV row.`
+        ? `${r.duplicates.toLocaleString()} duplicate rows reconciled automatically; ${(r.conflicting_duplicates || 0).toLocaleString()} differing records. Newest valid updated record wins, otherwise the last export row.`
         : "",
       "All original rows and columns are preserved.",
       r.unmatched_rows
@@ -79,7 +79,7 @@
     $("duplicate-examples").textContent = (r.duplicate_examples || [])
       .map(
         (row) =>
-          `${row.short_name || row.package_id || "Short name not supplied"} · ${row.rows.toLocaleString()} rows · selected row ${row.selected_row.toLocaleString()} (${row.selection === "latest_updated" ? "newest updated record" : "last CSV row"})`,
+          `${row.short_name || row.package_id || "Short name not supplied"} · ${row.rows.toLocaleString()} rows · selected row ${row.selected_row.toLocaleString()} (${row.selection === "latest_updated" ? "newest updated record" : "last export row"})`,
       )
       .join("\n");
     $("unmatched").hidden = !(r.unmatched_examples || []).length;
@@ -107,7 +107,7 @@
     message(
       file
         ? `${file.name} selected. Click Validate and preview.`
-        : "Choose the ServiceNow package CSV.",
+        : "Choose the ServiceNow package CSV or Excel export.",
     );
     controls();
   };
@@ -115,10 +115,10 @@
     task("validate", async () => {
       clear();
       const file = $("file").files[0];
-      if (!file || !file.name.toLowerCase().endsWith(".csv"))
-        throw Error("Choose a package CSV file.");
+      if (!file || !/\.(csv|xlsx)$/i.test(file.name))
+        throw Error("Choose a package CSV or XLSX file.");
       if (file.size > 10 * 1024 * 1024)
-        throw Error("Package CSV exceeds 10 MB.");
+        throw Error("Package export exceeds 10 MB.");
       message("Reading the raw export and comparing package metadata…");
       show(
         await api("/api/package-data/import/preview", {

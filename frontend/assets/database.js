@@ -83,7 +83,7 @@
       $("coverage").innerHTML = coverage(d.coverage);
     if (summary && !interacted)
       $("message").textContent =
-        `${d.counts.users.toLocaleString()} users · ${d.counts.machines.toLocaleString()} machines · ${d.counts.assignments.toLocaleString()} relationships${d.busy ? " — jobs active; imports are blocked." : ""}`;
+        `${d.counts.users.toLocaleString()} users · ${d.counts.machines.toLocaleString()} machines · ${d.counts.assignments.toLocaleString()} relationships${d.busy ? " — jobs active; directory and seating updates wait until they finish." : ""}`;
     $("history").innerHTML = d.history.length
       ? d.history
           .map(

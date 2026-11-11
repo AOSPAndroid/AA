@@ -73,7 +73,7 @@ def register(app, wmi, check_token, initialize=True):
 
     def stage(content, source):
         clean()
-        incoming, parsed = data.parse_csv(content)
+        incoming, parsed = data.parse(content, source)
         with connect() as con:
             existing = data.load(con)
         preview = data.report(incoming, existing, wmi.REPO, parsed)
@@ -87,13 +87,13 @@ def register(app, wmi, check_token, initialize=True):
     async def preview(request: Request):
         check_token(request)
         filename = Path(unquote(request.headers.get('x-file-name', 'packages.csv')).replace('\\', '/')).name[:200]
-        if not filename.lower().endswith('.csv'):
-            raise HTTPException(400, 'Use the ServiceNow package CSV export.')
+        if Path(filename).suffix.casefold() not in ('.csv','.xlsx'):
+            raise HTTPException(400, 'Use the ServiceNow package CSV or XLSX export.')
         content = bytearray()
         async for chunk in request.stream():
             content.extend(chunk)
-            if len(content) > 10 * 1024 * 1024:
-                raise HTTPException(400, 'Package CSV exceeds 10 MB.')
+            if len(content) > data.MAX_FILE_BYTES:
+                raise HTTPException(400, 'Package export exceeds 10 MB.')
         try:
             return await run_in_threadpool(stage, bytes(content), filename)
         except ValueError as error:
@@ -110,7 +110,7 @@ def register(app, wmi, check_token, initialize=True):
         check_token(request); clean()
         value = staged.get(key)
         if not value:
-            raise HTTPException(409, 'Package preview expired or was replaced. Validate the CSV again.')
+            raise HTTPException(409, 'Package preview expired or was replaced. Validate the export again.')
         result = apply_import(wmi.MASTER_DB, value)
         del staged[key]
         return {'ok': True, **result}
