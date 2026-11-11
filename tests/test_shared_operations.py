@@ -11,10 +11,10 @@ from unittest.mock import patch
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
-import shared_operations as shared
+from backend.services import shared_operations as shared
 from action_activity import register
 from axis import it_tools
-from job_service import JobService
+from backend.services.job_service import JobService
 
 
 class SharedOperationTests(unittest.TestCase):

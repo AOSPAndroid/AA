@@ -6,7 +6,7 @@ from fastapi import HTTPException,Request
 from starlette.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse,Response,JSONResponse
 import atlas_store as store
-from merge_data import atlas_schema,import_atlas
+from merge_data import import_atlas
 from desk_directory import resolve_person,desk_context as shared_context,person_desks
 from static_responses import cached_file,prewarm
 TOKEN=secrets.token_urlsafe(32)
@@ -14,10 +14,12 @@ TOKEN=secrets.token_urlsafe(32)
 def now():return datetime.now(timezone.utc).isoformat()
 
 
-def register_atlas(app):
+def register_atlas(app, initialize=True):
  from backend import main as wmi
- store.DB=wmi.MASTER_DB;store.initialize()
- with store.connect() as c:atlas_schema(c)
+ store.DB=wmi.MASTER_DB
+ if initialize:
+  from backend.services.database_schema import initialize as initialize_schema
+  initialize_schema(wmi.MASTER_DB)
 
  def check_token(request):
   if not secrets.compare_digest(request.headers.get('x-atlas-token',''),TOKEN):raise HTTPException(403,'Refresh the page before saving')
@@ -300,14 +302,14 @@ def register_atlas(app):
   return {'repository':str(path),'available':True}
 
  from database_manager import register_database_manager
- register_database_manager(app,wmi,check_token)
+ register_database_manager(app,wmi,check_token,initialize=False)
  from package_data_api import register as register_package_data
- register_package_data(app,wmi,check_token)
+ register_package_data(app,wmi,check_token,initialize=False)
  from vdi_data_api import register as register_vdi_data
- register_vdi_data(app,wmi,check_token)
+ register_vdi_data(app,wmi,check_token,initialize=False)
 
  from official_atlas import register_official
- register_official(app,wmi,check_token)
+ register_official(app,wmi,check_token,initialize=False)
  from remote_software import register_remote_software
  register_remote_software(app,wmi,check_token)
  # Reads only the operator's own session; never registered on the LAN viewer.
@@ -330,7 +332,7 @@ def register_atlas(app):
 
  @app.get('/{filename}')
  def atlas_asset(filename:str,request:Request):
-  allowed={'service-actions.js','site-info.js','command-registry.js','command-palette.js','command-palette.css','catalogue.js','map-furniture.js','map-amenities.js','map-plan-details.js','official-app.js','camera-motion.js','map-cursor.js','official-data.json','official.css','style.css','data.json','operations.js','operations.css'}
+  allowed={'action-capabilities.js','service-actions.js','site-info.js','command-registry.js','command-palette.js','command-palette.css','catalogue.js','map-furniture.js','map-amenities.js','map-plan-details.js','official-app.js','camera-motion.js','map-cursor.js','official-data.json','official.css','style.css','data.json','operations.js','operations.css'}
   allowed|={'official-floor-'+str(n)+ext for n in range(-1,9) for ext in ('.jpg','.pdf')}
   allowed|={'studio-floor-'+str(n)+'.svg' for n in range(-1,9)}
   if filename not in allowed:raise HTTPException(404,'Not found')

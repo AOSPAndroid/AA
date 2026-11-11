@@ -233,7 +233,15 @@
     if (!capture?.active) return;
     capture.active = false;
     capture.reason = reason;
-    window.AtlasActions?.put({id:"diagnostics",title:"Slowness capture",target:capture.computer,state:reason === "Capture complete" ? "complete" : "cancelled",message:reason,view:"admin",expires:Date.now()+10000});
+    window.AtlasActions?.put({
+      id: "diagnostics",
+      title: "Slowness capture",
+      target: capture.computer,
+      state: reason === "Capture complete" ? "complete" : "cancelled",
+      message: reason,
+      view: "admin",
+      expires: Date.now() + 10000,
+    });
     clearTimeout(capture.nextTimer);
     clearTimeout(capture.deadlineTimer);
     capture.controller?.abort();
@@ -260,7 +268,22 @@
       samples: [],
       errors: [],
     });
-    window.AtlasActions?.put({id:"diagnostics",title:"Slowness capture",target:pc,state:"running",message:"Collecting samples for up to 60 seconds",view:"admin",controls:[{label:"Stop capture",run:()=>{if(capture===run)stop("Stopped by operator");}}]});
+    window.AtlasActions?.put({
+      id: "diagnostics",
+      title: "Slowness capture",
+      target: pc,
+      state: "running",
+      message: "Collecting samples for up to 60 seconds",
+      view: "admin",
+      controls: [
+        {
+          label: "Stop capture",
+          run: () => {
+            if (capture === run) stop("Stopped by operator");
+          },
+        },
+      ],
+    });
     updatePerformanceControls();
     run.deadlineTimer = setTimeout(() => {
       if (capture === run) stop("Capture complete");
@@ -290,7 +313,22 @@
         throw Error("Invalid diagnostic sample; refresh and try again.");
       run.samples.push(compact(data, (performance.now() - run.started) / 1000));
       run.policy = probePolicy(data);
-      window.AtlasActions?.put({id:"diagnostics",title:"Slowness capture",target:run.computer,state:"running",message:run.samples.length+" samples collected",view:"admin",controls:[{label:"Stop capture",run:()=>{if(capture===run)stop("Stopped by operator");}}]});
+      window.AtlasActions?.put({
+        id: "diagnostics",
+        title: "Slowness capture",
+        target: run.computer,
+        state: "running",
+        message: run.samples.length + " samples collected",
+        view: "admin",
+        controls: [
+          {
+            label: "Stop capture",
+            run: () => {
+              if (capture === run) stop("Stopped by operator");
+            },
+          },
+        ],
+      });
       const expanded = [...$("#adminOverview").querySelectorAll("details")].map(
         (detail) => detail.open,
       );
@@ -366,9 +404,17 @@
       ${[...new Set([...errors, ...samples.flatMap((s) => s.warnings)])].map((message) => `<p class="muted">${esc(message)}</p>`).join("")}</details>`;
   }
   function report(pc = adminComputer()) {
-    const computer = String(pc || "").trim().toUpperCase();
-    if (!computer || !capture ||
-      String(capture.computer || "").trim().toUpperCase() !== computer) return "";
+    const computer = String(pc || "")
+      .trim()
+      .toUpperCase();
+    if (
+      !computer ||
+      !capture ||
+      String(capture.computer || "")
+        .trim()
+        .toUpperCase() !== computer
+    )
+      return "";
     const findings = analyze(capture.samples);
     return [
       `${capture.computer} — Slowness capture`,
@@ -396,18 +442,33 @@
     ].join("\n");
   }
   function snapshot(pc) {
-    const computer = String(pc || "").trim().toUpperCase();
-    const matching = computer && capture &&
-      String(capture.computer || "").trim().toUpperCase() === computer;
+    const computer = String(pc || "")
+      .trim()
+      .toUpperCase();
+    const matching =
+      computer &&
+      capture &&
+      String(capture.computer || "")
+        .trim()
+        .toUpperCase() === computer;
     const last = matching ? capture.samples.at(-1) : null;
     return {
       computer,
-      state: !matching ? "not_scanned" : capture.active ? "running"
-        : capture.errors.length ? "failed"
-          : capture.reason === "Capture complete" ? "complete" : "stopped",
+      state: !matching
+        ? "not_scanned"
+        : capture.active
+          ? "running"
+          : capture.errors.length
+            ? "failed"
+            : capture.reason === "Capture complete"
+              ? "complete"
+              : "stopped",
       startedAt: matching ? capture.startedAt : null,
-      checkedAt: typeof last?.checked_at === "string" &&
-        Number.isFinite(Date.parse(last.checked_at)) ? last.checked_at : null,
+      checkedAt:
+        typeof last?.checked_at === "string" &&
+        Number.isFinite(Date.parse(last.checked_at))
+          ? last.checked_at
+          : null,
       sampleCount: matching ? capture.samples.length : 0,
       reason: matching ? capture.reason || "" : "",
       report: matching ? report(computer) : "",

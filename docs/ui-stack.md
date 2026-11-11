@@ -1,30 +1,32 @@
-# React interaction layer
+# UI ownership
 
-Atlas now bundles React, Motion, Tailwind CSS and Radix UI locally. The first shared component is a Tools button that morphs into an inline panel: searchable actions and fields, animated cards, and a moving tab indicator. It runs in the console and map, Admin, Demo, the prepared Preview, and the Admin database manager.
+The map and console use the existing vanilla JavaScript renderers. The command palette
+and contextual actions use `atlas/command-registry.js`; Viewer presentation capabilities
+are declared once in `atlas/action-capabilities.js`. The Viewer backend independently
+rejects mutations and private Admin endpoints.
 
-The panel stays in document flow. Workspace and Active Directory remain separate, and opening Tools never queries a directory, scans a machine, stops a service, or starts a deployment. Action cards invoke the original visible control; the current visibility and disabled state are checked again at activation. Read-only restrictions and existing confirmation dialogs remain authoritative. Large inventory and process tables keep their existing renderers.
+React islands handle packages and Live Inbox in the console. The map and data-source
+screens use their existing vanilla JavaScript and do not load the React bundle. Workspace
+focuses on search and recent activity; its duplicate shortcut cards have been removed.
+The Motion dependency and global press/menu animations are removed. Map and panel motion
+remain in the existing renderer, including reduced-motion and Citrix preferences.
 
-Radix Collapsible, Tabs and Tooltip provide accessible component behavior. Motion adds size/layout transitions, card entrances, button press feedback and menu entrances. Animations respect Atlas's existing animation preference, the operating-system preference, and Citrix display mode. Effects finish promptly; there is no idle animation loop or table-wide mutation observer. Keyboard users can select tabs with arrow keys, use the search field, and close Tools with Escape. Activating a field retains focus after the closing animation.
+The console shows six primary sections, with four specialist sections under More tools.
+Selecting one through a command or direct route reveals its group. Data sources shows
+the automatic feeds first; manual uploads and recovery are folded into one section.
+Direct upload links open the section and focus the requested workflow. Active import
+reviews, operation activity and Axis approvals remain visible in their existing surfaces.
 
-Tailwind utilities use the `atl:` prefix and omit Preflight. Component geometry and Atlas tokens remain in `frontend/assets/design-system.css`, loaded after the generated CSS. Map labels and Draw.io remain unchanged.
+Use `npm ci --ignore-scripts` and `npm run build:ui`. Sources live in `frontend/react`,
+with committed local browser assets in `frontend/assets`. Windows users need no Node
+installation. CI rebuilds and checks parity with the committed output.
 
-## Development
+The interaction bundle budget is 360 KiB raw / 115 KiB gzip, enforced against the actual
+production bundle. Third-party Markdown/Mermaid/terminal libraries load only when needed
+and are copied with licenses by `npm run vendor:sync`.
 
-Use a Node version supported by the pinned Vite release (Node 22.12+ or newer; this work was built with Node 24).
-
-```sh
-npm ci
-npm run build:ui
-```
-
-Sources live in `frontend/react/` and `vite.config.mjs`. Build output is the committed, single-file ES2020 browser module `frontend/assets/atlas-interactions.js` plus `atlas-interactions.css`. Windows Admin and Demo require no Node installation to run Atlas. Keep the generated assets synchronized when changing source. `npm run watch:ui` rebuilds while editing.
-
-The production JavaScript budget is 500 KiB uncompressed and 160 KiB gzipped. The first build is approximately 436 kB / 139 kB gzipped. It has no runtime CDN imports or extra JavaScript chunks. Existing revalidation/versioned asset serving covers the bundle.
-
-If the module cannot load, the existing action index remains available as an inline fallback. A late React mount removes that fallback and its event listeners, preventing duplicate controls.
-
-## Verification
-
-`tests/react_controls_dom.cjs` checks control discovery, source labels, map controls, restrictions and stale/replaced nodes. `tests/react_interactions_dom.cjs` executes the actual production React/Radix/Motion bundle, including filtering, original handlers, field focus, Escape, navigation and disabled-state changes, with no service requests. `tests/react_bundle_dom.cjs` checks the local bundle, performance budget, utility prefix and stylesheet order. The standard frontend runner includes all three.
-
-Browser checks cover Admin, Demo, Preview, maps, database and Desktop at 1366, 768 and 390 pixels, along with reduced motion and zero background remote calls. Directory/context menu tests also pass with Motion enabled. Preview source and saved versions preserve the real-data snapshot and current access policy.
+`ui-tokens.css` owns shared colors and appearance variables, theme/shell files own global
+layout, and `design-system.css` owns final component geometry. Retired editor and Tools
+styles have been removed. Generated map geometry and vendor code are excluded from
+formatting; regenerate them using their source tools. After stylesheet color changes,
+run `python tools/build_dark_overrides.py`.

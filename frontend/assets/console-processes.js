@@ -85,8 +85,8 @@ function selectPerformanceView(kind) {
     kind === "cpu"
       ? "Right-click for process actions · Click a thread count for a manual CPU thread sample."
       : kind === "overview"
-      ? "Right-click a process for actions, or click its thread count to inspect CPU usage. Thread inspection is a separate manual scan."
-      : "Right-click a process for actions. Values reflect the last scan; refresh to check for changes.";
+        ? "Right-click a process for actions, or click its thread count to inspect CPU usage. Thread inspection is a separate manual scan."
+        : "Right-click a process for actions. Values reflect the last scan; refresh to check for changes.";
   $("#processHint").hidden = !processSnapshot;
   $("#processFilter").disabled = !processSnapshot;
   $("#processCount").textContent = "No scan";
@@ -113,11 +113,18 @@ function updatePerformanceControls() {
         : !adminComputer()
           ? "Choose a target"
           : performanceErrors.has(activePerformance)
-            ? processSnapshot ? "Previous scan" : "Scan failed"
-            : processSnapshot ? "Snapshot" : "Not scanned";
-  state.dataset.state = busy || capturing
-    ? "busy"
-    : performanceErrors.has(activePerformance) ? "error" : "idle";
+            ? processSnapshot
+              ? "Previous scan"
+              : "Scan failed"
+            : processSnapshot
+              ? "Snapshot"
+              : "Not scanned";
+  state.dataset.state =
+    busy || capturing
+      ? "busy"
+      : performanceErrors.has(activePerformance)
+        ? "error"
+        : "idle";
   $("#refreshProcesses").textContent = busy
     ? `Scanning ${performanceViews[busy.kind].label}…`
     : `${processSnapshot ? "Refresh" : "Scan"} ${label}`;
@@ -188,38 +195,59 @@ function acceptPerformanceSnapshot(computer, kind, raw) {
 // Detached, target-specific cached data for manual diagnostic handoffs.
 window.AtlasPerformance = {
   snapshot(pc) {
-    const computer = String(pc || "").trim().toUpperCase();
+    const computer = String(pc || "")
+      .trim()
+      .toUpperCase();
     const views = [];
     let latestKind = null;
     for (const [kind, cached] of performanceCache) {
-      if (!computer || String(cached.computer || "").trim().toUpperCase() !== computer)
+      if (
+        !computer ||
+        String(cached.computer || "")
+          .trim()
+          .toUpperCase() !== computer
+      )
         continue;
-      const checkedAt = typeof cached.data.checked_at === "string" &&
+      const checkedAt =
+        typeof cached.data.checked_at === "string" &&
         Number.isFinite(Date.parse(cached.data.checked_at))
-          ? cached.data.checked_at : null;
-      const error = performanceErrorTargets.get(kind) === computer
-        ? performanceErrors.get(kind) : null;
+          ? cached.data.checked_at
+          : null;
+      const error =
+        performanceErrorTargets.get(kind) === computer
+          ? performanceErrors.get(kind)
+          : null;
       views.push({
         computer,
         kind,
         checkedAt,
         data: JSON.parse(JSON.stringify(cached.data)),
-        ...(error ? {error} : {}),
+        ...(error ? { error } : {}),
       });
       latestKind = kind;
     }
     for (const [kind, error] of performanceErrors) {
-      if (!computer || performanceErrorTargets.get(kind) !== computer ||
-        views.some(view => view.kind === kind)) continue;
-      views.push({computer, kind, checkedAt: null, data: null, error});
+      if (
+        !computer ||
+        performanceErrorTargets.get(kind) !== computer ||
+        views.some((view) => view.kind === kind)
+      )
+        continue;
+      views.push({ computer, kind, checkedAt: null, data: null, error });
     }
-    const scanningKind = computer && performanceInFlight?.computer === computer
-      ? performanceInFlight.kind : null;
+    const scanningKind =
+      computer && performanceInFlight?.computer === computer
+        ? performanceInFlight.kind
+        : null;
     return {
       computer,
-      state: scanningKind ? "checking"
-        : views.some(view => view.error) ? "failed"
-          : latestKind ? "ready" : "not_scanned",
+      state: scanningKind
+        ? "checking"
+        : views.some((view) => view.error)
+          ? "failed"
+          : latestKind
+            ? "ready"
+            : "not_scanned",
       scanningKind,
       views,
       latestKind,
@@ -348,19 +376,46 @@ function renderProcesses() {
           .includes(q),
       ),
     )
-    .filter(({ row }) => scope === "all" || (perfNumber(row.CPU) != null && row.CPU >= (scope === "busy" ? 10 : 1)));
+    .filter(
+      ({ row }) =>
+        scope === "all" ||
+        (perfNumber(row.CPU) != null && row.CPU >= (scope === "busy" ? 10 : 1)),
+    );
   if (kind === "cpu") {
     rows.sort((a, b) => {
-      if (sort === "name") return String(a.row.Process || "").localeCompare(String(b.row.Process || ""), undefined, { sensitivity: "base" }) || a.index-b.index;
-      if (sort === "pid") return (perfNumber(a.row.PID) ?? Infinity)-(perfNumber(b.row.PID) ?? Infinity) || a.index-b.index;
+      if (sort === "name")
+        return (
+          String(a.row.Process || "").localeCompare(
+            String(b.row.Process || ""),
+            undefined,
+            { sensitivity: "base" },
+          ) || a.index - b.index
+        );
+      if (sort === "pid")
+        return (
+          (perfNumber(a.row.PID) ?? Infinity) -
+            (perfNumber(b.row.PID) ?? Infinity) || a.index - b.index
+        );
       const field = sort === "threads" ? "Threads" : "CPU";
-      return (perfNumber(b.row[field]) ?? -Infinity)-(perfNumber(a.row[field]) ?? -Infinity) || a.index-b.index;
+      return (
+        (perfNumber(b.row[field]) ?? -Infinity) -
+          (perfNumber(a.row[field]) ?? -Infinity) || a.index - b.index
+      );
     });
   }
   const error = performanceErrors.get(kind),
     busy = performanceInFlight,
     total = processSnapshot.data.total_processes ?? S.processes.length,
-    ordering = kind === "cpu" ? ({cpu:"CPU",threads:"threads",name:"process name",pid:"PID"}[sort] || "CPU") : kind === "memory" ? "resident memory" : kind === "overview" ? "CPU" : kind.toUpperCase();
+    ordering =
+      kind === "cpu"
+        ? { cpu: "CPU", threads: "threads", name: "process name", pid: "PID" }[
+            sort
+          ] || "CPU"
+        : kind === "memory"
+          ? "resident memory"
+          : kind === "overview"
+            ? "CPU"
+            : kind.toUpperCase();
   $("#processStatus").textContent =
     `${processSnapshot.computer} · ${S.processes.length} of ${total} ${kind === "cpu" ? "returned" : `processes returned · Sorted by ${ordering}`} · Checked ${processSnapshot.checked}${q || scope !== "all" ? ` · ${rows.length} matching` : ""}${busy ? ` · Scanning ${performanceViews[busy.kind].label}… Previous result shown.` : window.AtlasDiagnostics?.isRunning() ? " · Slowness capture running." : kind === "cpu" ? "" : " · Snapshot; no scan running."}${error ? ` · ${error}` : ""}`;
   const columns = performanceColumns(kind);
@@ -521,33 +576,53 @@ function perfStat(label, value, detail, tone = "") {
   return `<article class="perf-card ${tone}"><div><h3>${esc(label)}</h3><strong class="perf-big">${esc(value)}</strong><p>${esc(detail)}</p></div></article>`;
 }
 function renderCPUPerformance(snapshot) {
-  const s = performanceSummary(snapshot), cores = s.cores || [],
-    measured = cores.map(core => ({core, value:perfNumber(core.percent)})).filter(c => c.value != null),
-    busiest = measured.reduce((best, current) => !best || current.value > best.value ? current : best, null),
-    queue = perfNumber(s.processor_queue), logical = perfNumber(s.logical_processors),
-    notes = performanceInsights(s), warnings = snapshot.data.warnings || [];
-  const stat = (label, value, detail = "", tone = "") => `<div class="cpu-stat ${tone}"><span>${esc(label)}</span><b>${esc(value)}</b>${detail ? `<small>${esc(detail)}</small>` : ""}</div>`;
+  const s = performanceSummary(snapshot),
+    cores = s.cores || [],
+    measured = cores
+      .map((core) => ({ core, value: perfNumber(core.percent) }))
+      .filter((c) => c.value != null),
+    busiest = measured.reduce(
+      (best, current) => (!best || current.value > best.value ? current : best),
+      null,
+    ),
+    queue = perfNumber(s.processor_queue),
+    logical = perfNumber(s.logical_processors),
+    notes = performanceInsights(s),
+    warnings = snapshot.data.warnings || [];
+  const stat = (label, value, detail = "", tone = "") =>
+    `<div class="cpu-stat ${tone}"><span>${esc(label)}</span><b>${esc(value)}</b>${detail ? `<small>${esc(detail)}</small>` : ""}</div>`;
   const summary = `<div class="cpu-summary" aria-label="CPU summary">
-    <div class="cpu-stat cpu-total ${perfTone(s.cpu_percent,70,85)}"><span>Total CPU</span>${perfMeter(s.cpu_percent,70,85)}<small>Across all logical processors</small></div>
-    ${stat("Busiest logical CPU",perfValue(busiest?.value,"%"),busiest ? `CPU ${busiest.core.name}` : "Counter unavailable",perfTone(busiest?.value,70,90))}
-    ${stat("Queued threads",perfValue(queue),logical == null ? "Logical CPU count unavailable" : `${perfValue(logical)} logical CPUs`,queue != null && logical > 0 && queue > logical ? "perf-warn" : "")}
-    ${stat("Threads",perfValue(s.thread_count))}
-    ${stat("Context switches / s",perfValue(s.context_switches_sec))}
-    ${stat("Logical CPUs",perfValue(logical),`${measured.length} usable counters`)}
+    <div class="cpu-stat cpu-total ${perfTone(s.cpu_percent, 70, 85)}"><span>Total CPU</span>${perfMeter(s.cpu_percent, 70, 85)}<small>Across all logical processors</small></div>
+    ${stat("Busiest logical CPU", perfValue(busiest?.value, "%"), busiest ? `CPU ${busiest.core.name}` : "Counter unavailable", perfTone(busiest?.value, 70, 90))}
+    ${stat("Queued threads", perfValue(queue), logical == null ? "Logical CPU count unavailable" : `${perfValue(logical)} logical CPUs`, queue != null && logical > 0 && queue > logical ? "perf-warn" : "")}
+    ${stat("Threads", perfValue(s.thread_count))}
+    ${stat("Context switches / s", perfValue(s.context_switches_sec))}
+    ${stat("Logical CPUs", perfValue(logical), `${measured.length} usable counters`)}
   </div>`;
   const activity = `<section class="cpu-core-panel" aria-label="Logical processor activity"><div class="cpu-core-heading"><b>Logical processor activity</b><small>${cores.length ? `${measured.length} of ${cores.length} returned counters available` : "Counters unavailable"}</small></div>
-    ${cores.length ? `<div class="perf-cores cpu-core-grid" tabindex="0" aria-label="All returned logical processor readings">${cores.map(core => {const value=perfNumber(core.percent);return `<div class="cpu-core ${perfTone(value,70,90)}" aria-label="Logical CPU ${esc(core.name)}: ${value == null ? "unavailable" : perfValue(value,"%")}"><span>CPU ${esc(core.name)}</span><b>${perfValue(value,"%")}</b><i style="--usage:${value == null ? 0 : Math.min(100,Math.max(0,value))}%" aria-hidden="true"></i></div>`}).join("")}</div>` : '<p class="perf-unavailable">Windows did not return logical processor counters for this scan.</p>'}
+    ${
+      cores.length
+        ? `<div class="perf-cores cpu-core-grid" tabindex="0" aria-label="All returned logical processor readings">${cores
+            .map((core) => {
+              const value = perfNumber(core.percent);
+              return `<div class="cpu-core ${perfTone(value, 70, 90)}" aria-label="Logical CPU ${esc(core.name)}: ${value == null ? "unavailable" : perfValue(value, "%")}"><span>CPU ${esc(core.name)}</span><b>${perfValue(value, "%")}</b><i style="--usage:${value == null ? 0 : Math.min(100, Math.max(0, value))}%" aria-hidden="true"></i></div>`;
+            })
+            .join("")}</div>`
+        : '<p class="perf-unavailable">Windows did not return logical processor counters for this scan.</p>'
+    }
   </section>`;
   const evidence = `<details class="cpu-reading-details"><summary>CPU interpretation${notes.length ? ` · ${notes.length} cues` : ""}${warnings.length ? ` · Partial scan: ${warnings.length} counter groups unavailable` : ""}</summary>
-    ${notes.length ? `<ul>${notes.map(note => `<li>${esc(note)}</li>`).join("")}</ul>` : '<p>No CPU warning threshold crossed among available counters in this sample.</p>'}
+    ${notes.length ? `<ul>${notes.map((note) => `<li>${esc(note)}</li>`).join("")}</ul>` : "<p>No CPU warning threshold crossed among available counters in this sample.</p>"}
     <p>Process CPU % is relative to all logical processors. A busy logical CPU can indicate a single saturated thread even when total CPU is low. Use a process's thread count to sample its threads. Queue depth and thread counts need comparison across scans to establish sustained pressure.</p>
     <p>These are sampled readings. CPU ≥85%, logical CPU ≥90% and process CPU ≥25% are investigation cues. Missing counters remain unavailable. Compare manual scans while reproducing the issue.</p>
-    ${warnings.length ? `<ul>${warnings.map(warning => `<li>${esc(warning)}</li>`).join("")}</ul>` : ""}
+    ${warnings.length ? `<ul>${warnings.map((warning) => `<li>${esc(warning)}</li>`).join("")}</ul>` : ""}
   </details>`;
-  $("#adminOverview").innerHTML = `<div class="cpu-results">${summary}${activity}${performanceComparison(snapshot)}${evidence}</div>`;
+  $("#adminOverview").innerHTML =
+    `<div class="cpu-results">${summary}${activity}${performanceComparison(snapshot)}${evidence}</div>`;
 }
 function renderPerformance() {
-  if (processSnapshot.kind === "cpu") return renderCPUPerformance(processSnapshot);
+  if (processSnapshot.kind === "cpu")
+    return renderCPUPerformance(processSnapshot);
   const data = processSnapshot.data,
     kind = processSnapshot.kind,
     s = performanceSummary(processSnapshot);
@@ -775,8 +850,12 @@ function copyPerformanceReport() {
 }
 function confirmProcessKill(question, multiple = false) {
   const dialog = $("#processKillDialog");
-  $("#processKillTitle").textContent = multiple ? "Kill processes?" : "Kill process?";
-  $("#confirmProcessKill").textContent = multiple ? "Kill processes" : "Kill process";
+  $("#processKillTitle").textContent = multiple
+    ? "Kill processes?"
+    : "Kill process?";
+  $("#confirmProcessKill").textContent = multiple
+    ? "Kill processes"
+    : "Kill process";
   $("#processKillWarning").textContent = multiple
     ? "Unsaved work in these processes may be lost."
     : "Unsaved work in this process may be lost.";
@@ -794,20 +873,26 @@ function confirmProcessKill(question, multiple = false) {
   });
 }
 function updateProcessActionControls() {
-  const disabled = !!window.AtlasReadOnly || !adminComputer() || processActionPending;
-  document.querySelectorAll('#killBtn, [data-quick-kill], #killMatches').forEach(button => {
-    button.disabled = disabled;
-  });
+  const disabled =
+    !!window.AtlasReadOnly || !adminComputer() || processActionPending;
+  document
+    .querySelectorAll("#killBtn, [data-quick-kill], #killMatches")
+    .forEach((button) => {
+      button.disabled = disabled;
+    });
 }
 function quickProcessKill(value, match = "exact") {
   const computer = adminComputer();
   value = value.trim();
   if (!computer) return toast("Enter a target machine first");
   if (match === "contains" && !/^[A-Za-z0-9][A-Za-z0-9_. -]{2,63}$/.test(value))
-    return toast("Enter 3–64 characters of a process name, starting with a letter or number; wildcards are not supported");
-  const scope = match === "contains"
-    ? `all processes whose names contain "${value}" (case-insensitive)`
-    : `all processes named ${value}`;
+    return toast(
+      "Enter 3–64 characters of a process name, starting with a letter or number; wildcards are not supported",
+    );
+  const scope =
+    match === "contains"
+      ? `all processes whose names contain "${value}" (case-insensitive)`
+      : `all processes named ${value}`;
   return terminateProcess(
     { computer, value, match },
     `Kill ${scope} on ${computer}, across all sessions?`,
@@ -825,16 +910,23 @@ async function terminateProcess(payload, question, snapshot) {
   processActionPending = true;
   updateProcessActionControls();
   try {
-    if (!(await confirmProcessKill(question, !!payload.match || !/^\d+$/.test(payload.value)))) return;
+    if (
+      !(await confirmProcessKill(
+        question,
+        !!payload.match || !/^\d+$/.test(payload.value),
+      ))
+    )
+      return;
     if (
       payload.computer !== adminComputer() ||
       (snapshot && snapshot !== processSnapshot)
     )
       return toast("Target or process list changed. Select the process again.");
     if (payload.match) {
-      $("#quickKillStatus").textContent = payload.match === "contains"
-        ? `Terminating process names containing "${payload.value}" on ${payload.computer}…`
-        : `Terminating ${payload.value} on ${payload.computer}…`;
+      $("#quickKillStatus").textContent =
+        payload.match === "contains"
+          ? `Terminating process names containing "${payload.value}" on ${payload.computer}…`
+          : `Terminating ${payload.value} on ${payload.computer}…`;
       $("#quickKillStatus").hidden = false;
     }
     const result = await api("/api/kill", {
@@ -976,11 +1068,12 @@ function bindProcessControls() {
   $("#refreshProcesses").onclick = () => admin(activePerformance);
   selectPerformanceView(activePerformance);
   $("#copyPerformance").onclick = copyPerformanceReport;
-  document.querySelectorAll('[data-quick-kill]').forEach(button => {
+  document.querySelectorAll("[data-quick-kill]").forEach((button) => {
     button.onclick = () => quickProcessKill(button.dataset.quickKill);
   });
-  $("#killMatches").onclick = () => quickProcessKill($("#killMatchWord").value, "contains");
-  $("#killMatchWord").addEventListener("keydown", event => {
+  $("#killMatches").onclick = () =>
+    quickProcessKill($("#killMatchWord").value, "contains");
+  $("#killMatchWord").addEventListener("keydown", (event) => {
     if (event.key === "Enter" && !event.isComposing) {
       event.preventDefault();
       $("#killMatches").click();
@@ -1006,7 +1099,7 @@ function bindProcessControls() {
     );
   };
   $("#kill").addEventListener("keydown", (event) => {
-    if(event.key === "Enter" && !event.isComposing) {
+    if (event.key === "Enter" && !event.isComposing) {
       event.preventDefault();
       $("#killBtn").click();
     }

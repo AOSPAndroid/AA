@@ -28,6 +28,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const applied = { ...held, status: { state: 'synced', message: 'Up to date.' }, held: null,
     groups: { ...held.groups, directory: { result: 'applied', message: '2 users.' } },
     history: [{ at: '2026-10-27T09:02:00+00:00', kind: 'Users & devices', files: ['sys_user.csv', 'alm_asset.csv'], result: 'applied', message: '2 users.' }, ...held.history] };
+  held.files.push({ ...held.files[0], name: 'device-without-ci.xlsx', reason: 'Device export needs a CI or Name hostname column.' });
   let current = held, statusReads = 0;
   const response = (data, status = 200) => ({ ok: status < 400, status, json: async () => data });
   const f = await fixture({ html: 'frontend/database.html', url: 'http://localhost/manage-database', fetch: async (url, options = {}) => {
@@ -51,6 +52,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const rows = [...get('import-folder-files').children].map((li) => [li.textContent, li.className, li.dataset.muted || '']);
   assert.match(rows[0][0], /^Notes\.xlsx · Other · .* · not an export Atlas reads$/);
   assert.equal(rows[0][2], 'true');
+  assert.match(rows.at(-1)[0], /Device export needs a CI or Name hostname column\./);
   assert.match(rows[1][0], /SingleSessionMachines \(1\)\.csv · Citrix VDI · .* · imported · 2 VDIs\./);
   assert.equal(rows[1][1], 'status-ok');
   assert.match(rows[2][0], /older copy, not used/);

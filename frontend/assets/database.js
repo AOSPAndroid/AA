@@ -83,7 +83,7 @@
       $("coverage").innerHTML = coverage(d.coverage);
     if (summary && !interacted)
       $("message").textContent =
-        `${d.counts.users.toLocaleString()} users · ${d.counts.machines.toLocaleString()} machines · ${d.counts.assignments.toLocaleString()} relationships${d.busy ? " — jobs active; imports are blocked." : ""}`;
+        `${d.counts.users.toLocaleString()} users · ${d.counts.machines.toLocaleString()} machines · ${d.counts.assignments.toLocaleString()} relationships${d.busy ? " — jobs active; directory and seating updates wait until they finish." : ""}`;
     $("history").innerHTML = d.history.length
       ? d.history
           .map(
@@ -118,10 +118,15 @@
         return `<article><b>${esc(k)}</b><p>${x.before.toLocaleString()} → ${x.after.toLocaleString()}</p><p>+${x.added} added · −${x.removed} removed${x.changed !== undefined ? " · " + x.changed + " changed" : ""}</p></article>`;
       })
       .join("");
-    const resolution=d.report.import_resolution || {};
-    const duplicates=(resolution.user?.duplicate_rows || 0)+(resolution.machine?.duplicate_rows || 0);
+    const resolution = d.report.import_resolution || {};
+    const duplicates =
+      (resolution.user?.duplicate_rows || 0) +
+      (resolution.machine?.duplicate_rows || 0);
     if (duplicates || resolution.mobile_identity_rows)
-      $("changes").insertAdjacentHTML("beforeend",`<article><h3>Extract handled automatically</h3><p>${duplicates.toLocaleString()} duplicate rows consolidated · ${(resolution.mobile_identity_rows || 0).toLocaleString()} mobile rows identified by hardware ID or source row.</p><p>Every original row and column is retained. Separate phones stay separate.</p></article>`);
+      $("changes").insertAdjacentHTML(
+        "beforeend",
+        `<article><h3>Extract handled automatically</h3><p>${duplicates.toLocaleString()} duplicate rows consolidated · ${(resolution.mobile_identity_rows || 0).toLocaleString()} mobile rows identified by hardware ID or source row.</p><p>Every original row and column is retained. Separate phones stay separate.</p></article>`,
+      );
     if (d.report.coverage)
       $("changes").insertAdjacentHTML(
         "beforeend",
@@ -152,7 +157,8 @@
       "Review the removals, confirm the complete snapshot, then type APPLY to enable saving.";
     $("preview").scrollIntoView({ block: "start", behavior: "instant" });
   }
-  const megabytes = (files) => (files.reduce((sum, file) => sum + file.size, 0) / 1024 / 1024).toFixed(1);
+  const megabytes = (files) =>
+    (files.reduce((sum, file) => sum + file.size, 0) / 1024 / 1024).toFixed(1);
   $("file").onchange = () => {
     interacted = true;
     resetPreview();
@@ -183,14 +189,22 @@
     task("validate", async () => {
       resetPreview();
       const files = [...($("file").files || [])];
-      if (!files.length) throw Error("Choose an Excel workbook, or your users and devices exports.");
-      if (files.length > 2) throw Error("Choose one workbook, or exactly two exports: users and devices.");
+      if (!files.length)
+        throw Error(
+          "Choose an Excel workbook, or your users and devices exports.",
+        );
+      if (files.length > 2)
+        throw Error(
+          "Choose one workbook, or exactly two exports: users and devices.",
+        );
       if (files.length === 2) {
         if (files.some((file) => !/\.(xlsx|csv)$/i.test(file.name)))
           throw Error("Use the .xlsx or .csv exports from ServiceNow.");
         if (files.some((file) => file.size > 50 * 1024 * 1024))
           throw Error("Each export must be under the 50 MB upload limit.");
-        message(`Combining ${files[0].name} and ${files[1].name}, then comparing… Large extracts can take a few minutes. Keep this page open.`);
+        message(
+          `Combining ${files[0].name} and ${files[1].name}, then comparing… Large extracts can take a few minutes. Keep this page open.`,
+        );
         const result = await api("/api/database/preview-pair", {
           method: "POST",
           headers: {
@@ -204,12 +218,15 @@
         show(result);
         const { users_file, devices_file, rows } = result.pair || {};
         if (users_file)
-          $("source").textContent = `Users: ${users_file} (${(rows?.users ?? 0).toLocaleString()} rows) · Devices: ${devices_file} (${(rows?.devices ?? 0).toLocaleString()} rows)`;
+          $("source").textContent =
+            `Users: ${users_file} (${(rows?.users ?? 0).toLocaleString()} rows) · Devices: ${devices_file} (${(rows?.devices ?? 0).toLocaleString()} rows)`;
         return;
       }
       const [file] = files;
       if (!file.name.toLowerCase().endsWith(".xlsx"))
-        throw Error("Use an .xlsx workbook with users and devices tabs, or select both exports together.");
+        throw Error(
+          "Use an .xlsx workbook with users and devices tabs, or select both exports together.",
+        );
       if (file.size > 50 * 1024 * 1024)
         throw Error("Excel file exceeds the 50 MB upload limit.");
       message(
@@ -276,14 +293,23 @@
   // Direct updater commands focus the matching workflow without opening a file dialog.
   function focusUploadSection() {
     const section = document.getElementById(location.hash.slice(1));
-    if (!section?.classList.contains("atlas-upload-section")) return;
+    if (
+      !section ||
+      (!section.classList.contains("atlas-upload-section") &&
+        !section.closest("#manual-imports"))
+    )
+      return;
+    for (let parent = section; parent; parent = parent.parentElement)
+      if (parent.tagName === "DETAILS") parent.open = true;
     section.tabIndex = -1;
     section.focus({ preventScroll: true });
     section.scrollIntoView({ block: "start", behavior: "instant" });
   }
   window.addEventListener("hashchange", focusUploadSection);
   // The import folder card reports imports made from the folder.
-  window.addEventListener("atlas:database-imported", () => status().catch(() => {}));
+  window.addEventListener("atlas:database-imported", () =>
+    status().catch(() => {}),
+  );
   focusUploadSection();
   // Loading counts and history must not disable uploads. Mutation requests
   // acquire a session lazily and recover on the next click after expiry.

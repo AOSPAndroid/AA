@@ -20,7 +20,7 @@ from pathlib import Path, PureWindowsPath
 
 from fastapi import HTTPException
 
-from axis.it_tools import OUTPUT_SECONDS, linked, target_key, inspection_targets, service_targets
+from axis.it_tools import OUTPUT_SECONDS, linked, inspection_targets, service_targets
 
 STRING = {"type": "string"}
 ACTIONS = ["Install", "Uninstall", "Repair"]
@@ -183,24 +183,7 @@ class AtlasOperations:
     def ready(self, pc):
         """Refuse a PC that Atlas, its reboot monitor or an earlier Axis job is working on or left unresolved,
         however the name is written (short or fully qualified)."""
-        wmi, key = self.wmi, target_key(pc)
-        wmi.job_service.target_ready(pc)
-        if any(target_key(name) == key for name in list(wmi.job_service.unresolved)):
-            raise ValueError("%s has an earlier operation with an unknown outcome. Inspect it, then acknowledge it "
-                             "in Atlas's Operation recovery or with it_job_status." % pc)
-        with wmi.lock:
-            pools = [dict(wmi.jobs), dict(getattr(wmi, "queue_jobs", {}))]
-        for pool in pools:
-            for job_id, job in pool.items():
-                names = [job.get("target")] + list(job.get("targets") or [])
-                names += [row.get("target") or row.get("machine") for row in job.get("items", job.get("results", []))
-                          if isinstance(row, dict)]
-                if job.get("state") not in TERMINAL and any(isinstance(n, str) and target_key(n) == key for n in names):
-                    raise ValueError("Atlas is working on %s (operation %s, %s). Wait for it to finish." %
-                                     (pc, job_id, job.get("state")))
-        for row in wmi.reboot_monitor.snapshot()["reboots"]:
-            if row.get("state") in REBOOT_ACTIVE and target_key(row.get("target")) == key:
-                raise ValueError("%s is rebooting under Atlas's reboot monitor (%s)." % (pc, row.get("id")))
+        self.wmi.operations.ready(pc)
         for legacy in self.legacy():
             job = legacy.blocking_job(pc)
             if job:
@@ -210,14 +193,8 @@ class AtlasOperations:
     @contextmanager
     def held(self, pc):
         """Atlas's per-PC lock for a direct change, and the same checks again now that approval is given."""
-        guard = self.wmi.target_lock(pc)
-        if not guard.acquire(blocking=False):
-            raise ValueError("Another Atlas operation is active on %s; wait for it to finish." % pc)
-        try:
-            self.ready(pc)
+        with self.wmi.operations.held(pc):
             yield
-        finally:
-            guard.release()
 
     def snapshot(self, pc, view, items):
         self.prune()
@@ -404,10 +381,8 @@ class AtlasOperations:
             self.ready(pc)
             if not self.confirm("%s service %s (%s) on %s" % (verbs[action], item["name"], item.get("display_name", ""), pc)):
                 return {"state": "declined"}
-            import service_actions
             request = wmi.ServiceControl(computer=pc, name=item["name"], expected_identity=item["identity"])
-            with self.held(pc):
-                return getattr(service_actions, verbs[action] + "_service")(wmi, request)
+            return getattr(wmi, verbs[action] + "_service")(request)
         if action == "process_stop":
             if type(pid) is not int:
                 raise ValueError("Give the PID from the processes snapshot")
@@ -417,10 +392,7 @@ class AtlasOperations:
             self.ready(pc)
             if not self.confirm("stop process %s (PID %s) on %s" % (item.get("Process"), pid, pc)):
                 return {"state": "declined"}
-            import remote_processes
-            with self.held(pc):
-                return remote_processes.terminate(wmi, wmi.Kill(computer=pc, value=str(pid), created=item.get("CreatedAt"),
-                                                                name=item.get("Process")))
+            return wmi.kill(wmi.Kill(computer=pc, value=str(pid), created=item.get("CreatedAt"), name=item.get("Process")))
         if action not in ("enable_remote_registry", "reboot", "cleanup_packages"):
             raise ValueError("Unknown computer action")
         self.ready(pc)
@@ -432,11 +404,9 @@ class AtlasOperations:
         if action == "cleanup_packages":
             self.ready(pc)
             return wmi.cleanup_package_folder(pc)  # Takes Atlas's per-PC lock itself.
-        with self.held(pc):
-            if action == "enable_remote_registry":
-                import service_actions
-                return service_actions.enable_remote_registry(wmi, pc)
-            started = wmi.reboot(wmi.Machine(computer=pc))
+        if action == "enable_remote_registry":
+            return wmi.enable_remote_registry(wmi.Machine(computer=pc))
+        started = wmi.reboot(wmi.Machine(computer=pc))
         with self.lock:
             self.reboots[started["job"]] = {"id": started["job"], "target": pc, "state": "requesting"}
         return dict(started, state="requested", job_id=started["job"], message=(
@@ -455,7 +425,8 @@ class AtlasOperations:
         for pc in pcs:
             attempted = False
             try:
-                with self.held(pc):
+                def apply():
+                    nonlocal attempted
                     items = service_actions.list_services(self.wmi, pc)["items"]
                     matches = [item for item in items if str(item.get("name", "")).casefold() == name.casefold()]
                     if len(matches) != 1:
@@ -465,7 +436,8 @@ class AtlasOperations:
                         raise ValueError("Atlas will not %s %s: %s" % (verb, item["name"], item.get(verb + "_reason") or "not allowed"))
                     request = self.wmi.ServiceControl(computer=pc, name=item["name"], expected_identity=item["identity"])
                     attempted = True
-                    data = getattr(service_actions, verb + "_service")(self.wmi, request)
+                    return getattr(service_actions, verb + "_service")(self.wmi, request)
+                data = self.wmi.operations.change(pc, verb.title() + " service " + name, apply)
                 wanted = "Stopped" if action == "service_stop" else "Running"
                 verified = data.get("outcome") in outcomes[action] and data.get("state") == wanted
                 row = {"computer": pc, "ok": verified, "verified": verified,

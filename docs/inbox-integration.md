@@ -281,7 +281,7 @@ References: [Edge PWA installation](https://learn.microsoft.com/en-us/microsoft-
 ## Accounts, data and control
 
 `data/inbox-integration.json` stores local account names, paths and the task name;
-it is ignored by Git and preserved by `Update-Atlas.bat`. No per-PC values are
+it is ignored by Git and retained in the AA workspace. No per-PC values are
 committed. After moving the checkout, stop collectors and reconnect from the new
 path to update the task action. Reconfiguration is allowed once its agent exits.
 

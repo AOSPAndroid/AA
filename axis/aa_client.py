@@ -14,13 +14,14 @@ import urllib.error
 import urllib.request
 
 if __package__:
-    from .launch_atlas import AtlasLaunchError, _active_port
     from .it_tools import windows_account
     from .terminal_ui import TerminalUI
 else:
-    from launch_atlas import AtlasLaunchError, _active_port
     from it_tools import windows_account
     from terminal_ui import TerminalUI
+
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+from admin_connection import AtlasLaunchError, active_port as _active_port
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 AA_ROOT = os.path.dirname(HERE)

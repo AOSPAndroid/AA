@@ -7,7 +7,6 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from knowledge_articles import all_articles, excerpt, plain_text, register
-from knowledge_base import register as register_diagrams
 
 TOKEN = {'X-Atlas-Token': 'test-token'}
 
@@ -21,7 +20,6 @@ class KnowledgeArticles(unittest.TestCase):
         # Same order as backend/main.py: article routes before the diagrams' /api/knowledge/{doc_id}.
         self.app = FastAPI()
         register(self.app, self.path)
-        register_diagrams(self.app, self.path)
         self.client = TestClient(self.app)
         self.article = {'title': 'Outlook keeps freezing', 'markdown': '## Fix\n1. Start `outlook.exe /safe`',
                         'tags': ['outlook', ' Outlook ', 'email'], 'categories': ['outlook'], 'revision': 0}
@@ -66,14 +64,11 @@ class KnowledgeArticles(unittest.TestCase):
         categories = self.client.get('/api/knowledge/article-categories').json()['categories']
         self.assertIn({'id': 'outlook', 'label': 'Outlook or email'}, categories)
 
-    def test_articles_and_diagrams_share_the_file_without_route_clashes(self):
+    def test_retired_diagram_routes_are_unavailable(self):
         self.put('outlook', self.article)
-        diagram = {'title': 'Network', 'notes': '', 'revision': 0,
-                   'xml': '<mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/></root></mxGraphModel>'}
-        self.assertEqual(self.client.put('/api/knowledge/network', json=diagram).status_code, 200)
-        self.assertEqual([d['id'] for d in self.client.get('/api/knowledge').json()['documents']], ['network'])
-        self.assertEqual(len(self.client.get('/api/knowledge/articles').json()['articles']), 1)
-        self.assertEqual(all_articles(Path(self.tmp.name) / 'missing.sqlite3'), [])
+        self.assertEqual(self.client.put('/api/knowledge/network', json={}).status_code,404)
+        self.assertEqual(len(all_articles(self.path)),1)
+        self.assertEqual(all_articles(Path(self.tmp.name)/'missing.sqlite3'),[])
 
     def test_plain_text_for_search_and_excerpts(self):
         markdown = ('## Checks\n- [ ] Machine replies to ping\n- [x] VPN group in **AD groups**\n\n| A | B |\n| --- | --- |\n'

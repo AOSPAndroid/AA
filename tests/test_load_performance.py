@@ -1,6 +1,6 @@
 from sqlite_fixture import isolate_backend_database
 isolate_backend_database()
-import gzip, json, subprocess, unittest
+import json, subprocess, unittest
 from pathlib import Path
 from fastapi.testclient import TestClient
 from backend import viewer
@@ -42,7 +42,7 @@ class MapAssetCaching(unittest.TestCase):
             self.assertEqual(self.client.get('/assets/' + name).status_code, 200, name)
 
     def test_demo_serves_the_knowledge_base_files_but_not_articles(self):
-        for name in ('knowledge-articles.js', 'marked-18.0.14.js', 'dompurify-3.4.16.js', 'mermaid-12.0.0.js'):
+        for name in ('knowledge-articles.js', 'marked-18.0.14.js', 'dompurify-3.4.17.js', 'mermaid-12.3.0.js'):
             self.assertEqual(self.client.get('/assets/' + name).status_code, 200, name)
         for url in ('/api/knowledge/articles', '/api/search-everything?q=vpn', '/api/search-everything/similar/1'):
             self.assertNotEqual(self.client.get(url).status_code, 200, url)

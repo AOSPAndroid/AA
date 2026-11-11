@@ -95,7 +95,11 @@
       details.className = "atlas-health-details";
       const summary = document.createElement("summary");
       summary.textContent = "Full health readings";
-      details.append(summary, host.querySelector("p"), host.querySelector(".atlas-health-grid"));
+      details.append(
+        summary,
+        host.querySelector("p"),
+        host.querySelector(".atlas-health-grid"),
+      );
       const mini = document.createElement("div");
       mini.className = "atlas-health-mini";
       mini.setAttribute("aria-live", "polite");
@@ -110,8 +114,15 @@
     const mini = host.querySelector(".atlas-health-mini");
     if (!mini) return;
     mini.innerHTML = compact(host, pc)
-      .filter(row => [labels.ping, labels.cshare, labels.storage, labels.system].includes(row.label))
-      .map(row => `<span class="${row.warning ? "warning" : ""}" title="${esc(row.title)}"><b>${esc(row.label === labels.system ? "Uptime" : row.label)}</b> ${esc(row.text)}</span>`)
+      .filter((row) =>
+        [labels.ping, labels.cshare, labels.storage, labels.system].includes(
+          row.label,
+        ),
+      )
+      .map(
+        (row) =>
+          `<span class="${row.warning ? "warning" : ""}" title="${esc(row.title)}"><b>${esc(row.label === labels.system ? "Uptime" : row.label)}</b> ${esc(row.text)}</span>`,
+      )
       .join("");
   }
   function mount(host, pc, isCurrent = () => true) {
@@ -127,7 +138,8 @@
     const previous = snapshots.get(host);
     if (
       previous?.pc === pc &&
-      active.has(host) && previous.state !== "complete"
+      active.has(host) &&
+      previous.state !== "complete"
     )
       return;
     mount(host, pc, isCurrent);
@@ -329,49 +341,94 @@
     if (snapshot?.pc !== pc) return [];
     const readings = snapshot.metrics;
     return [
-      ["CPU model", readings.cpu, d => (d.processors || []).map(x => x.Name).filter(Boolean).join("; ")],
-      ["Memory", readings.ram, d => num(d.installed_bytes) === null ? "" : gib(d.installed_bytes)],
-      ["Windows", readings.system, d => [d.windows, d.version].filter(Boolean).join(" ")],
-    ].filter(([, metric]) => metric?.state === "ready")
-      .map(([label, metric, value]) => ({label, text: value(metric.data || {}), checkedAt: metric.checked_at || ""}))
-      .filter(row => row.text);
+      [
+        "CPU model",
+        readings.cpu,
+        (d) =>
+          (d.processors || [])
+            .map((x) => x.Name)
+            .filter(Boolean)
+            .join("; "),
+      ],
+      [
+        "Memory",
+        readings.ram,
+        (d) => (num(d.installed_bytes) === null ? "" : gib(d.installed_bytes)),
+      ],
+      [
+        "Windows",
+        readings.system,
+        (d) => [d.windows, d.version].filter(Boolean).join(" "),
+      ],
+    ]
+      .filter(([, metric]) => metric?.state === "ready")
+      .map(([label, metric, value]) => ({
+        label,
+        text: value(metric.data || {}),
+        checkedAt: metric.checked_at || "",
+      }))
+      .filter((row) => row.text);
   }
   // Read the current cache only; copying diagnostics must never start a scan.
   function snapshot(host, pc) {
-    const computer = String(pc || "").trim().toUpperCase();
+    const computer = String(pc || "")
+      .trim()
+      .toUpperCase();
     const cached = snapshots.get(host);
-    const matching = computer &&
-      String(cached?.pc || "").trim().toUpperCase() === computer;
+    const matching =
+      computer &&
+      String(cached?.pc || "")
+        .trim()
+        .toUpperCase() === computer;
     const controller = active.get(host);
-    const checking = !!(matching && cached.state === "checking" &&
-      controller && !controller.signal.aborted);
+    const checking = !!(
+      matching &&
+      cached.state === "checking" &&
+      controller &&
+      !controller.signal.aborted
+    );
     const metrics = Object.entries(labels).map(([key, label]) => {
       const metric = matching ? cached.metrics[key] : null;
       const state = metric
-        ? metric.state === "ready" ? "ready" : "unavailable"
+        ? metric.state === "ready"
+          ? "ready"
+          : "unavailable"
         : checking && cached.checkingKeys?.includes(key)
-          ? "checking" : "not_scanned";
-      const checkedAt = typeof metric?.checked_at === "string" &&
-        Number.isFinite(Date.parse(metric.checked_at)) ? metric.checked_at : null;
+          ? "checking"
+          : "not_scanned";
+      const checkedAt =
+        typeof metric?.checked_at === "string" &&
+        Number.isFinite(Date.parse(metric.checked_at))
+          ? metric.checked_at
+          : null;
       return {
         key,
         label,
         state,
         checkedAt,
-        text: state === "ready" ? format(key, metric.data || {})
-          : state === "checking" ? "Checking…"
-            : state === "unavailable" ? "Unavailable" : "Not scanned",
+        text:
+          state === "ready"
+            ? format(key, metric.data || {})
+            : state === "checking"
+              ? "Checking…"
+              : state === "unavailable"
+                ? "Unavailable"
+                : "Not scanned",
         ...(state === "ready"
-          ? {data: JSON.parse(JSON.stringify(metric.data || {}))} : {}),
-        ...(metric?.error ? {error: String(metric.error)} : {}),
+          ? { data: JSON.parse(JSON.stringify(metric.data || {})) }
+          : {}),
+        ...(metric?.error ? { error: String(metric.error) } : {}),
       };
     });
     return {
       computer,
-      state: checking ? "checking"
-        : metrics.some(metric => metric.state === "ready") ? "ready"
-          : metrics.some(metric => metric.state === "unavailable")
-            ? "unavailable" : "not_scanned",
+      state: checking
+        ? "checking"
+        : metrics.some((metric) => metric.state === "ready")
+          ? "ready"
+          : metrics.some((metric) => metric.state === "unavailable")
+            ? "unavailable"
+            : "not_scanned",
       metrics,
     };
   }

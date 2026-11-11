@@ -8,7 +8,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 from backend import main, viewer
 import atlas_store
-from job_service import JobService
+from backend.services.job_service import JobService
 from runtime_paths import prepare_runtime_database
 from sqlite_fixture import connect
 

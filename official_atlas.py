@@ -27,13 +27,14 @@ def apply_visual_matches(c):
   c.execute('insert into official_seating_mappings values(?,?,?)',(source,target,at));applied+=1
  return applied
 
-def register_official(app,wmi,check_token):
- with store.connect() as c:
-  c.execute('create table if not exists official_records(id text primary key,body text not null)')
-  c.execute('create table if not exists official_seating_mappings(legacy_id text primary key,official_id text unique,at text)')
-  for r in json.loads((store.ROOT/'official-data.json').read_text())['records']:
-   c.execute('insert or ignore into official_records values(?,?)',(r['id'],json.dumps(r)))
-  apply_visual_matches(c)
+def register_official(app,wmi,check_token,initialize=True):
+ if initialize:
+  with store.connect() as c:
+   c.execute('create table if not exists official_records(id text primary key,body text not null)')
+   c.execute('create table if not exists official_seating_mappings(legacy_id text primary key,official_id text unique,at text)')
+   for r in json.loads((store.ROOT/'official-data.json').read_text())['records']:
+    c.execute('insert or ignore into official_records values(?,?)',(r['id'],json.dumps(r)))
+   apply_visual_matches(c)
  @app.get('/api/official/state')
  def state():
   from atlas_api import TOKEN

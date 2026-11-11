@@ -105,7 +105,7 @@ def directory_columns(kind, headers):
     columns=[(i,canonical_header(h),mapping.get(canonical_header(h),(canonical_header(h),''))[0]) for i,h in enumerate(headers)]
     # A devices export may include both its CI and its asset display name.
     # Prefer CI, then coalesce nonempty aliases without changing the original cells.
-    return sorted(columns,key=lambda x:({'machine_name':0,'ci':1,'name':2}.get(x[1],3) if x[2]=='machine_name' else 0,x[0]))
+    return sorted(columns,key=lambda x:({'machine_name':0,'ci':1,'configuration_item':1,'configuration_item_name':1,'ci_name':1,'name':2}.get(x[1],3) if x[2]=='machine_name' else 0,x[0]))
 
 def directory_data(columns, row):
     data={}
@@ -261,5 +261,5 @@ def build(src,out):
         candidate.unlink(missing_ok=True)
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--source',default='templates/database040926.xlsx');p.add_argument('--db',default='wmi_packager_master.db');a=p.parse_args();build(a.source,a.db)
+    p=argparse.ArgumentParser();p.add_argument('--source',required=True);p.add_argument('--db',default='wmi_packager_master.db');a=p.parse_args();build(a.source,a.db)
 if __name__=='__main__':main()

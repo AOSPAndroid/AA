@@ -3,7 +3,6 @@
 A real local HTTP server runs the chat API with a stand-in agent; no model, PC or source database is used.
 """
 import json
-import json
 import socket
 import sys
 import tempfile

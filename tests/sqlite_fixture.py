@@ -29,6 +29,8 @@ def isolate_backend_database():
         source.close()
         target.close()
     os.environ['ATLAS_DB_PATH'] = str(destination)
+    from backend.services.database_schema import initialize
+    initialize(destination)
     return destination
 
 

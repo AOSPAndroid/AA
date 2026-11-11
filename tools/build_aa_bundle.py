@@ -1,53 +1,68 @@
-"""Build the Windows archive from tracked source and downloaded llama.cpp builds."""
+"""Build a Windows release from an explicit, reviewed runtime manifest."""
 import argparse
 import hashlib
+import json
 from pathlib import Path
 import subprocess
 import zipfile
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT=Path(__file__).resolve().parents[1]
+
+
+def build(llama_dir, output):
+    commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
+    files=json.loads((ROOT/'resources/runtime-manifest.json').read_text())['files']
+    if len(files)!=len(set(files)):
+        raise ValueError('Duplicate runtime manifest entries')
+    hashes={}
+    for name in files:
+        path=ROOT/name
+        if path.is_symlink() or not path.is_file() or '..' in Path(name).parts or Path(name).is_absolute():
+            raise ValueError('Invalid runtime manifest entry: '+name)
+        if any(p in ('data','logs','tests','node_modules','.git','drawio') for p in Path(name).parts) or Path(name).name in ('config.json','.env','firecrawl.key') or name.endswith('.gguf'):
+            raise ValueError('Forbidden runtime manifest entry: '+name)
+        hashes[name]=hashlib.sha256(path.read_bytes()).hexdigest()
+    output=Path(output)
+    candidate=output.with_suffix('.building')
+    try:
+        with zipfile.ZipFile(candidate,'w',zipfile.ZIP_DEFLATED) as archive:
+            for name in sorted(files):
+                data=(ROOT/name).read_bytes()
+                if name.endswith('.bat'):data=data.replace(b'\r\n',b'\n').replace(b'\n',b'\r\n')
+                hashes[name]=hashlib.sha256(data).hexdigest()
+                archive.writestr('AA/'+name,data)
+            for kind in ('cpu','vulkan'):
+                folder=Path(llama_dir)/('llama-'+kind)
+                if not any(folder.rglob('llama-server.exe')):
+                    raise ValueError('Missing llama.cpp '+kind+' Windows build')
+                for path in sorted(folder.rglob('*')):
+                    if path.is_symlink():raise ValueError('Runtime contains a symbolic link')
+                    if path.is_file():
+                        name='axis/'+path.relative_to(llama_dir).as_posix()
+                        data=path.read_bytes();hashes[name]=hashlib.sha256(data).hexdigest()
+                        archive.writestr('AA/'+name,data)
+            provenance=Path(llama_dir)/'RUNTIME-SOURCES.json'
+            metadata={'BUNDLE-COMMIT.txt':(commit+'\n').encode(),'axis/LLAMA-CPP-VERSION.txt':b'llama.cpp b11815\n'}
+            if provenance.is_file():metadata['axis/LLAMA-RUNTIME-SOURCES.json']=provenance.read_bytes()
+            for name,data in metadata.items():
+                archive.writestr('AA/'+name,data);hashes[name]=hashlib.sha256(data).hexdigest()
+            archive.writestr('AA/BUNDLE-MANIFEST.json',json.dumps({'source_commit':commit,'files':hashes},sort_keys=True,indent=2)+'\n')
+        with zipfile.ZipFile(candidate) as archive:
+            if archive.testzip() is not None:raise ValueError('Archive failed integrity check')
+            for name in ('Start AA.bat','Stop AA.bat','backend/factory.py','backend/axis_api.py','office_atlas.db'):
+                if not archive.read('AA/'+name):raise ValueError('Required runtime file missing: '+name)
+        candidate.replace(output)
+    finally:candidate.unlink(missing_ok=True)
+    digest=hashlib.sha256(output.read_bytes()).hexdigest()
+    output.with_suffix(output.suffix+'.sha256').write_text(digest+'  '+output.name+'\n')
+    print('Verified',output.name,output.stat().st_size,'bytes from',commit)
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--llama-dir', type=Path, required=True)
-    parser.add_argument('--output', type=Path, default=ROOT / 'aa-windows.zip')
-    args = parser.parse_args()
-    commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
-    tracked = subprocess.check_output(['git', 'ls-files', '-z'], cwd=ROOT).decode().split('\0')
-    excluded = ('.github/', 'tests/', 'axis/tests/', 'tools/', 'frontend/react/')
-    with zipfile.ZipFile(args.output, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
-        for name in tracked:
-            if not name or name.startswith(excluded) or name in ('AGENTS.md', '.gitignore', '.gitattributes', 'package-lock.json'):
-                continue
-            data = (ROOT / name).read_bytes()
-            if name.endswith('.bat'):
-                data = data.replace(b'\r\n', b'\n').replace(b'\n', b'\r\n')
-            archive.writestr('AA/' + name, data)
-        for kind in ('cpu', 'vulkan'):
-            folder = args.llama_dir / ('llama-' + kind)
-            if not any(folder.rglob('llama-server.exe')):
-                raise SystemExit('Missing llama.cpp ' + kind + ' Windows build')
-            for path in folder.rglob('*'):
-                if path.is_file():
-                    archive.write(path, 'AA/axis/' + path.relative_to(args.llama_dir).as_posix())
-        archive.writestr('AA/BUNDLE-COMMIT.txt', commit + '\n')
-        archive.writestr('AA/axis/LLAMA-CPP-VERSION.txt', 'llama.cpp b11815\n')
-    with zipfile.ZipFile(args.output) as archive:
-        assert archive.testzip() is None
-        required = ('Start AA.bat', 'Stop AA.bat', 'aa_launcher.py', 'backend/axis_api.py',
-                    'backend/axis_operations.py', 'backend/axis_sources.py', 'frontend/assets/axis-chat.js',
-                    'atlas/official-index.html', 'axis/agent.py', 'axis/aa_client.py', 'axis/start.py', 'axis/join_model.py', 'axis/Join Model.bat',
-                    'axis/models.json', 'axis/skill_library.py', 'axis/skills/pc-health/SKILL.md',
-                    'axis/skills/package-deployment/SKILL.md', 'office_atlas.db')
-        for name in required:
-            assert archive.read('AA/' + name), name
-        assert not any(name.endswith('.gguf') or Path(name).name in ('firecrawl.key', '.env', 'config.json') for name in archive.namelist())
-        assert archive.read('AA/BUNDLE-COMMIT.txt').decode().strip() == commit
-    checksum = hashlib.sha256(args.output.read_bytes()).hexdigest()
-    args.output.with_suffix(args.output.suffix + '.sha256').write_text(checksum + '  ' + args.output.name + '\n')
-    print('Verified', args.output.name, args.output.stat().st_size, 'bytes from', commit)
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--llama-dir',type=Path,required=True)
+    parser.add_argument('--output',type=Path,default=ROOT/'aa-windows.zip')
+    args=parser.parse_args();build(args.llama_dir,args.output)
 
 
-if __name__ == '__main__':
-    main()
+if __name__=='__main__':main()

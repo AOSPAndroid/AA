@@ -4,8 +4,15 @@ import hashlib
 import io
 import json
 import os
+import tempfile
+import zipfile
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+import xml.etree.ElementTree as ET
+
+MAX_FILE_BYTES = 10 * 1024 * 1024
+MAX_EXPANDED_BYTES = 128 * 1024 * 1024
 
 FIELDS = {
     'short_name': ('name', 'short package name', 'short_package_name'),
@@ -108,7 +115,7 @@ def updated_rank(value):
 
 
 def parse_csv(data):
-    if not data or len(data) > 10 * 1024 * 1024:
+    if not data or len(data) > MAX_FILE_BYTES:
         raise ValueError('Choose a package CSV up to 10 MB.')
     encoding = 'utf-16' if data.startswith((b'\xff\xfe', b'\xfe\xff')) else 'utf-8-sig'
     try:
@@ -122,11 +129,65 @@ def parse_csv(data):
     reader = csv.reader(io.StringIO(text, newline=''), dialect=dialect, strict=True, skipinitialspace=False)
     try:
         headers = next(reader)
+        return _parse_rows(headers, ((reader.line_num, cells) for cells in reader))
+    except (csv.Error, StopIteration) as error:
+        raise ValueError('Invalid or empty package CSV: ' + str(error)) from error
+
+
+def parse(content, filename='packages.csv'):
+    """Read the raw export with the same selection and provenance rules in either format."""
+    suffix = Path(filename).suffix.casefold()
+    if suffix == '.csv':
+        return parse_csv(content)
+    if suffix != '.xlsx':
+        raise ValueError('Choose a ServiceNow package CSV or XLSX export.')
+    if not content or len(content) > MAX_FILE_BYTES:
+        raise ValueError('Choose a package CSV or XLSX up to 10 MB.')
+    from directory_workbook import workbook_parts, iter_rows, workbook_scope
+    with tempfile.TemporaryDirectory(prefix='atlas_package_parse_') as temporary:
+        path = Path(temporary) / 'packages.xlsx'; path.write_bytes(content)
+        try:
+            with zipfile.ZipFile(path) as archive:
+                if sum(part.file_size for part in archive.infolist()) > MAX_EXPANDED_BYTES:
+                    raise ValueError('Expanded package workbook exceeds 128 MB.')
+                props = ET.fromstring(archive.read('xl/workbook.xml')).find('{http://schemas.openxmlformats.org/spreadsheetml/2006/main}workbookPr')
+                epoch = datetime(1904,1,1,tzinfo=timezone.utc) if props is not None and props.get('date1904','').lower() in ('1','true') else datetime(1899,12,30,tzinfo=timezone.utc)
+            @workbook_scope
+            def read():
+                candidates = []
+                for sheet, part in workbook_parts(path):
+                    rows = iter_rows(path, part, raw=True)
+                    try:
+                        first = next((row for _, row in rows if any(value.strip() for value in row)), [])
+                        names = {value.strip().casefold() for value in first}
+                        if names & set(FIELDS['short_name']) and names & set(FIELDS['state']):
+                            candidates.append((sheet, part))
+                    finally:
+                        rows.close()
+                if len(candidates) != 1:
+                    raise ValueError('Keep exactly one package worksheet with Name (Short Package Name) and Package State headers.')
+                sheet, part = candidates[0]
+                rows = iter_rows(path, part, raw=True)
+                try:
+                    first = next(row for _, row in rows if any(value.strip() for value in row))
+                    while first and not first[-1].strip():first.pop()
+                    return _parse_rows(first, rows, label='XLSX', sheet=sheet, epoch=epoch)
+                finally:
+                    rows.close()
+            return read()
+        except (zipfile.BadZipFile, KeyError, IndexError, ET.ParseError) as error:
+            raise ValueError('Invalid package XLSX workbook.') from error
+
+
+def _parse_rows(headers, source_rows, label='CSV', sheet=None, epoch=None):
+    try:
         if not headers or len(headers) > 100:
-            raise ValueError('CSV must have a header row with up to 100 columns.')
+            raise ValueError(f'{label} must have a header row with up to 100 columns.')
         normalized = [h.strip().casefold() for h in headers]
         if len(set(normalized)) != len(headers) or '' in normalized:
-            raise ValueError('CSV headers must be unique and non-empty.')
+            raise ValueError(f'{label} headers must be unique and non-empty.')
+        if any(len(value)>4096 or '\x00' in value for value in headers):
+            raise ValueError(f'{label} has an invalid or oversized header.')
         mapping = {}
         for field, aliases in FIELDS.items():
             matches = [i for i, h in enumerate(normalized) if h in aliases]
@@ -135,25 +196,35 @@ def parse_csv(data):
             if matches:
                 mapping[field] = matches[0]
         if not {'short_name', 'state'} <= mapping.keys():
-            raise ValueError('CSV needs name (Short Package Name) and u_package_sub_state (Package State) headers.')
+            raise ValueError(f'{label} needs name (Short Package Name) and u_package_sub_state (Package State) headers.')
         updated_columns = [i for i, h in enumerate(normalized) if h in UPDATED_HEADERS]
         rows = {}; sources = {}; ranks = {}; signatures = {}
         duplicates = 0; identical_duplicates = 0; row_count = 0
-        for cells in reader:
+        for number, cells in source_rows:
             if not any(c.strip() for c in cells):
                 continue
             row_count += 1
             if row_count > 20000:
-                raise ValueError('Package CSV exceeds 20,000 rows.')
+                raise ValueError(f'Package {label} exceeds 20,000 rows.')
+            if sheet is not None:
+                while cells and not cells[-1]:cells.pop()
+                cells += [''] * max(0, len(headers)-len(cells))
             if len(cells) != len(headers):
-                raise ValueError(f'CSV row {reader.line_num} has {len(cells)} cells; expected {len(headers)}. Quote values containing commas.')
+                hint = ' Quote values containing commas.' if label=='CSV' else ''
+                raise ValueError(f'{label} row {number} has {len(cells)} cells; expected {len(headers)}.{hint}')
             if any(len(c) > 4096 or '\x00' in c for c in cells):
-                raise ValueError(f'CSV row {reader.line_num} has an invalid or oversized cell.')
+                raise ValueError(f'{label} row {number} has an invalid or oversized cell.')
             row = {field: cells[mapping[field]].strip() if field in mapping else '' for field in FIELDS}
             key = record_key(row, headers, cells)
             row['name_key'] = key
             row['raw_json'] = json.dumps(dict(zip(headers, cells)), ensure_ascii=False)
-            rank = next((rank for i in updated_columns if (rank := updated_rank(cells[i])) is not None), None)
+            def rank_value(value):
+                rank = updated_rank(value)
+                if rank is None and epoch is not None:
+                    try:rank = (epoch+timedelta(days=float(value))).timestamp()
+                    except (ValueError,OverflowError):pass
+                return rank
+            rank = next((rank for i in updated_columns if (rank := rank_value(cells[i])) is not None), None)
             signature_cells = list(cells)
             signature_cells[mapping['short_name']] = key
             signature = hashlib.sha256(json.dumps(signature_cells, ensure_ascii=False).encode()).digest()
@@ -162,20 +233,21 @@ def parse_csv(data):
                 identical_duplicates += signature in signatures[key]
             else:
                 sources[key] = {'headers': headers, 'rows': []}
+                if sheet is not None:sources[key]['sheet'] = sheet
                 if key.startswith(RAW_PREFIX):
                     sources[key]['matching_issue'] = matching_issue(row['short_name'])
                 signatures[key] = set()
             signatures[key].add(signature)
-            sources[key]['rows'].append({'row': reader.line_num, 'cells': cells})
+            sources[key]['rows'].append({'row': number, 'cells': cells})
             old_rank = ranks.get(key)
             if key not in rows or old_rank is None or (rank is not None and rank >= old_rank):
                 # Select a whole record, including blanks; never mix states or owners across rows.
                 rows[key] = row
                 ranks[key] = rank
-                sources[key].update(selected_row=reader.line_num,
+                sources[key].update(selected_row=number,
                                     selection='latest_updated' if rank is not None else 'last_row')
         if not rows:
-            raise ValueError('CSV contains no package rows.')
+            raise ValueError(f'{label} contains no package rows.')
         duplicate_examples = []
         duplicate_names = 0
         unmatched_examples = []
@@ -200,7 +272,7 @@ def parse_csv(data):
                       'unmatched_examples': unmatched_examples,
                       'columns': headers, 'extra_columns': [h for i, h in enumerate(headers) if i not in mapping.values()]}
     except (csv.Error, StopIteration) as error:
-        raise ValueError('Invalid or empty package CSV: ' + str(error)) from error
+        raise ValueError(f'Invalid or empty package {label}: ' + str(error)) from error
 
 
 def repository_names(repo):

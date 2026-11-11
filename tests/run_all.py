@@ -24,6 +24,9 @@ def main(python_only=False):
         source.backup(dest)
         source.close()
         dest.close()
+        sys.path.insert(0,str(ROOT))
+        from backend.services.database_schema import initialize
+        initialize(db)
         env = dict(os.environ, ATLAS_DB_PATH=str(db), AA_AXIS_STATE=str(Path(tmp) / 'axis-state'), AA_AXIS_TERMINAL_STATE=str(Path(tmp) / 'axis-terminal-state'),
                    ATLAS_IMPORT_FOLDER=str(Path(tmp) / 'import-folder'),
                    PYTHON=sys.executable, PYTHONUTF8='1')

@@ -1,11 +1,10 @@
-import json
 from pathlib import Path
 import shutil
 import subprocess
 import tempfile
 import time
 import unittest
-from unittest.mock import patch, Mock
+from unittest.mock import patch
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient

@@ -55,7 +55,7 @@ async function until(fn){for(let i=0;i<100;i++){if(fn())return;await sleep(30)}t
  w.document.dispatchEvent(new w.KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true}));await until(()=>palette.querySelector('dialog').open);await sleep(100);commandSearch.value='> zzzznonexistent';commandSearch.dispatchEvent(new w.Event('input',{bubbles:true}));assert.equal(palette.querySelectorAll('[role=option]').length,0);palette.querySelector('.palette-close').click();
  w.document.querySelector('#openShortcuts').click();assert(!w.document.querySelector('#shortcutHelp').classList.contains('hidden'));w.document.querySelector('#closeShortcutHelp').click();
  w.document.querySelector('[data-page="workspace"]').click();
- const users=await(await fetch(base+'/api/search?term='+encodeURIComponent(process.env.ATLAS_TEST_USER||'smith'))).json();assert(users.users.length);
+ const users=await(await fetch(base+'/api/search?term='+encodeURIComponent(process.env.ATLAS_TEST_USER||'Demo Arden'))).json();assert(users.users.length);
  const search=w.document.querySelector('#search');search.value=users.users[0].user_name;search.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
  await until(()=>w.document.querySelector('#kyc .usercard'));assert(w.document.querySelector('.lookup-column #kyc .usercard'));
  assert(w.document.querySelector('.deployment-panel #deploy'));

@@ -12,13 +12,13 @@ from contextlib import closing
 
 from fastapi import HTTPException, Query
 
-KINDS = ('article', 'diagram', 'inbox', 'deployment')
+KINDS = ('article', 'inbox', 'deployment')
 STOP = set('''a an and are as at be been but by can could did do does for from had has have hello hi how i if in into is it its
 me my no not of on or our please so thank thanks that the their them then there these they this to too was we were what when
 where which who why will with would you your yes dear regards best kind team bonjour merci de des du la le les un une et est
 pour sur dans avec pas que qui mon ma mes vous nous je il elle cordialement svp very also just need since still every after
 before today morning time some more much there here have help''' .split())
-INDEX_VERSION = '3'  # bump when the table layout or tokenizer changes; the cache is rebuilt
+INDEX_VERSION = '4'  # bump when the table layout or tokenizer changes; the cache is rebuilt
 _lock = threading.Lock()
 
 
@@ -88,7 +88,12 @@ class SearchIndex:
 
     def _sync_inbox(self, c, load, state):
         last = int(state['signature']) if state else 0
-        newest, rows = load(last)
+        loaded = load(last)
+        newest, rows = loaded[:2]
+        if len(loaded)>2:
+            alive=set(map(str,loaded[2]))
+            stale=[(r[0],) for r in c.execute("SELECT ref FROM entries WHERE kind='inbox'") if r[0] not in alive]
+            c.executemany("DELETE FROM entries WHERE kind='inbox' AND ref=?",stale)
         if newest < last:  # the mail queue was reset: index it again from the start
             c.execute("DELETE FROM entries WHERE kind='inbox'")
             last = 0

@@ -125,7 +125,9 @@ export function installCommandPalette({
       list.children[active]?.scrollIntoView({ block: "nearest" });
     } else input.removeAttribute("aria-activedescendant");
   }
-  list.addEventListener("contextmenu",e=>{if(e.target.closest("[data-ad-identity]"))dialog.close();});
+  list.addEventListener("contextmenu", (e) => {
+    if (e.target.closest("[data-ad-identity]")) dialog.close();
+  });
   function render(items, message) {
     rows = items;
     active = 0;
@@ -198,7 +200,8 @@ export function installCommandPalette({
             }))
             .concat({
               kind: "Person",
-            adKind:row.adKind,adIdentity:row.adIdentity,
+              adKind: row.adKind,
+              adIdentity: row.adIdentity,
               title: "Open person details",
               detail: row.title,
               run: () => openConsole("person", row.person),
@@ -306,7 +309,8 @@ export function installCommandPalette({
                 : "Find mapped location or open details";
           return {
             kind: "Person",
-            adKind:"user",adIdentity:u.user_name||u.email||"",
+            adKind: "user",
+            adIdentity: u.user_name || u.email || "",
             title: u.full_name || u.name,
             detail: [
               action,
@@ -351,7 +355,8 @@ export function installCommandPalette({
         });
         const machines = data.machines.slice(0, 10).map((m) => ({
           kind: "Machine",
-          adKind:"computer",adIdentity:m.name,
+          adKind: "computer",
+          adIdentity: m.name,
           title: m.name,
           detail: [m.model_id, m.operational_status]
             .filter(Boolean)

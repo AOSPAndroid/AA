@@ -89,10 +89,10 @@ async function fixture({ readOnly = false } = {}) {
   let f = await fixture();
   f.d.getElementById("editor").focus();
   f.setRun((id) => {
-    assert.equal(id, "kb-notes");
+    assert.equal(id, "knowledge");
     f.d.getElementById("notes").focus();
   });
-  await f.choose("Write notes");
+  await f.choose("Knowledge Base");
   assert.equal(
     f.deepFocus().id,
     "notes",
@@ -103,11 +103,11 @@ async function fixture({ readOnly = false } = {}) {
   f = await fixture({ readOnly: true });
   f.d.getElementById("notes").focus();
   f.setRun((id) => {
-    assert.equal(id, "kb-focus", "Viewer exposes the safe focus command");
+    assert.equal(id, "knowledge", "Viewer exposes the safe focus command");
     f.d.getElementById("notes").hidden = true;
     f.d.getElementById("dock").focus();
   });
-  await f.choose("Focus knowledge editor");
+  await f.choose("Knowledge Base");
   assert.equal(
     f.deepFocus().id,
     "dock",
@@ -118,7 +118,7 @@ async function fixture({ readOnly = false } = {}) {
   f = await fixture();
   f.d.getElementById("notes").focus();
   f.setRun(() => f.d.getElementById("editor").focus());
-  await f.choose("Fit diagram");
+  await f.choose("Knowledge Base");
   assert.equal(
     f.deepFocus().id,
     "editor",
@@ -183,7 +183,7 @@ async function fixture({ readOnly = false } = {}) {
     modal.showModal();
     modal.querySelector("input").focus();
   });
-  await f.choose("Fit diagram");
+  await f.choose("Knowledge Base");
   assert.equal(
     f.deepFocus().id,
     "confirmation",
@@ -195,7 +195,7 @@ async function fixture({ readOnly = false } = {}) {
   f.d.getElementById("notes").focus();
   await f.palette.open();
   f.palette.close();
-  await f.palette.open("> Write notes");
+  await f.palette.open("> Knowledge Base");
   await settle();
   assert(f.palette.dialog.open);
   assert.equal(

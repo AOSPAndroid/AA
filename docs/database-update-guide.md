@@ -24,9 +24,9 @@ Save the exports in **`C:\AtlasXL`** and Atlas imports them by itself within a m
 | Users | `sys_user.csv` | Users & devices, together with the devices export |
 | Devices | `alm_asset.csv` | Users & devices, together with the users export |
 | Citrix VDIs | `SingleSessionMachines.csv` (or `.xlsx`) | Citrix VDI data, default mode: VDIs in the file are replaced, others kept |
-| Packages | `u_cmdb_software_package.csv` | Package data: rows are added or updated, none removed |
+| Packages | `u_cmdb_software_package.csv` (or `.xlsx`) | Package data: rows are added or updated, none removed |
 
-- Atlas recognises each file by its columns, so names such as `SingleSessionMachines (1).csv` work. When several files are the same kind, the newest one is used. Other files in the folder are listed and left alone. An automatic device import needs a hostname column plus an asset field such as serial number, model, asset tag or discovery/status information; a generic list with only a Name column is ignored.
+- Atlas recognises each file by its columns, so names such as `SingleSessionMachines (1).csv` work. When several files are the same kind, the newest one is used. Other files in the folder are listed and left alone. An automatic device import needs a hostname column (`CI`, `Configuration item`, `CI name` or `Name`) plus an asset field such as serial number, model, asset tag or discovery/status information; a generic list with only a Name column is ignored. Asset tags, models and asset display names do not supply Windows hostnames.
 - Each import is the same as the matching Manage Database section, with the same backup in `backups/` and the same import history and restore. Users and devices go first, so Citrix links match the new directory.
 - **Users and devices are a complete snapshot**, as described below: people and devices missing from the exports disappear from directory search. With **Ask before large removals** on (the default), a snapshot that removes more than 10% of the users or devices waits in **Manage Database > Import folder** with its counts and warnings; choose **Back up and apply** or **Skip these files**. Atlas also waits while deployments or queue jobs run, and for a file saved less than 30 seconds ago.
 - Atlas waits for files still being saved or temporarily locked, then retries automatically. It also refuses an export that changes while being copied or read. A review for an older snapshot is withdrawn while new files settle.
@@ -74,7 +74,7 @@ Validation covers the original directory template and the users/devices export, 
 
 Finish active jobs, then drag the intended new `.xlsx` workbook, or the users and devices exports together, onto **windows\Refresh-Directory.bat**. It stops both local services, validates the file, displays counts and asks for `APPLY`. A full backup is saved beside the active database in `backups/`, normally `data/backups/`. Start either edition again afterwards, even if you cancelled the import.
 
-Always supply the new file. With no file argument, this script uses the older bundled `database040926.xlsx`.
+Always supply the new file. A source file is required; the old operational workbook is no longer bundled.
 
 For validation only, run from the repository root:
 

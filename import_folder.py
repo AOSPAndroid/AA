@@ -1,7 +1,7 @@
 """Import folder: ServiceNow and Citrix exports saved in one folder update the database by themselves.
 
 Save the exports in one folder (C:\\AtlasXL by default): the users and devices exports (sys_user,
-alm_asset), the Citrix SingleSessionMachines export and the ServiceNow package CSV
+alm_asset), the Citrix SingleSessionMachines export and the ServiceNow package export
 (u_cmdb_software_package). Atlas checks the folder every minute and recognises each file by its
 column headers, not its name. When the newest file of a kind changes, it runs the same import as
 Manage Database, with the same backup and import history:
@@ -119,6 +119,16 @@ def kind_of(names):
     return ''
 
 
+def unrecognized_reason(names):
+    from directory_workbook import directory_columns
+    fields = {field for _, _, field in directory_columns('machine', names)}
+    if fields & DEVICE_FIELDS and 'machine_name' not in fields:
+        return 'Device export needs a CI, Configuration item or Name hostname column. Asset tags and display names cannot supply hostnames.'
+    if 'machine_name' in fields:
+        return 'Device export also needs an asset field, such as Serial number, Model or Asset tag.'
+    return 'not an export Atlas reads'
+
+
 class Settings(BaseModel):
     model_config = ConfigDict(extra='forbid')
     folder: str = Field(default='', max_length=1024)
@@ -225,16 +235,18 @@ class ImportFolder:
             else:
                 try:
                     if signature not in self.kinds:
+                        names = []
                         try:
-                            kind = kind_of(headers(path))
+                            names = headers(path)
+                            kind = kind_of(names)
                         except OSError:
                             raise  # Locked or temporarily unavailable: do not cache an unrecognised file.
                         except Exception:
                             kind = ''
                         self.ensure_current(item)
-                        self.kinds[signature] = kind
+                        self.kinds[signature] = {'kind':kind, 'reason':unrecognized_reason(names) if not kind else ''}
                     self.ensure_current(item)
-                    item['kind'] = self.kinds[signature]
+                    item.update(self.kinds[signature])
                 except OSError:
                     self.kinds.pop(signature, None)
                     self.pending.append(path.name)
@@ -479,11 +491,8 @@ class ImportFolder:
         import package_data
         from package_data_api import apply_import
         item = items[0]
-        if not item['name'].casefold().endswith('.csv'):
-            self.record('packages', signature, 'error', f'Save {item["name"]} as CSV: package data is imported from the CSV export.', files=[item['name']])
-            return
         try:
-            content = self.read(item, 10 * 1024 * 1024)
+            content = self.read(item, package_data.MAX_FILE_BYTES)
         except ValueError as error:
             self.record('packages', signature, 'error', str(error), files=[item['name']])
             return
@@ -491,7 +500,7 @@ class ImportFolder:
             self.state['groups']['packages'] = {'result': 'waiting', 'message': f'Could not open {item["name"]} yet ({error.__class__.__name__}); retrying.', 'at': now(), 'files': [item['name']]}
             return
         try:
-            incoming, parsed = package_data.parse_csv(content)
+            incoming, parsed = package_data.parse(content, item['name'])
             with sqlite3.connect(self.db, timeout=20, factory=ClosingConnection) as con:
                 existing = package_data.load(con)
             report = package_data.report(incoming, existing, self.repo(), parsed)

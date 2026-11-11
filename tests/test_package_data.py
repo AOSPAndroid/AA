@@ -29,6 +29,14 @@ def raw_extract(headers, rows):
     return text.getvalue().encode('utf-8-sig')
 
 
+def excel_extract(headers, rows, sheets=None):
+    from test_directory_exports import workbook
+    with tempfile.TemporaryDirectory() as folder:
+        path=Path(folder)/'packages.xlsx'
+        workbook(path,sheets or {'Packages':[headers,*rows]})
+        return path.read_bytes()
+
+
 def extract(rows, encoding='utf-8-sig', delimiter=','):
     text = io.StringIO(newline='')
     writer = csv.writer(text, delimiter=delimiter); writer.writerow(HEADERS)
@@ -51,6 +59,57 @@ def seed_content(con, content, source='old.csv'):
 
 
 class PackageParsing(unittest.TestCase):
+    def test_excel_matches_csv_selection_and_preserves_sheet_cells_and_optional_blanks(self):
+        headers=['name','u_package_sub_state','assigned_to','custom_note','sys_updated_on']
+        cells=[['ixExample','Live','Example Packager',' preserved ','2026-10-05'],
+               ['IXEXAMPLE','Work in Progress','','older record','2026-10-04'],
+               ['ixOther','Live','','','']]
+        expected,expected_report=data.parse_csv(raw_extract(headers,cells))
+        rows,report=data.parse(excel_extract(headers,cells),'packages.XLSX')
+        self.assertEqual(report,expected_report)
+        for key,row in rows.items():
+            self.assertEqual({k:v for k,v in row.items() if k!='source_rows_json'},
+                             {k:v for k,v in expected[key].items() if k!='source_rows_json'})
+            source=json.loads(row['source_rows_json']);self.assertEqual(source.pop('sheet'),'Packages')
+            self.assertEqual(source,json.loads(expected[key]['source_rows_json']))
+
+    def test_excel_selects_one_package_sheet_and_rejects_ambiguous_or_invalid_workbooks(self):
+        headers=['name','state'];cells=[['ixExample','Live']]
+        content=excel_extract(headers,cells,{'Summary':[['Metric','Count'],['Rows','1']],'Packages':[headers,*cells]})
+        self.assertEqual(set(data.parse(content,'packages.xlsx')[0]),{'ixexample'})
+        cases=[excel_extract(headers,cells,{'A':[headers,*cells],'B':[headers,*cells]}),
+               excel_extract(['Ticket','Opened'],[['INC1','today']]),
+               excel_extract(['name','name','state'],[['a','a','Live']]),b'not a workbook']
+        for content in cases:
+            with self.subTest(content=content[:12]),self.assertRaises(ValueError):data.parse(content,'packages.xlsx')
+        with patch.object(data,'MAX_EXPANDED_BYTES',1),self.assertRaisesRegex(ValueError,'128 MB'):
+            data.parse(excel_extract(headers,cells),'packages.xlsx')
+
+    def test_excel_dates_choose_newest_record_without_changing_original_serial_or_row(self):
+        import zipfile
+        from datetime import datetime,timezone
+        from xml.etree import ElementTree as ET
+        from directory_workbook import NS
+        for epoch in (datetime(1899,12,30,tzinfo=timezone.utc),datetime(1904,1,1,tzinfo=timezone.utc)):
+            serial=str((datetime(2026,10,2,tzinfo=timezone.utc)-epoch).days)
+            content=excel_extract(['name','state','sys_updated_on'],[['ixExample','Old','2026-10-01'],['ixExample','New',serial]])
+            out=io.BytesIO()
+            with zipfile.ZipFile(io.BytesIO(content)) as source,zipfile.ZipFile(out,'w') as dest:
+                for name in source.namelist():
+                    body=source.read(name)
+                    if name=='xl/workbook.xml':
+                        root=ET.fromstring(body);ET.SubElement(root,NS+'workbookPr',date1904='true' if epoch.year==1904 else 'false');body=ET.tostring(root)
+                    if name=='xl/worksheets/sheet1.xml':
+                        root=ET.fromstring(body);row=root.find(NS+'sheetData')[-1];row.set('r','7')
+                        for cell in row:cell.set('r',cell.get('r')[:-1]+'7')
+                        body=ET.tostring(root)
+                    dest.writestr(name,body)
+            rows,_=data.parse(out.getvalue(),'packages.xlsx')
+            self.assertEqual(rows['ixexample']['state'],'New')
+            original=json.loads(rows['ixexample']['source_rows_json'])
+            self.assertEqual(original['selected_row'],7)
+            self.assertEqual(original['rows'][-1]['cells'][-1],serial)
+
     def test_photographed_headers_original_cells_and_excel_encodings(self):
         for encoding, delimiter in [('utf-8-sig', ','), ('utf-16', '\t'), ('cp1252', ';')]:
             with self.subTest(encoding=encoding):
@@ -424,6 +483,18 @@ class PackageImport(unittest.TestCase):
 
     def apply(self, preview):
         return self.client.post('/api/package-data/import/apply/' + preview['id'], headers=self.headers)
+
+    def test_excel_preview_apply_retains_source_and_leaves_directory_intact(self):
+        content=excel_extract(['name','u_package_sub_state','assigned_to'],[['ixExample','Live','Example Packager']])
+        headers={**self.headers,'x-file-name':'u_cmdb_software_package.xlsx'}
+        preview=self.client.post('/api/package-data/import/preview',content=content,headers=headers)
+        self.assertEqual(preview.status_code,200,preview.text)
+        saved=self.apply(preview.json());self.assertEqual(saved.status_code,200,saved.text)
+        with fixture_connect(self.db) as con:
+            stored=data.load(con)['ixexample']
+            self.assertEqual(stored['source'],'u_cmdb_software_package.xlsx')
+            self.assertEqual(json.loads(stored['source_rows_json'])['sheet'],'Packages')
+            self.assertEqual(con.execute('select name from users').fetchone()[0],'Stored Person')
 
     def test_preview_apply_merge_backup_and_no_directory_or_source_mutation(self):
         first = self.preview([('ixExample', 'Live'), ('ixPending', 'Work in Progress')])

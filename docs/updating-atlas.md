@@ -1,17 +1,81 @@
 # Update AA
 
-Use the [AA Windows download](https://github.com/AOSPAndroid/AA/releases/download/aa-windows/aa-windows.zip). Extract each release into a **new folder** and keep the previous folder until the new copy works. The inherited `Update-Atlas.bat` is disabled in AA because it updates standalone Atlas, not the combined application.
+Download the [latest AA release](https://github.com/AOSPAndroid/AA/releases/latest).
+Verify `aa-windows.zip.sha256` before extracting into a new installation folder.
+`BUNDLE-COMMIT.txt` identifies the source; `BUNDLE-MANIFEST.json` lists the shipped files
+and their SHA-256 digests. Release tags identify immutable source commits.
 
-1. Finish active Atlas and Axis work: deployments, queues, imports, terminal commands and background jobs. Save open documents and drafts.
-2. In Atlas Admin, use **Manage Database > Back up .db** to save a consistent SQLite snapshot. Keep the existing runtime folder, its `knowledge.sqlite3`, backups and local configuration.
-3. Run **Stop AA.bat** from the old AA folder and check that shutdown succeeded before copying runtime files.
-4. Extract the new ZIP. Copy your `config.json` and reuse your full GGUF model in the new `AA` or `AA/axis` folder. Model weights do not need to be downloaded again.
-5. Set `database_folder` in the new `config.json` to the **existing runtime database folder**, using its full path. This also keeps Knowledge Base and other folder-based data together. `ATLAS_DB_PATH`, if set, overrides the main database path; check that it still names the intended file. Keep the old runtime folder at that path.
-6. To retain Axis jobs, tool outputs, memory, saved chats and custom skills, copy their folders under `data/axis` from the stopped installation (`state`, `workspace`, `chats` and `skills`). Do not copy `model-process.json` or process lock files.
-7. Run **Start AA.bat** in the new folder under your DSK account. Check familiar people, desks, packages and Knowledge Base records, then open Axis chat. Keep the previous folder and backups until these checks succeed.
+1. Finish deployments, queues, imports and terminal jobs. Save open articles.
+2. Run **Stop AA.bat** from the old installation. Confirm it stopped successfully.
+3. Keep your existing workspace and model files. Copy `config.json` to the new installation.
+4. Set `runtime_folder` in the new config (or `AA_DATA_HOME`) to the existing workspace.
+5. Run **Start AA.bat** from the new installation. Check your directory, desks,
+   knowledge articles, saved chats and packages before removing the old installation.
 
-Do not copy `data/server.json` or `data/viewer-server.json` into the new installation. They identify processes owned by the old folder; the new launcher creates its own records. Preserve older installation-level `backups/` directories too. If you choose to move runtime data instead of reusing its folder, do so only after shutdown and update its configured path.
+The distributed database contains fictional examples. Never replace your live database
+with the root `office_atlas.db` from a release.
 
-Never replace the live database with the root `office_atlas.db` distributed in the ZIP. That file is a first-run seed. Application updates do not require reimporting users, devices, packages or Citrix VDI records.
+## Moving or backing up the workspace
 
-If startup fails, keep the error and startup log, stop the new copy, and retain both folders and backups while resolving it. [Database update and recovery](database-update-guide.md) covers imports and consistent backups. AA updates do not publish or replace Atlas's separate hosted Preview.
+While AA is stopped:
+
+```sh
+python runtime_workspace.py export F:\Backups\aa-workspace.zip
+python runtime_workspace.py import F:\Backups\aa-workspace.zip --dest F:\AA-Workspace
+```
+
+Use the same environment/configuration for export as for starting AA. Export snapshots
+SQLite databases consistently, includes chats/memory/skills and working files, and omits
+logs, process records and locks. Restore requires a new destination folder. Set
+`runtime_folder` to that destination before starting the new copy. Keep the backup private.
+Models and the installation's `config.json` are separate; keep them alongside the backup.
+An explicit `ATLAS_DB_PATH` database is included as `office_atlas.db` in the export, even
+when it is outside the runtime folder. After restoring, clear the old override to use that
+restored database. Export does not collect unrelated external folders or account-specific
+collector queues automatically.
+
+## Migrating an installation from before runtime-folder support
+
+Earlier versions split state between the configured `database_folder` and the old
+installation's `data/axis`. After stopping the old version, make a workspace backup and:
+
+- Keep the active database, `knowledge.sqlite3`, `scripts.json`, clipboard/companion files,
+  seating/import settings and backups from the existing database folder.
+- Copy the old `data/axis` into the workspace's `axis` folder, including `state`, `chats`,
+  `workspace` and custom `skills`. Copy older installation-level `axis/state` into workspace `axis/legacy-state` so its
+  unresolved jobs keep blocking targets until acknowledged.
+- Copy `data/inbox-integration.json` into the workspace if collectors are configured.
+  Its explicitly configured cross-account mail folder stays where it is; preserve its ACLs.
+- Do not copy `server.json`, `viewer-server.json`, `model-process.json` or lock files.
+- Preserve existing mail queues from their configured folder. New, unconfigured collectors
+  use the workspace's `mail` folder. An existing default profile queue remains discoverable
+  until you explicitly migrate it.
+
+`AA_DATA_HOME` takes precedence over `runtime_folder`, then the legacy `database_folder`.
+Without these, `ATLAS_DB_PATH` supplies the workspace's parent, or AA uses `data` beside
+its installation. `ATLAS_DB_PATH` can still override only the main database file. The
+health endpoint reports resolved locations for checking configuration.
+
+The retired Atlas updater cannot replace AA. Compatibility start/stop shortcuts forward
+to AA. No AA change deploys over standalone Atlas, standalone Axis or the hosted Preview.
+
+## Startup blocked by an old server record
+
+An empty port 8770 can still leave an older launcher reporting an “unresponsive admin
+server record.” The record is an ownership marker, separate from the listening server.
+Current startup and shutdown discard markers only after verifying the recorded process
+has exited or its PID was reused. They never stop another process to recover a marker.
+
+For an older download, copy `Repair-AA-Startup.ps1` beside `Start AA.bat` and run from
+PowerShell in that folder:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Repair-AA-Startup.ps1
+& '.\Start AA.bat'
+```
+
+The repair checks both the old `data` folder and the configured workspace. It archives
+only the Admin/Viewer ownership records for PIDs confirmed absent. A running PID, a failed
+process query or an invalid record is retained with its path for diagnosis. Databases,
+models, chats and inbox configuration are not modified. If startup still fails, inspect
+`logs/admin-startup.log` in the workspace for the backend error.

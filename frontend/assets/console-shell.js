@@ -1,10 +1,12 @@
-function atlasConsoleNavigate(url){if(!window.AtlasNavigate?.(url))location.assign(url);}
+function atlasConsoleNavigate(url) {
+  if (!window.AtlasNavigate?.(url)) location.assign(url);
+}
 window.addEventListener("atlas:open-inbox", () => page("inbox"));
-window.addEventListener("atlas:inbox-person", event => {
+window.addEventListener("atlas:inbox-person", (event) => {
   const id = event.detail?.id;
   if (!Number.isSafeInteger(id) || id < 1) return;
   page("workspace");
-  loadUser("id:" + id).catch(error => toast(error.message));
+  loadUser("id:" + id).catch((error) => toast(error.message));
 });
 function toast(m) {
   let x = document.createElement("div");
@@ -19,11 +21,11 @@ async function copy(v, n = "Value") {
   toast(`${n} copied`);
 }
 function page(id) {
-
-  document.body.classList.toggle("knowledge-open",id === "knowledge");
-  if(id === "knowledge" || location.hash === "#knowledge") {
-    const url=new URL(location.href);url.hash=id === "knowledge" ? "knowledge" : "";
-    window.history.replaceState(null,"",url);
+  document.body.classList.toggle("knowledge-open", id === "knowledge");
+  if (id === "knowledge" || location.hash === "#knowledge") {
+    const url = new URL(location.href);
+    url.hash = id === "knowledge" ? "knowledge" : "";
+    window.history.replaceState(null, "", url);
   }
   if (id !== "admin")
     window.AtlasDiagnostics?.stop("Stopped — left Remote Admin");
@@ -37,8 +39,10 @@ function page(id) {
     id;
   const descriptions = {
     workspace: "People, devices and the tools to support them.",
-    inbox: "Incoming emails and Teams/Outlook notification previews, sender records and linked machines.",
-    clipboard: "What you copied, with the machines, people, desks and tickets Atlas recognises.",
+    inbox:
+      "Incoming emails and Teams/Outlook notification previews, sender records and linked machines.",
+    clipboard:
+      "What you copied, with the machines, people, desks and tickets Atlas recognises.",
     "active-directory": "Explore accounts, memberships and directory objects.",
     packages: "Find software and prepare your next deployment.",
     admin: "Inspect device health and investigate performance.",
@@ -47,7 +51,7 @@ function page(id) {
     terminal: "Write scripts and run commands from one place.",
     scripts: "Run saved PowerShell scripts against a list of machines.",
     psexec: "PsTools command templates and execution output.",
-    knowledge: "Diagrams, notes and shared support knowledge."
+    knowledge: "Support articles and runbooks.",
   };
   const description = document.getElementById("pageDescription");
   if (description) description.textContent = descriptions[id] || "";
@@ -57,13 +61,20 @@ function page(id) {
     b.classList.toggle("active", b.dataset.page === current);
     if (b.dataset.page === current) b.setAttribute("aria-current", "page");
     else b.removeAttribute("aria-current");
+    if (b.dataset.page === current && b.closest("details"))
+      b.closest("details").open = true;
   });
-  document.querySelectorAll('[data-section]').forEach(link => {
-    if(link.dataset.section === (id === 'knowledge' ? 'knowledge' : 'workspace'))link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');
+  document.querySelectorAll("[data-section]").forEach((link) => {
+    if (
+      link.dataset.section === (id === "knowledge" ? "knowledge" : "workspace")
+    )
+      link.setAttribute("aria-current", "page");
+    else link.removeAttribute("aria-current");
   });
   if (id === "knowledge") window.AtlasKnowledge?.open();
   if (id === "history") loadDeploymentHistory();
-  if (id === "packages") window.dispatchEvent(new CustomEvent("atlas:packages-open"));
+  if (id === "packages")
+    window.dispatchEvent(new CustomEvent("atlas:packages-open"));
   if (id === "terminal") window.AtlasTerminal?.open();
   if (id === "psexec") window.AtlasPsExec?.open();
   if (id === "scripts") window.AtlasScripts?.open();
@@ -82,9 +93,6 @@ async function init() {
   $("#search").focus();
 }
 function bind() {
-  document.querySelectorAll("[data-workspace-open]").forEach(button => {
-    button.addEventListener("click", () => page(button.dataset.workspaceOpen));
-  });
   $("#pkgSearch").oninput = () => {
     clearTimeout(window.pt);
     window.pt = setTimeout(packages, 250);
@@ -97,21 +105,38 @@ function bind() {
   $("#deploy").onclick = () => deploy("full");
   $("#deployQueue").onclick = () => addQueue();
   $("#deployOpenQueue").onclick = () => $("#queueDrawer").classList.add("open");
-  $("#deploymentRetry").onclick = () => currentDeployment && retryDeployment(currentDeployment.id);
-  $("#deploymentRequeue").onclick = () => currentDeployment && (currentDeployment.payload ? queuePayload(currentDeployment.payload) : queueDeployment(currentDeployment.id));
+  $("#deploymentRetry").onclick = () =>
+    currentDeployment && retryDeployment(currentDeployment.id);
+  $("#deploymentRequeue").onclick = () =>
+    currentDeployment &&
+    (currentDeployment.payload
+      ? queuePayload(currentDeployment.payload)
+      : queueDeployment(currentDeployment.id));
   $("#deploymentCopyLog").onclick = async () => {
-    try { await navigator.clipboard.writeText($("#log").textContent); toast("Log copied"); }
-    catch { toast("Clipboard unavailable"); }
+    try {
+      await navigator.clipboard.writeText($("#log").textContent);
+      toast("Log copied");
+    } catch {
+      toast("Clipboard unavailable");
+    }
   };
   // Retry / queue buttons on Deployments drawer cards and History rows.
   $("#deploymentsList").addEventListener("click", (event) => {
-    const retry = event.target.closest("[data-deployment-retry]"), queue = event.target.closest("[data-deployment-queue]");
-    if (retry) retryDeployment(retry.dataset.deploymentRetry).then(() => refreshDeploymentMonitor());
+    const retry = event.target.closest("[data-deployment-retry]"),
+      queue = event.target.closest("[data-deployment-queue]");
+    if (retry)
+      retryDeployment(retry.dataset.deploymentRetry).then(() =>
+        refreshDeploymentMonitor(),
+      );
     if (queue) queueDeployment(queue.dataset.deploymentQueue);
   });
   $("#historyBody").addEventListener("click", (event) => {
-    const retry = event.target.closest("[data-history-retry]"), queue = event.target.closest("[data-history-queue]");
-    if (retry) retryDeployment(retry.dataset.historyRetry).then((d) => d && setTimeout(loadDeploymentHistory, 800));
+    const retry = event.target.closest("[data-history-retry]"),
+      queue = event.target.closest("[data-history-queue]");
+    if (retry)
+      retryDeployment(retry.dataset.historyRetry).then(
+        (d) => d && setTimeout(loadDeploymentHistory, 800),
+      );
     if (queue) queueDeployment(queue.dataset.historyQueue);
   });
   $("#copyOnly").onclick = () => deploy("copy");
@@ -128,7 +153,7 @@ function bind() {
   $("#bulkPkg").onchange = bulkScripts;
   $("#bulkAction").onchange = bulkScripts;
   $("#bulkScript").onchange = refreshBulkSelection;
-  document.querySelectorAll("[data-bulk-action]").forEach(button => {
+  document.querySelectorAll("[data-bulk-action]").forEach((button) => {
     button.onclick = () => {
       $("#bulkAction").value = button.dataset.bulkAction;
       $("#bulkAction").dispatchEvent(new Event("change", { bubbles: true }));
@@ -161,9 +186,13 @@ function bind() {
     if (!computer || !confirm("Reboot " + computer + "?")) return;
     const button = $("[data-reboot]");
     button.disabled = true;
-    try { await window.AtlasReboots.start(computer); }
-    catch (error) { toast(error.message); }
-    finally { button.disabled = !!window.AtlasReadOnly; }
+    try {
+      await window.AtlasReboots.start(computer);
+    } catch (error) {
+      toast(error.message);
+    } finally {
+      button.disabled = !!window.AtlasReadOnly;
+    }
   };
 }
 function bindRemoteTools() {
@@ -386,7 +415,12 @@ function bindPaletteShortcuts() {
         closeAllOverlays();
         return;
       }
-      if(document.querySelector('#knowledge')?.classList.contains('active') && document.activeElement?.closest('#knowledge') && !(event.ctrlKey && event.key.toLowerCase()==='k')) return;
+      if (
+        document.querySelector("#knowledge")?.classList.contains("active") &&
+        document.activeElement?.closest("#knowledge") &&
+        !(event.ctrlKey && event.key.toLowerCase() === "k")
+      )
+        return;
       const active = document.activeElement;
       const isTyping =
         active && ["INPUT", "TEXTAREA", "SELECT"].includes(active.tagName);
@@ -672,26 +706,38 @@ async function runInitialSharedCommand(params) {
   await runSharedCommand(id);
 }
 async function runSharedCommand(id) {
-
   if (window.AtlasReadOnly) {
     const { COMMANDS } = await import("/command-registry.js");
     if (!COMMANDS.some((c) => c.id === id && c.viewer))
       return toast(AtlasReadOnly.reason);
   }
-  if (id === "knowledge" || id.startsWith("kb-")) {
+  if (id === "knowledge") {
     page("knowledge");
-    if(id !== "knowledge") return AtlasKnowledge.command(id);
     return;
   }
-  if(id==='ad-open'){const p=new URLSearchParams(location.search);return AtlasAD.show(p.get('adkind')==='user'?'user':'computer',p.get('adidentity')||S.target||'',true,p.get('adaction')||'groups');}
-  if(id.startsWith('ad-'))return AtlasAD.command(id);
-  if (id === "active-directory") { page("active-directory"); return; }
-  if (["vlans","contacts","daas","vdi"].includes(id)) {
+  if (id === "ad-open") {
+    const p = new URLSearchParams(location.search);
+    return AtlasAD.show(
+      p.get("adkind") === "user" ? "user" : "computer",
+      p.get("adidentity") || S.target || "",
+      true,
+      p.get("adaction") || "groups",
+    );
+  }
+  if (id.startsWith("ad-")) return AtlasAD.command(id);
+  if (id === "active-directory") {
+    page("active-directory");
+    return;
+  }
+  if (["vlans", "contacts", "daas", "vdi"].includes(id)) {
     const { openSiteInfo } = await import("/site-info.js?v=1");
     return openSiteInfo(id);
   }
   if (id === "animations") return AtlasUI.motion.toggle();
-  if (id === "packages" || id === "inbox") { page(id); return; }
+  if (id === "packages" || id === "inbox") {
+    page(id);
+    return;
+  }
   if (id === "catalogue") return openConsoleCatalogue();
   const { MAP_COMMANDS, commandUrl } = await import("/command-registry.js");
   if (MAP_COMMANDS.has(id)) {
@@ -846,17 +892,30 @@ sharedPaletteReady = import("/command-palette.js").then(
   },
 );
 AtlasContext.configure({
-  openPerson: async key => {page("workspace");await loadUser(key);},
-  search: async term => {page("workspace");document.getElementById("search").value = term;await search();},
+  openPerson: async (key) => {
+    page("workspace");
+    await loadUser(key);
+  },
+  search: async (term) => {
+    page("workspace");
+    document.getElementById("search").value = term;
+    await search();
+  },
 });
 document.addEventListener("DOMContentLoaded", () => {
-  document.querySelectorAll('[data-section]').forEach(link => link.addEventListener('click',event => {event.preventDefault();page(link.dataset.section);}));
+  document.querySelectorAll("[data-section]").forEach((link) =>
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      page(link.dataset.section);
+    }),
+  );
   installSelectionSidebar();
   installDeploymentPanel();
   $("#openCatalogue").onclick = () => page("packages");
-  window.addEventListener("atlas:package-inspect", event => {
-    if (window.AtlasReadOnly || typeof event.detail?.folder !== "string") return;
-    openConsoleCatalogue(event.detail.folder).catch(e => toast(e.message));
+  window.addEventListener("atlas:package-inspect", (event) => {
+    if (window.AtlasReadOnly || typeof event.detail?.folder !== "string")
+      return;
+    openConsoleCatalogue(event.detail.folder).catch((e) => toast(e.message));
   });
   (() => {
     const searchInput = document.getElementById("search");

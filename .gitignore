@@ -38,3 +38,9 @@ axis/llama-vulkan/
 *.gguf.joining*
 dist-aa/
 aa-windows.zip*
+
+# Local tooling, downloaded runtimes and private workspace/release archives.
+.ruff_cache/
+runtimes/
+*.zip
+*.building

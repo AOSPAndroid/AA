@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
 import clipboard_history
-from clipboard_history import History, candidates, enrich, register
+from clipboard_history import candidates, register
 from directory_lookup import prepare_views
 from directory_workbook import schema
 from identity_links import rebuild_links

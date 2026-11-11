@@ -1,0 +1,18 @@
+{
+  "release": "b11815",
+  "source_commit": "7170cad4d02f7907517613931840cbb2367399a3",
+  "archives": {
+    "cpu": {
+      "asset_id": 665351439,
+      "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11815/llama-b11815-bin-win-cpu-x64.zip",
+      "sha256": "fcdde7412f5a4c6e644008893cba38587c4d1f3800074aa6a72614b8d6a92028",
+      "size": 24070710
+    },
+    "vulkan": {
+      "asset_id": 665353917,
+      "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11815/llama-b11815-bin-win-vulkan-x64.zip",
+      "sha256": "ff71dad73d77c6673087f64fbb8f52ebddca3dc74e0cbfba09a06a231583f8a5",
+      "size": 36868097
+    }
+  }
+}

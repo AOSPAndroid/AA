@@ -252,6 +252,10 @@ body.atlas-console > .console-sidebar {
 .console-sidebar nav button {
   min-height: 38px;
 }
+.console-tools { margin-top: 4px; }
+.console-tools > summary { padding: 10px; color: var(--atlas-muted); cursor: pointer; font-size: 12px; }
+.console-tools > summary:focus-visible { outline: 2px solid var(--atlas-focus); outline-offset: 2px; }
+.console-tool-pages { display: grid; gap: 4px; }
 .console-sidebar-content {
   min-height: 0;
   overflow: auto;

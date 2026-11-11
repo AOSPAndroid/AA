@@ -57,7 +57,7 @@ def person(row):
 
 def find_machines(c, names):
     from mail_inbox import mentioned_machines
-    found, users = [], {}
+    found = []
     for start in range(0, len(names), 400):
         found += mentioned_machines(c, names[start:start + 400])
     if not found:

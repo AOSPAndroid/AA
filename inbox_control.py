@@ -69,7 +69,8 @@ def powershell(script, *arguments):
 class InboxIntegration:
     def __init__(self, root=ROOT):
         self.root = Path(root)
-        self.path = self.root / 'data' / 'inbox-integration.json'
+        from runtime_paths import paths
+        self.path = paths(self.root).root / 'inbox-integration.json'
 
     def config(self):
         try:
@@ -125,7 +126,7 @@ class InboxIntegration:
             if current and is_running(Path(current['directory']), 'agent.lock'):
                 raise IntegrationError('Stop collectors before changing their Windows account or Python path.')
             powershell(self.root / 'Configure-Inbox-Integration.ps1', '-MailUser', mail_user,
-                       '-PythonPath', python or sys.executable)
+                       '-PythonPath', python or sys.executable, '-RuntimeFolder', self.path.parent)
             if not self.config():
                 raise IntegrationError('Windows setup did not save its configuration.')
             return self.command('start')

@@ -1,6 +1,6 @@
 """Knowledge Base articles: Markdown runbooks with tags and links to Live Inbox issue categories.
 
-Stored beside the Draw.io diagrams in knowledge.sqlite3 (table "articles"). Admin only; never
+Stored in knowledge.sqlite3 (table "articles"). Admin only; never
 registered on the LAN viewer. Saving uses the same revision check as diagrams, so two windows
 cannot overwrite each other.
 """

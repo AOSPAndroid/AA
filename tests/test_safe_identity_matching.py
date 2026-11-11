@@ -11,7 +11,7 @@ from unittest.mock import patch
 from sqlite_fixture import connect as fixture_connect, isolate_backend_database
 from directory_lookup import exact_users, prepare_views, resolve_directory, search_directory
 from directory_workbook import build, norm, schema
-from identity_links import MATCHING_VERSION, build_index, candidates, rebuild_links
+from identity_links import MATCHING_VERSION, candidates, rebuild_links
 from merge_data import atlas_schema, merge_directory
 from seating_excel import account_index, stamp
 from test_directory_exports import device_sheets, workbook

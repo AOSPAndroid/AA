@@ -11,7 +11,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from directory_lookup import exact_users, linked_machines, search_directory, prepare_views
 from desk_directory import desk_context,person_desks,machine_context,palette_search
 import directory_exports
@@ -235,11 +235,7 @@ def shared_asset(filename:str, request:Request):
 
 @app.get('/{filename}')
 def asset(filename: str, request: Request):
-    allowed = {'catalogue.js','service-actions.js','site-info.js','command-palette.js', 'command-palette.css', 'command-registry.js', 'map-furniture.js','map-amenities.js','map-plan-details.js','official-app.js','camera-motion.js','map-cursor.js', 'official-data.json', 'official.css', 'style.css', 'operations.css', 'operations.js'}
+    allowed = {'action-capabilities.js','catalogue.js','service-actions.js','site-info.js','command-palette.js', 'command-palette.css', 'command-registry.js', 'map-furniture.js','map-amenities.js','map-plan-details.js','official-app.js','camera-motion.js','map-cursor.js', 'official-data.json', 'official.css', 'style.css', 'operations.css', 'operations.js'}
     if filename not in allowed and not re.fullmatch(r'(official-floor-(-1|[0-8])\.(jpg|pdf)|studio-floor-(-1|[0-8])\.svg)', filename):
         raise HTTPException(404, 'Not available in the shared viewer')
     return cached_file(request, ATLAS / filename)
-
-# Bundled open-source Draw.io static editor (no server-side editor endpoints).
-from fastapi.staticfiles import StaticFiles
-app.mount('/drawio', StaticFiles(directory=ROOT/'frontend/drawio', html=True), name='drawio')

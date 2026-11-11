@@ -34,14 +34,17 @@ def stamp(value):
 
 
 def default_directory():
-    config = Path(__file__).with_name('data') / 'inbox-integration.json'
+    from runtime_paths import paths
+    config = paths().root / 'inbox-integration.json'
     if config.is_file():
         saved = json.loads(config.read_text(encoding='utf-8-sig'))
         if saved.get('version') == 1 and isinstance(saved.get('directory'), str):
             return Path(saved['directory']).resolve()
     if os.environ.get('ATLAS_MAIL_DIR'):
         return Path(os.environ['ATLAS_MAIL_DIR']).expanduser().resolve()
-    return Path(os.environ.get('LOCALAPPDATA', str(Path.home() / '.local' / 'share'))) / 'Atlas' / 'OutlookWatcher'
+    legacy=Path(os.environ.get('LOCALAPPDATA',str(Path.home()/'.local/share')))/'Atlas/OutlookWatcher'
+    if (legacy/'inbox.sqlite3').is_file() and not (paths().root/'mail/inbox.sqlite3').exists():return legacy
+    return paths().root / 'mail'
 
 
 def read_json(path):
@@ -125,6 +128,16 @@ def is_running(directory, filename='watcher.lock'):
     return False
 
 
+def prune_messages(connection, now):
+    """Shared retention for Outlook and notification-only collector sessions."""
+    days=max(1,min(3650,int(os.environ.get('AA_MAIL_RETENTION_DAYS','90'))))
+    maximum=max(100,min(100000,int(os.environ.get('AA_MAIL_MAX_MESSAGES','10000'))))
+    with connection:
+        connection.execute('DELETE FROM messages WHERE received_at<?',(stamp(now-timedelta(days=days)),))
+        connection.execute('DELETE FROM messages WHERE id NOT IN (SELECT id FROM messages ORDER BY id DESC LIMIT ?)',(maximum,))
+    return {'retention_days':days,'max_messages':maximum}
+
+
 class MailQueue:
     def __init__(self, directory, since, mailbox=None, subfolder=None):
         directory.mkdir(parents=True, exist_ok=True)
@@ -179,6 +192,9 @@ class MailQueue:
                 VALUES(?,?,?,?,?,?,?,?,?,?)''', (source, stamp(utcnow()), *(message[key] for key in fields)))
         return result.rowcount
 
+    def prune(self, now):
+        return prune_messages(self.db,now)
+
     def count(self):
         return self.db.execute("SELECT count(*) FROM messages WHERE content_kind='mail'").fetchone()[0]
 
@@ -191,7 +207,10 @@ def scan(queue, inbox, now, should_stop=lambda: False):
     cursor = datetime.fromisoformat(queue.get('cursor'))
     reconciled = queue.get('reconciled')
     full = not reconciled or (now - datetime.fromisoformat(reconciled)).total_seconds() >= RECONCILE_SECONDS
-    lower = since if full else max(since, cursor - OVERLAP)
+    days=max(1,min(3650,int(os.environ.get('AA_MAIL_RECONCILE_DAYS','7'))))
+    retention=max(1,min(3650,int(os.environ.get('AA_MAIL_RETENTION_DAYS','90'))))
+    repair=queue.get('repair_requested') is True
+    lower=max(since,now-timedelta(days=retention)) if repair else max(since,now-timedelta(days=days)) if full else max(since,cursor-OVERLAP,now-timedelta(days=retention))
     added = 0
     first_error = None
     for entry_id in inbox.entries(lower):
@@ -214,8 +233,10 @@ def scan(queue, inbox, now, should_stop=lambda: False):
         added += queue.insert(source, message)
     if should_stop():
         raise StopRequested()
+    queue.prune(now)
     if first_error is not None:
         raise first_error
+    if repair:queue.set('repair_requested',False)
     with queue.db:
         queue.set('cursor', stamp(max(cursor, now)))
         if full:
@@ -336,7 +357,9 @@ def run(args):
         pythoncom.CoInitializeEx(pythoncom.COINIT_APARTMENTTHREADED)
         try:
             queue = MailQueue(directory, utcnow() - timedelta(hours=args.lookback_hours), args.mailbox, args.subfolder)
+            if getattr(args,'repair',False):queue.set('repair_requested',True);queue.db.commit()
             current['config'] = queue.get('config')
+            current.update(queue.prune(utcnow()))
             while not stopped():
                 result = 0
                 inbox = None
@@ -461,6 +484,7 @@ def main(argv=None):
     parser.add_argument('--subfolder', help='Path below the selected Inbox, with / between folder names')
     parser.add_argument('--interval', type=int, default=5, help='Poll interval in seconds (5-300; default 5)')
     parser.add_argument('--lookback-hours', type=float, default=0, help='Initial history to import, only for a new data folder (default 0)')
+    parser.add_argument('--repair',action='store_true',help='With run: reconcile the full retained history once (normal repair window: seven days).')
     parser.add_argument('--once', action='store_true', help='With run: make one connection/scan attempt, then exit')
     parser.add_argument('--run-id', help=argparse.SUPPRESS)
     args = parser.parse_args(argv)

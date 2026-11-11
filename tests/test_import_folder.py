@@ -20,7 +20,7 @@ from import_folder import ImportFolder, Settings, headers, kind_of, register
 from sqlite_fixture import connect as fixture_connect
 from test_directory_exports import device_sheets, workbook
 from test_directory_pair import csv_text
-from test_package_data import extract as package_csv
+from test_package_data import extract as package_csv,excel_extract
 from test_vdi_data import HEADERS as CITRIX_HEADERS, csv_bytes as citrix_csv, device as citrix_device
 
 SEED = Path(__file__).resolve().parents[1] / 'office_atlas.db'
@@ -86,6 +86,37 @@ class ImportFolderTests(unittest.TestCase):
         self.assertEqual(first['status']['state'], 'waiting')
         self.assertEqual(second['groups']['vdi']['result'], 'applied')
         self.assertEqual(read.call_count, 2)
+
+    def test_package_excel_imports_while_directory_waits_for_active_work(self):
+        self.directory();self.busy=True
+        self.write('u_cmdb_software_package.xlsx',excel_extract(['name','u_package_sub_state'],[['ixExample','Live']]))
+        summary=self.watcher.check()
+        self.assertEqual(summary['groups']['directory']['result'],'waiting')
+        self.assertEqual(summary['groups']['packages']['result'],'applied')
+        self.assertEqual(self.count('select count(*) from package_data'),1)
+        self.watcher.check()
+        self.assertEqual(self.count('select count(*) from package_data_imports'),1,'Unchanged workbook imports only once')
+
+    def test_configuration_item_device_heading_imports_without_using_asset_display_name(self):
+        self.watcher.state['review_large']=False
+        devices=[row[:] for row in self.sheets['devices']]
+        devices[0][devices[0].index('ci')]='Configuration item'
+        devices[0].append('Name')
+        for row in devices[1:]:row.append('WRONG-PC' if row[3] else '')
+        self.write('sys_user.xlsx',{'Users':self.sheets['users']})
+        self.write('alm_asset.xlsx',{'Assets':devices})
+        summary=self.watcher.check()
+        self.assertEqual(summary['groups']['directory']['result'],'applied',summary)
+        with sqlite3.connect(self.db,factory=ClosingConnection) as con:
+            names={row[0].upper() for row in con.execute('select machine_name from machines')}
+        self.assertEqual(names,{'TESTPC-1','TESTPC-2'})
+
+    def test_asset_identifiers_alone_do_not_become_hostnames_and_explain_missing_column(self):
+        self.write('alm_asset.xlsx',{'Assets':[['Asset tag','Serial number','Display name'],['ASSET1','SERIAL1','Some laptop']]})
+        summary=self.watcher.check();item=summary['files'][0]
+        self.assertEqual(item['kind'],'')
+        self.assertIn('hostname column',item['reason'])
+        self.assertNotIn('directory',summary['groups'])
 
     def test_an_unfinished_new_export_prevents_importing_an_older_snapshot(self):
         self.directory()

@@ -9,7 +9,8 @@ function syncDeploymentPanel({ selection = false } = {}) {
     toggle = $("#deploymentToggle");
   if (!workspace || !panel || !toggle) return;
   // The panel lives in Workspace, or beside a Live Inbox message while its Deploy tool is open.
-  const available = !!S.target && !!panel.closest(".page")?.classList.contains("active"),
+  const available =
+      !!S.target && !!panel.closest(".page")?.classList.contains("active"),
     compact = window.matchMedia("(max-width: 760px)").matches;
   if (!available) deploymentExpanded = false;
   else if (selection) deploymentExpanded = true;
@@ -158,7 +159,9 @@ async function packages() {
     for (const item of d.items)
       packageLabels.set(
         item.folder,
-        item.display_name + (item.version ? " · " + item.version : "") + (item.state ? " · " + item.state : ""),
+        item.display_name +
+          (item.version ? " · " + item.version : "") +
+          (item.state ? " · " + item.state : ""),
       );
     $("#pkg").innerHTML = d.items
       .map(
@@ -166,7 +169,7 @@ async function packages() {
           `<option value="${esc(x.folder)}">${esc(x.display_name)}${x.version ? " · " + esc(x.version) : ""}${x.state ? " · " + esc(x.state) : ""}</option>`,
       )
       .join("");
-    if (previous && !d.items.some(item => item.folder === previous))
+    if (previous && !d.items.some((item) => item.folder === previous))
       $("#pkg").add(new Option(previousLabel || previous, previous));
     $("#pkg").value = previous || d.items[0]?.folder || "";
     $("#packageSearchStatus").textContent =
@@ -288,17 +291,26 @@ function queuePayload(payload) {
   toast(`Added to queue: ${PathName(payload.folder)} on ${payload.computer}`);
 }
 async function queueDeployment(jobId) {
-  try { queuePayload(await api("/api/deploy/" + encodeURIComponent(jobId) + "/payload")); }
-  catch (error) { toast(error.message); }
+  try {
+    queuePayload(
+      await api("/api/deploy/" + encodeURIComponent(jobId) + "/payload"),
+    );
+  } catch (error) {
+    toast(error.message);
+  }
 }
 async function retryDeployment(jobId) {
   try {
-    const d = await api("/api/deploy/" + encodeURIComponent(jobId) + "/retry", { method: "POST" });
+    const d = await api("/api/deploy/" + encodeURIComponent(jobId) + "/retry", {
+      method: "POST",
+    });
     toast(`Retrying ${d.package} on ${d.target}`);
     if (d.target === S.target) poll(d.job, d.target);
     else openDeploymentMonitor("active");
     return d;
-  } catch (error) { toast(error.message); }
+  } catch (error) {
+    toast(error.message);
+  }
 }
 function syncDeploymentProgress() {
   const host = $("#deploymentProgress");
@@ -322,7 +334,7 @@ function poll(id, target = S.target, payload = null) {
       $("#deploymentState").textContent = String(
         !AtlasClient.terminal.has(data.state) && data.events.some((e) => e.pid)
           ? "launched"
-          : (data.state || "running"),
+          : data.state || "running",
       ).replace(/^./, (letter) => letter.toUpperCase());
       $("#deploymentState").className = statusAccent(data.state);
       $("#deploymentMessage").textContent = data.events.at(-1)?.message || "";
@@ -349,10 +361,13 @@ function renderFav() {
   let p = prefs(),
     pkg = $("#pkg").value;
   const favourite = p.favs.includes(pkg);
-  const button = $("#favBtn"), text = favourite ? "★" : "☆",
-    pressed = String(favourite), disabled = !pkg || packageBusy || $("#packagePicker").open;
+  const button = $("#favBtn"),
+    text = favourite ? "★" : "☆",
+    pressed = String(favourite),
+    disabled = !pkg || packageBusy || $("#packagePicker").open;
   if (button.textContent !== text) button.textContent = text;
-  if (button.getAttribute("aria-pressed") !== pressed) button.setAttribute("aria-pressed", pressed);
+  if (button.getAttribute("aria-pressed") !== pressed)
+    button.setAttribute("aria-pressed", pressed);
   if (button.disabled !== disabled) button.disabled = disabled;
 }
 function toggleFav() {
@@ -405,7 +420,9 @@ function bulkTargets() {
     ),
   ];
 }
-let bulkBusy = false, bulkSubmitting = false, bulkCatalogueLoaded = false;
+let bulkBusy = false,
+  bulkSubmitting = false,
+  bulkCatalogueLoaded = false;
 async function bulkPackages() {
   const request = bulkPackageRequest();
   bulkBusy = true;
@@ -417,14 +434,15 @@ async function bulkPackages() {
       { signal: request.signal },
     );
     if (!request.current()) return;
-    const previous = $("#bulkPkg").value, label = $("#bulkPkg").selectedOptions[0]?.textContent;
+    const previous = $("#bulkPkg").value,
+      label = $("#bulkPkg").selectedOptions[0]?.textContent;
     $("#bulkPkg").innerHTML = d.items
       .map(
         (x) =>
           `<option value="${esc(x.folder)}">${esc(x.display_name)}${x.version ? " · " + esc(x.version) : ""}${x.state ? " · " + esc(x.state) : ""}</option>`,
       )
       .join("");
-    if (previous && !d.items.some(item => item.folder === previous))
+    if (previous && !d.items.some((item) => item.folder === previous))
       $("#bulkPkg").add(new Option(label || previous, previous));
     $("#bulkPkg").value = previous || d.items[0]?.folder || "";
     bulkCatalogueLoaded = true;
@@ -432,55 +450,112 @@ async function bulkPackages() {
   } catch (e) {
     if (e.name !== "AbortError" && request.current()) toast(e.message);
   } finally {
-    if (request.current()) { bulkBusy = false; $("#bulkPkg").disabled = false; refreshBulkSelection(); }
+    if (request.current()) {
+      bulkBusy = false;
+      $("#bulkPkg").disabled = false;
+      refreshBulkSelection();
+    }
   }
 }
 function refreshBulkSelection() {
-  const action = $("#bulkAction").value, count = bulkTargets().length;
-  document.querySelectorAll("[data-bulk-action]").forEach(button =>
-    button.setAttribute("aria-pressed", String(button.dataset.bulkAction === action)));
+  const action = $("#bulkAction").value,
+    count = bulkTargets().length;
+  document
+    .querySelectorAll("[data-bulk-action]")
+    .forEach((button) =>
+      button.setAttribute(
+        "aria-pressed",
+        String(button.dataset.bulkAction === action),
+      ),
+    );
   $("#targetCount").textContent = `${count} targets`;
-  $("#bulkStart").textContent = bulkSubmitting ? "Starting…" : `${action} on ${count} machine${count === 1 ? "" : "s"}`;
-  $("#bulkStart").disabled = !!window.AtlasReadOnly || bulkBusy || bulkSubmitting || !count || !$("#bulkPkg").value || $("#bulkScript").disabled || !$("#bulkScript").value;
-  $("#bulkSelectionStatus").textContent = bulkBusy ? "Loading packages…" : $("#bulkScript").disabled ? "Loading scripts…" : !$("#bulkScript").value ? "No script available for this action." : `${$("#bulkPkg").selectedOptions[0]?.textContent || ""} · ${action}`;
+  $("#bulkStart").textContent = bulkSubmitting
+    ? "Starting…"
+    : `${action} on ${count} machine${count === 1 ? "" : "s"}`;
+  $("#bulkStart").disabled =
+    !!window.AtlasReadOnly ||
+    bulkBusy ||
+    bulkSubmitting ||
+    !count ||
+    !$("#bulkPkg").value ||
+    $("#bulkScript").disabled ||
+    !$("#bulkScript").value;
+  $("#bulkSelectionStatus").textContent = bulkBusy
+    ? "Loading packages…"
+    : $("#bulkScript").disabled
+      ? "Loading scripts…"
+      : !$("#bulkScript").value
+        ? "No script available for this action."
+        : `${$("#bulkPkg").selectedOptions[0]?.textContent || ""} · ${action}`;
 }
 async function bulkScripts() {
-  const request = bulkScriptRequest(), folder = $("#bulkPkg").value,
-    action = $("#bulkAction").value, control = $("#bulkScript");
+  const request = bulkScriptRequest(),
+    folder = $("#bulkPkg").value,
+    action = $("#bulkAction").value,
+    control = $("#bulkScript");
   control.innerHTML = "";
   control.disabled = true;
   refreshBulkSelection();
   try {
     if (folder) {
-      const d = await api(`/api/scripts?package=${encodeURIComponent(folder)}&action=${encodeURIComponent(action)}`, { signal: request.signal });
-      if (!request.current() || folder !== $("#bulkPkg").value || action !== $("#bulkAction").value) return;
-      control.innerHTML = d.scripts.map(x => `<option>${esc(x)}</option>`).join("");
+      const d = await api(
+        `/api/scripts?package=${encodeURIComponent(folder)}&action=${encodeURIComponent(action)}`,
+        { signal: request.signal },
+      );
+      if (
+        !request.current() ||
+        folder !== $("#bulkPkg").value ||
+        action !== $("#bulkAction").value
+      )
+        return;
+      control.innerHTML = d.scripts
+        .map((x) => `<option>${esc(x)}</option>`)
+        .join("");
     }
   } catch (e) {
     if (e.name !== "AbortError" && request.current()) toast(e.message);
   } finally {
-    if (request.current()) { control.disabled = false; refreshBulkSelection(); }
+    if (request.current()) {
+      control.disabled = false;
+      refreshBulkSelection();
+    }
   }
 }
 async function startBulk() {
   if (bulkSubmitting || bulkBusy) return;
   const pcs = bulkTargets();
   if (!pcs.length) return toast("Enter targets");
-  if (!$("#bulkPkg").value || $("#bulkScript").disabled || !$("#bulkScript").value)
+  if (
+    !$("#bulkPkg").value ||
+    $("#bulkScript").disabled ||
+    !$("#bulkScript").value
+  )
     return toast("Choose a package with an available action script");
-  const payload = { computers: pcs, folder: $("#bulkPkg").value,
-    script: $("#bulkScript").value, action: $("#bulkAction").value,
-    fresh: $("#bulkFresh").checked, threads: +$("#bulkThreads").value,
-    concurrency: +$("#concurrency").value };
+  const payload = {
+    computers: pcs,
+    folder: $("#bulkPkg").value,
+    script: $("#bulkScript").value,
+    action: $("#bulkAction").value,
+    fresh: $("#bulkFresh").checked,
+    threads: +$("#bulkThreads").value,
+    concurrency: +$("#concurrency").value,
+  };
   bulkSubmitting = true;
   refreshBulkSelection();
   try {
-    const d = await api("/api/bulk/deploy", { method: "POST",
-      headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    const d = await api("/api/bulk/deploy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
     S.bulk = d.job;
     bulkPoll(d.job);
-  } catch (e) { toast(e.message); }
-  finally { bulkSubmitting = false; refreshBulkSelection(); }
+  } catch (e) {
+    toast(e.message);
+  } finally {
+    bulkSubmitting = false;
+    refreshBulkSelection();
+  }
 }
 function bulkPoll(id) {
   return AtlasClient.watch(
@@ -496,35 +571,51 @@ function bulkPoll(id) {
 }
 function renderBulk(j) {
   const r = S.rows,
-    failed = r.filter((x) => x.copy === "Failed" || x.completion === "Failed").length;
+    failed = r.filter(
+      (x) => x.copy === "Failed" || x.completion === "Failed",
+    ).length;
   $("#copyFailed").disabled = !failed;
   $("#exportCsv").disabled = !r.length;
-  const done = r.filter((x) => ["Complete", "Launched"].includes(x.completion)).length;
+  const done = r.filter((x) =>
+    ["Complete", "Launched"].includes(x.completion),
+  ).length;
   $("#bulkSummary").innerHTML =
     `<div class=summary><div>Phase<b>${esc(j.phase || j.state || "Waiting")}</b></div><div>Total<b>${r.length}</b></div><div${failed ? ' class="status-bad"' : ""}>Failed<b>${failed}</b></div><div${done ? ' class="status-ok"' : ""}>Launched / complete<b>${done}</b></div></div>`;
-  $("#bulkBody").innerHTML = r.length ? r
-    .map(
-      (x) =>
-        `<tr${x.completion === "Failed" || x.copy === "Failed" ? ' data-state="failed"' : ""}><td><b>${esc(x.machine)}</b></td><td><span class="${statusAccent(x.copy)}">${esc(x.copy)}</span></td><td><span class="${statusAccent(x.launch)}">${esc(x.launch)}</span></td><td>${esc(x.pid)}</td><td><span class="${statusAccent(x.completion)}">${esc(x.completion)}</span></td><td><span class="${exitTone(x.exit_code)}">${esc(x.exit_code)}</span></td><td>${esc(
-          String(x.details || "")
-            .split("\n")
-            .slice(-1)[0],
-        )}</td></tr>`,
-    )
-    .join("") : `<tr class="atlas-table-empty"><td colspan="7"><b>${AtlasClient.terminal.has(j.state) ? "No per-device results returned" : "Waiting for device results…"}</b><span>${AtlasClient.terminal.has(j.state) ? "This run has no rows to copy or export." : "Results appear here as this run reports progress."}</span></td></tr>`;
+  $("#bulkBody").innerHTML = r.length
+    ? r
+        .map(
+          (x) =>
+            `<tr${x.completion === "Failed" || x.copy === "Failed" ? ' data-state="failed"' : ""}><td><b>${esc(x.machine)}</b></td><td><span class="${statusAccent(x.copy)}">${esc(x.copy)}</span></td><td><span class="${statusAccent(x.launch)}">${esc(x.launch)}</span></td><td>${esc(x.pid)}</td><td><span class="${statusAccent(x.completion)}">${esc(x.completion)}</span></td><td><span class="${exitTone(x.exit_code)}">${esc(x.exit_code)}</span></td><td>${esc(
+              String(x.details || "")
+                .split("\n")
+                .slice(-1)[0],
+            )}</td></tr>`,
+        )
+        .join("")
+    : `<tr class="atlas-table-empty"><td colspan="7"><b>${AtlasClient.terminal.has(j.state) ? "No per-device results returned" : "Waiting for device results…"}</b><span>${AtlasClient.terminal.has(j.state) ? "This run has no rows to copy or export." : "Results appear here as this run reports progress."}</span></td></tr>`;
 }
 // Exit code 0 is good news, any other number bad; blank stays neutral.
 function exitTone(code) {
   const text = String(code ?? "").trim();
-  return !text || !/^-?\d+$/.test(text) ? "status-neutral" : Number(text) === 0 ? "status-ok" : "status-bad";
+  return !text || !/^-?\d+$/.test(text)
+    ? "status-neutral"
+    : Number(text) === 0
+      ? "status-ok"
+      : "status-bad";
 }
 let deploymentHistorySequence = 0;
 async function loadDeploymentHistory() {
   const sequence = ++deploymentHistorySequence,
-    body = $("#historyBody"), status = $("#historyStatus"), refresh = $("#refreshHistory");
-  const empty = (title, message) => `<tr class="atlas-table-empty"><td colspan="8"><b>${esc(title)}</b><span>${esc(message)}</span></td></tr>`;
+    body = $("#historyBody"),
+    status = $("#historyStatus"),
+    refresh = $("#refreshHistory");
+  const empty = (title, message) =>
+    `<tr class="atlas-table-empty"><td colspan="8"><b>${esc(title)}</b><span>${esc(message)}</span></td></tr>`;
   if (window.AtlasReadOnly) {
-    body.innerHTML = empty("History is not included in this read-only view", "Open Atlas Admin to review recent deployment operations.");
+    body.innerHTML = empty(
+      "History is not included in this read-only view",
+      "Open Atlas Admin to review recent deployment operations.",
+    );
     body.setAttribute("aria-busy", "false");
     status.textContent = "Deployment history is available in Atlas Admin.";
     status.dataset.state = "readonly";
@@ -536,25 +627,46 @@ async function loadDeploymentHistory() {
   status.textContent = "Loading recent operations…";
   status.dataset.state = "loading";
   if (!body.querySelector("tr:not(.atlas-table-empty)"))
-    body.innerHTML = empty("Loading history…", "Retrieving recorded deployment operations.");
+    body.innerHTML = empty(
+      "Loading history…",
+      "Retrieving recorded deployment operations.",
+    );
   try {
     const records = await api("/api/history");
     if (sequence !== deploymentHistorySequence) return;
     if (!Array.isArray(records)) throw Error("Invalid history response");
     // State badges and a machine link: open the target in Workspace from its history row.
-    body.innerHTML = records.length ? records.map((x) =>
-      `<tr data-state="${esc(x.state)}"><td>${esc(x.started)}</td><td><button type="button" class="history-target" data-history-target="${esc(x.target)}" title="Select in Workspace">${esc(x.target)}</button></td><td>${esc(x.package)}</td><td>${esc(x.action)}</td><td>${esc(x.mode)}${/\(Axis\)$/.test(x.operator || "") ? ' <small class="history-source" title="Started from Axis chat">Axis</small>' : ""}</td><td><span class="history-state" data-state="${esc(x.state)}">${esc(x.state)}</span></td><td><span class="${exitTone(x.exit_code)}">${esc(x.exit_code)}</span></td><td class="history-actions">${["failed", "interrupted", "unknown"].includes(x.state) ? `<button type="button" data-history-retry="${esc(x.id)}">Retry</button>` : ""}<button type="button" data-history-queue="${esc(x.id)}">Queue</button></td></tr>`
-    ).join("") : empty("No recent operations", "Deployment operations will appear here when they are recorded. Use Refresh to check again.");
+    body.innerHTML = records.length
+      ? records
+          .map(
+            (x) =>
+              `<tr data-state="${esc(x.state)}"><td>${esc(x.started)}</td><td><button type="button" class="history-target" data-history-target="${esc(x.target)}" title="Select in Workspace">${esc(x.target)}</button></td><td>${esc(x.package)}</td><td>${esc(x.action)}</td><td>${esc(x.mode)}${/\(Axis\)$/.test(x.operator || "") ? ' <small class="history-source" title="Started from Axis chat">Axis</small>' : ""}</td><td><span class="history-state" data-state="${esc(x.state)}">${esc(x.state)}</span></td><td><span class="${exitTone(x.exit_code)}">${esc(x.exit_code)}</span></td><td class="history-actions">${["failed", "interrupted", "unknown"].includes(x.state) ? `<button type="button" data-history-retry="${esc(x.id)}">Retry</button>` : ""}<button type="button" data-history-queue="${esc(x.id)}">Queue</button></td></tr>`,
+          )
+          .join("")
+      : empty(
+          "No recent operations",
+          "Deployment operations will appear here when they are recorded. Use Refresh to check again.",
+        );
     const failures = records.filter((x) => x.state === "failed").length;
-    status.textContent = records.length ? `${records.length} recorded operation${records.length === 1 ? "" : "s"}${failures ? ` · ${failures} failed` : ""}` : "No recorded deployment operations returned.";
+    status.textContent = records.length
+      ? `${records.length} recorded operation${records.length === 1 ? "" : "s"}${failures ? ` · ${failures} failed` : ""}`
+      : "No recorded deployment operations returned.";
     filterDeploymentHistory();
     status.dataset.state = "ready";
   } catch (error) {
     if (sequence !== deploymentHistorySequence) return;
-    status.textContent = "History unavailable · " + (body.querySelector("tr:not(.atlas-table-empty)") ? "previous results shown · " : "") + error.message;
+    status.textContent =
+      "History unavailable · " +
+      (body.querySelector("tr:not(.atlas-table-empty)")
+        ? "previous results shown · "
+        : "") +
+      error.message;
     status.dataset.state = "error";
     if (!body.querySelector("tr:not(.atlas-table-empty)"))
-      body.innerHTML = empty("History unavailable", "Use Refresh to try again.");
+      body.innerHTML = empty(
+        "History unavailable",
+        "Use Refresh to try again.",
+      );
   } finally {
     if (sequence === deploymentHistorySequence) {
       body.setAttribute("aria-busy", "false");
@@ -563,15 +675,21 @@ async function loadDeploymentHistory() {
   }
 }
 function filterDeploymentHistory() {
-  const words = ($("#historyFilter")?.value || "").toLowerCase().split(/\s+/).filter(Boolean);
-  $("#historyBody").querySelectorAll("tr:not(.atlas-table-empty)").forEach((row) => {
-    const text = row.textContent.toLowerCase();
-    row.hidden = !words.every((word) => text.includes(word));
-  });
+  const words = ($("#historyFilter")?.value || "")
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+  $("#historyBody")
+    .querySelectorAll("tr:not(.atlas-table-empty)")
+    .forEach((row) => {
+      const text = row.textContent.toLowerCase();
+      row.hidden = !words.every((word) => text.includes(word));
+    });
 }
 $("#historyFilter")?.addEventListener("input", filterDeploymentHistory);
 $("#historyBody")?.addEventListener("click", (event) => {
-  const machine = event.target.closest("[data-history-target]")?.dataset.historyTarget;
+  const machine = event.target.closest("[data-history-target]")?.dataset
+    .historyTarget;
   if (!machine || window.AtlasReadOnly) return;
   page("workspace");
   setTarget(machine, "Deployment history", false);
@@ -589,11 +707,7 @@ function exportCsv() {
     ],
     csv = [
       k.join(","),
-      ...S.rows.map((r) =>
-        k
-          .map((x) => AtlasUI.csvCell(r[x]))
-          .join(","),
-      ),
+      ...S.rows.map((r) => k.map((x) => AtlasUI.csvCell(r[x])).join(",")),
     ].join("\n"),
     a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
@@ -676,7 +790,9 @@ function refreshTargetHealth(scan = true) {
     : Promise.resolve();
 }
 function renderQueue() {
-  document.querySelector("#queueCount").dataset.deployments = activeQueueId ? 0 : deploymentQueue.length;
+  document.querySelector("#queueCount").dataset.deployments = activeQueueId
+    ? 0
+    : deploymentQueue.length;
   document.querySelector("#queueCount").textContent = deploymentQueue.length;
   window.AtlasReboots?.updateCount();
   window.AtlasActions?.updateCount();
@@ -794,7 +910,9 @@ function deploymentCard(item) {
     return `<article class="deployment-monitor-card"><header><b>Queue</b><span class="${statusAccent(item.state)}">${esc(item.state)}</span></header>${rows || '<p class="empty">Queue has no items</p>'}</article>`;
   }
   const failed = ["failed", "interrupted", "unknown"].includes(item.state);
-  const actions = item.retry ? `<div class="deployment-card-actions">${failed ? `<button type="button" class="primary" data-deployment-retry="${esc(item.id)}">Retry</button>` : ""}<button type="button" data-deployment-queue="${esc(item.id)}">Add to queue</button></div>` : "";
+  const actions = item.retry
+    ? `<div class="deployment-card-actions">${failed ? `<button type="button" class="primary" data-deployment-retry="${esc(item.id)}">Retry</button>` : ""}<button type="button" data-deployment-queue="${esc(item.id)}">Add to queue</button></div>`
+    : "";
   return `<article class="deployment-monitor-card"><header><b>${esc(item.target || "Machine not recorded")}</b><span class="${statusAccent(item.state)}">${esc(item.state)}</span></header><p class="deployment-package"><strong>${esc(item.package || "Package not recorded")}</strong>${item.action ? " · " + esc(item.action) : ""}${item.requested_by === "Axis" ? ' <small class="history-source" title="Started from Axis chat">Axis</small>' : ""}</p>${item.script ? `<small class="deployment-script">${esc(item.script)}</small>` : ""}<p>${esc(item.last_message || "")}</p>${actions}<pre>${esc(terminalLines(item.events))}</pre></article>`;
 }
 function renderDeploymentMonitor(data) {
@@ -802,9 +920,7 @@ function renderDeploymentMonitor(data) {
   const count =
     data.count ??
     (data.deployments || []).filter((x) =>
-      ["queued", "running", "monitoring", "paused"].includes(
-        x.state,
-      ),
+      ["queued", "running", "monitoring", "paused"].includes(x.state),
     ).length;
   document.querySelector("#deploymentsCount").textContent = count;
   document
@@ -923,11 +1039,7 @@ function exportSoftwareCsv() {
     headers = ["Name", "Version", "Publisher"];
   const csv = [
     headers.join(","),
-    ...rows.map((row) =>
-      headers
-        .map((h) => AtlasUI.csvCell(row[h]))
-        .join(","),
-    ),
+    ...rows.map((row) => headers.map((h) => AtlasUI.csvCell(row[h])).join(",")),
   ].join("\n");
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
@@ -973,11 +1085,14 @@ function refreshConsoleSummary() {
   for (const button of [$("#deploy"), $("#copyOnly"), $("#execOnly")])
     if (button.disabled !== unavailable) button.disabled = unavailable;
 
-  const label = deploySubmitting ? "Starting…" : $("#action").value + " on " + (S.target || "machine");
+  const label = deploySubmitting
+    ? "Starting…"
+    : $("#action").value + " on " + (S.target || "machine");
   if ($("#deploy").textContent !== label) $("#deploy").textContent = label;
   for (const button of document.querySelectorAll("[data-deploy-action]")) {
     const pressed = String(button.dataset.deployAction === $("#action").value);
-    if (button.getAttribute("aria-pressed") !== pressed) button.setAttribute("aria-pressed", pressed);
+    if (button.getAttribute("aria-pressed") !== pressed)
+      button.setAttribute("aria-pressed", pressed);
   }
   if (host) {
     const text = packageBusy

@@ -8,7 +8,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from fastapi import FastAPI,HTTPException
 from fastapi.testclient import TestClient
 import database_manager as dm
-import shared_operations
+from backend.services import shared_operations
 from axis import it_tools
 class DatabaseManager(unittest.TestCase):
  def test_preview_apply_restore_and_busy_guards(self):
