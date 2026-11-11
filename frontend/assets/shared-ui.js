@@ -1521,7 +1521,6 @@ window.AtlasContext = (() => {
     const first = enabled()[0];
     first?.focus({ preventScroll: true });
     first?.scrollIntoView({ block: "nearest" });
-    window.AtlasInteractions?.animateMenu(menu);
     return menu;
   }
   function fromEvent(event) {

@@ -293,7 +293,14 @@
   // Direct updater commands focus the matching workflow without opening a file dialog.
   function focusUploadSection() {
     const section = document.getElementById(location.hash.slice(1));
-    if (!section?.classList.contains("atlas-upload-section")) return;
+    if (
+      !section ||
+      (!section.classList.contains("atlas-upload-section") &&
+        !section.closest("#manual-imports"))
+    )
+      return;
+    for (let parent = section; parent; parent = parent.parentElement)
+      if (parent.tagName === "DETAILS") parent.open = true;
     section.tabIndex = -1;
     section.focus({ preventScroll: true });
     section.scrollIntoView({ block: "start", behavior: "instant" });

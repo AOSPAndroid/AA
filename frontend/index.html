@@ -84,9 +84,6 @@
           ><button data-page="inbox">
             <span class="nav-icon" data-atlas-icon="inbox"></span
             ><span class="nav-label">Live Inbox</span></button
-          ><button data-page="clipboard">
-            <span class="nav-icon" data-atlas-icon="clipboard"></span
-            ><span class="nav-label">Clipboard</span></button
           ><button data-page="active-directory">
             <span class="nav-icon">☷</span
             ><span class="nav-label">Active Directory</span></button
@@ -96,21 +93,31 @@
           ><button data-page="admin">
             <span class="nav-icon">▣</span
             ><span class="nav-label">Remote Admin</span></button
-          ><button data-page="bulk">
-            <span class="nav-icon">⇶</span
-            ><span class="nav-label">Bulk Deploy</span></button
           ><button data-page="history">
             <span class="nav-icon">◷</span
             ><span class="nav-label">History</span>
           </button>
-          <button data-page="terminal">
-            <span class="nav-icon">&gt;_</span
-            ><span class="nav-label">Terminal</span>
-          </button>
-          <button data-page="scripts">
-            <span class="nav-icon" aria-hidden="true">&gt;_</span
-            ><span class="nav-label">Scripts</span>
-          </button>
+          <details class="console-tools" id="console-tools">
+            <summary>More tools</summary>
+            <div class="console-tool-pages">
+              <button data-page="clipboard">
+                <span class="nav-icon" data-atlas-icon="clipboard"></span
+                ><span class="nav-label">Clipboard</span>
+              </button>
+              <button data-page="bulk">
+                <span class="nav-icon">⇶</span
+                ><span class="nav-label">Bulk Deploy</span>
+              </button>
+              <button data-page="terminal">
+                <span class="nav-icon">&gt;_</span
+                ><span class="nav-label">Terminal</span>
+              </button>
+              <button data-page="scripts">
+                <span class="nav-icon" aria-hidden="true">&gt;_</span
+                ><span class="nav-label">Scripts</span>
+              </button>
+            </div>
+          </details>
         </nav>
       </div>
       <div class="console-sidebar-content">
@@ -335,11 +342,6 @@
           <div id="kyc"></div>
           <div id="machines"></div>
           <div class="lookup-empty">
-            <span
-              class="workspace-start-icon"
-              data-atlas-icon="workspace"
-              aria-hidden="true"
-            ></span>
             <h3>Find a user or machine</h3>
             <p>
               Look up a colleague to see their linked machines, or search for a
@@ -350,35 +352,6 @@
               class="workspace-activity"
               aria-label="Workspace activity"
             ></div>
-            <div class="workspace-launchers" aria-label="Workspace shortcuts">
-              <button type="button" data-workspace-open="active-directory">
-                <span
-                  data-atlas-icon="active-directory"
-                  aria-hidden="true"
-                ></span
-                ><strong>Browse directory</strong
-                ><small>Accounts, groups &amp; access</small
-                ><span class="launch-arrow" aria-hidden="true">↗</span>
-              </button>
-              <button type="button" data-workspace-open="admin">
-                <span data-atlas-icon="admin" aria-hidden="true"></span
-                ><strong>Inspect a device</strong
-                ><small>Health &amp; performance</small
-                ><span class="launch-arrow" aria-hidden="true">↗</span>
-              </button>
-              <button type="button" data-workspace-open="packages">
-                <span data-atlas-icon="packages" aria-hidden="true"></span
-                ><strong>Find a package</strong
-                ><small>Catalogue &amp; deployments</small
-                ><span class="launch-arrow" aria-hidden="true">↗</span>
-              </button>
-              <button type="button" data-workspace-open="knowledge">
-                <span data-atlas-icon="knowledge" aria-hidden="true"></span
-                ><strong>Open knowledge base</strong
-                ><small>Diagrams &amp; support notes</small
-                ><span class="launch-arrow" aria-hidden="true">↗</span>
-              </button>
-            </div>
           </div>
           <div id="healthLine" class="healthline hidden"></div>
         </div>

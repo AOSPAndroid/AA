@@ -61,6 +61,8 @@ function page(id) {
     b.classList.toggle("active", b.dataset.page === current);
     if (b.dataset.page === current) b.setAttribute("aria-current", "page");
     else b.removeAttribute("aria-current");
+    if (b.dataset.page === current && b.closest("details"))
+      b.closest("details").open = true;
   });
   document.querySelectorAll("[data-section]").forEach((link) => {
     if (
@@ -91,9 +93,6 @@ async function init() {
   $("#search").focus();
 }
 function bind() {
-  document.querySelectorAll("[data-workspace-open]").forEach((button) => {
-    button.addEventListener("click", () => page(button.dataset.workspaceOpen));
-  });
   $("#pkgSearch").oninput = () => {
     clearTimeout(window.pt);
     window.pt = setTimeout(packages, 250);

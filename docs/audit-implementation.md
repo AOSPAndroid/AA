@@ -16,7 +16,7 @@ visible approvals/tool activity, standalone Axis code and the separate Viewer ba
 | 08: architecture | Explicit operation context/service and read-only directory repository in `backend/services`; route registration remains compatible with existing feature modules. |
 | 09: launchers | AA start/stop is authoritative, legacy redirects, verified retained process handles for server shutdown, atomic ownership records. |
 | 10: action discovery | Removed the duplicate DOM-scanning Tools/fallback; shared Viewer capability declarations and existing command registry/contextual actions. |
-| 11: UI weight/styles | Reduced interaction bundle, retained enforced 500 KiB/160 KiB limits, removed retired editor/Tools styles and assets. |
+| 11: UI weight/styles | Removed decorative Motion and duplicate workspace cards; lowered bundle limits to 360 KiB/115 KiB. Map/data screens no longer load React. Specialist navigation and manual imports use disclosures; retired editor/Tools styles and assets removed. |
 | 12: developer checks | Portable test command, repaired formatting, focused lint, rebuilt asset parity, distribution/dependency checks in CI. |
 | 13: unfinished tidy branch | Changes start from reviewed main; the failing broad reorganization was not merged. Only the cohesive shared service package was moved, with fixture and packaging imports updated together. |
 | 14: releases | Explicit runtime manifest, archive hashes/source marker, immutable source-identified release tags, extracted-bundle startup test. |
